@@ -1,0 +1,275 @@
+{
+  "ranks": [
+    "Afiliado",
+    "Militante / activista",
+    "Referente barrial (puntero)",
+    "Coordinador local",
+    "Comunero / representante comunal",
+    "Jefe seccional",
+    "Coordinador zonal / municipal",
+    "Dirigente provincial",
+    "Conducción nacional",
+    "Secretario general / presidente"
+  ],
+  "promotionXp": [
+    0,
+    3,
+    8,
+    15,
+    23,
+    33,
+    45,
+    58,
+    72,
+    88
+  ],
+  "personalSlots": [
+    2,
+    2,
+    2,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4,
+    4
+  ],
+  "capitales": {
+    "AR-B": {
+      "ciudad": "La Plata",
+      "pop": 770000,
+      "lon": -57.95,
+      "lat": -34.92
+    },
+    "AR-C": {
+      "ciudad": "Ciudad de Buenos Aires",
+      "pop": 3100000,
+      "lon": -58.44,
+      "lat": -34.61
+    },
+    "AR-K": {
+      "ciudad": "San Fernando del Valle de Catamarca",
+      "pop": 160000,
+      "lon": -65.78,
+      "lat": -28.47
+    },
+    "AR-H": {
+      "ciudad": "Resistencia",
+      "pop": 290000,
+      "lon": -58.98,
+      "lat": -27.45
+    },
+    "AR-U": {
+      "ciudad": "Rawson",
+      "pop": 32000,
+      "lon": -65.1,
+      "lat": -43.3
+    },
+    "AR-X": {
+      "ciudad": "Córdoba",
+      "pop": 1500000,
+      "lon": -64.19,
+      "lat": -31.42
+    },
+    "AR-W": {
+      "ciudad": "Corrientes",
+      "pop": 360000,
+      "lon": -58.83,
+      "lat": -27.47
+    },
+    "AR-E": {
+      "ciudad": "Paraná",
+      "pop": 270000,
+      "lon": -60.52,
+      "lat": -31.73
+    },
+    "AR-P": {
+      "ciudad": "Formosa",
+      "pop": 250000,
+      "lon": -58.17,
+      "lat": -26.18
+    },
+    "AR-Y": {
+      "ciudad": "San Salvador de Jujuy",
+      "pop": 290000,
+      "lon": -65.3,
+      "lat": -24.19
+    },
+    "AR-L": {
+      "ciudad": "Santa Rosa",
+      "pop": 120000,
+      "lon": -64.29,
+      "lat": -36.62
+    },
+    "AR-F": {
+      "ciudad": "La Rioja",
+      "pop": 200000,
+      "lon": -66.86,
+      "lat": -29.41
+    },
+    "AR-M": {
+      "ciudad": "Mendoza",
+      "pop": 1000000,
+      "lon": -68.84,
+      "lat": -32.89
+    },
+    "AR-N": {
+      "ciudad": "Posadas",
+      "pop": 380000,
+      "lon": -55.9,
+      "lat": -27.37
+    },
+    "AR-Q": {
+      "ciudad": "Neuquén",
+      "pop": 230000,
+      "lon": -68.06,
+      "lat": -38.95
+    },
+    "AR-R": {
+      "ciudad": "Viedma",
+      "pop": 60000,
+      "lon": -62.99,
+      "lat": -40.81
+    },
+    "AR-A": {
+      "ciudad": "Salta",
+      "pop": 620000,
+      "lon": -65.41,
+      "lat": -24.79
+    },
+    "AR-J": {
+      "ciudad": "San Juan",
+      "pop": 470000,
+      "lon": -68.54,
+      "lat": -31.54
+    },
+    "AR-D": {
+      "ciudad": "San Luis",
+      "pop": 220000,
+      "lon": -66.34,
+      "lat": -33.3
+    },
+    "AR-Z": {
+      "ciudad": "Río Gallegos",
+      "pop": 115000,
+      "lon": -69.22,
+      "lat": -51.62
+    },
+    "AR-S": {
+      "ciudad": "Santa Fe",
+      "pop": 500000,
+      "lon": -60.7,
+      "lat": -31.63
+    },
+    "AR-G": {
+      "ciudad": "Santiago del Estero",
+      "pop": 400000,
+      "lon": -64.26,
+      "lat": -27.79
+    },
+    "AR-V": {
+      "ciudad": "Ushuaia",
+      "pop": 80000,
+      "lon": -68.3,
+      "lat": -54.8
+    },
+    "AR-T": {
+      "ciudad": "San Miguel de Tucumán",
+      "pop": 800000,
+      "lon": -65.22,
+      "lat": -26.82
+    }
+  },
+  "missions": [
+    {
+      "id": "volantes",
+      "nombre": "Repartir volantes",
+      "desc": "Presentar el partido casa por casa en el barrio.",
+      "dias": 3,
+      "costo": 400,
+      "base": 72,
+      "minRank": 0,
+      "gana": {
+        "control": 0.06,
+        "trust": 1,
+        "xp": 1
+      },
+      "falla": {
+        "trust": -2
+      }
+    },
+    {
+      "id": "pintadas",
+      "nombre": "Hacer pintadas",
+      "desc": "Señalizar presencia partidaria con paredes pintadas.",
+      "dias": 3,
+      "costo": 600,
+      "base": 62,
+      "minRank": 0,
+      "gana": {
+        "control": 0.08,
+        "trust": 0,
+        "xp": 1
+      },
+      "falla": {
+        "trust": -5
+      }
+    },
+    {
+      "id": "visitas",
+      "nombre": "Visitar vecinos y escuchar",
+      "desc": "Recorrer el barrio escuchando necesidades.",
+      "dias": 6,
+      "costo": 200,
+      "base": 68,
+      "minRank": 0,
+      "gana": {
+        "control": 0.05,
+        "trust": 6,
+        "xp": 2
+      },
+      "falla": {
+        "trust": -2
+      }
+    },
+    {
+      "id": "comunidad",
+      "nombre": "Ayudar en una necesidad comunitaria",
+      "desc": "Colaborar con una actividad o necesidad del barrio.",
+      "dias": 8,
+      "costo": 1500,
+      "base": 64,
+      "minRank": 0,
+      "gana": {
+        "control": 0.07,
+        "trust": 9,
+        "xp": 3
+      },
+      "falla": {
+        "trust": -4
+      }
+    },
+    {
+      "id": "reunion",
+      "nombre": "Reunión abierta de presentación",
+      "desc": "Convocar a vecinos a conocer al partido.",
+      "dias": 7,
+      "costo": 1000,
+      "base": 58,
+      "minRank": 1,
+      "gana": {
+        "control": 0.12,
+        "trust": 5,
+        "xp": 3
+      },
+      "falla": {
+        "trust": -3
+      }
+    }
+  ],
+  "start": {
+    "money": 5000,
+    "trust": 20
+  }
+}

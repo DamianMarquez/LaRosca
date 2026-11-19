@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14181f">
+  <title>La Rosca — simulador político</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="src/ui/styles.css">
+</head>
+<body>
+  <header class="hud">
+    <div class="brand"><span class="brand-mark">LR</span> LA ROSCA</div>
+    <div class="clock" id="clock">
+      <span id="date">—</span>
+      <button data-speed="0" title="Pausa (espacio)">⏸</button>
+      <button data-speed="1" title="x1">▶</button>
+      <button data-speed="2" title="x2">▶▶</button>
+      <button data-speed="4" title="x4">▶▶▶</button>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+  <main class="stage">
+    <svg id="map" aria-label="Mapa de Argentina"></svg>
+    <aside class="panel" id="panel"></aside>
+  </main>
+  <footer class="log" id="log"></footer>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
