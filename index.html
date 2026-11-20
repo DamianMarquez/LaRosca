@@ -19,12 +19,20 @@
       <button data-speed="4" title="x4">▶▶▶</button>
     </div>
     <div class="stats" id="stats"></div>
+    <div class="file-actions">
+      <button id="btn-export" title="Descargar la partida como archivo JSON">⬇ Exportar</button>
+      <button id="btn-import" title="Cargar una partida desde un archivo JSON">⬆ Importar</button>
+      <button id="btn-new" title="Borrar la partida guardada y empezar de nuevo">↺ Nueva</button>
+    </div>
   </header>
   <main class="stage">
     <svg id="map" aria-label="Mapa de Argentina"></svg>
     <aside class="panel" id="panel"></aside>
   </main>
   <footer class="log" id="log"></footer>
+  <div id="modal-root"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <input id="import-file" type="file" accept="application/json,.json" hidden>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

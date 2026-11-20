@@ -1,0 +1,67 @@
+{
+  "nota": "efectos: money, black (dinero), exposure (riesgo de escándalo, 0..100), exposureSet, trustAll (confianza en todos los barrios), xp, delay (días de demora a las misiones en curso). Una opción puede llevar 'costo' {money, black} y/o 'azar' {p, ok:{texto,efectos}, fail:{texto,efectos}}.",
+  "base": {"probDiaria": 0.045, "enfriamientoDias": 10, "probEscandaloMax": 0.12},
+  "eventos": [
+    {
+      "id": "aporte_empresario", "titulo": "Un empresario ofrece ayuda", "minDia": 12, "peso": 2,
+      "texto": "Un empresario del barrio se acerca: quiere «colaborar con la causa» con un sobre de efectivo, sin recibo ni preguntas.",
+      "opciones": [
+        {"label": "Aceptar el sobre", "efectos": {"black": 4000, "exposure": 12}, "resultado": "Aceptaste el dinero en efectivo. Útil, pero ahora hay alguien que sabe que lo hiciste."},
+        {"label": "Rechazarlo con cortesía", "efectos": {"trustAll": 1}, "resultado": "Lo rechazaste. Corrió la voz de que sos alguien derecho."}
+      ]
+    },
+    {
+      "id": "local_vecino", "titulo": "Un vecino ofrece su salón", "minDia": 5, "peso": 2,
+      "texto": "Una vecina ofrece prestar su salón para reuniones. Hay que pagar la luz y arreglar el techo.",
+      "opciones": [
+        {"label": "Aceptar y encargarte del salón", "costo": {"money": 300}, "efectos": {"trustAll": 3, "xp": 1}, "resultado": "El salón se volvió punto de encuentro del barrio."},
+        {"label": "Agradecer y declinar", "efectos": {}, "resultado": "Dejaste pasar la oferta."}
+      ]
+    },
+    {
+      "id": "temporal", "titulo": "Temporal en la ciudad", "minDia": 8, "peso": 2,
+      "texto": "Un temporal azota la ciudad. Las actividades en la calle se complican.",
+      "opciones": [
+        {"label": "Suspender y esperar", "efectos": {"delay": 2}, "resultado": "Las misiones en curso se demoraron dos días."},
+        {"label": "Seguir igual", "azar": {"p": 0.5,
+          "ok": {"texto": "Salió bien: la gente valoró que no te frenara la lluvia.", "efectos": {"trustAll": 1}},
+          "fail": {"texto": "Salió mal: se mojó el material y el esfuerzo no rindió.", "efectos": {"money": -500, "trustAll": -2}}}}
+      ]
+    },
+    {
+      "id": "rival_ataca", "titulo": "Ataque en redes", "minDia": 20, "peso": 2,
+      "texto": "Un rival difunde en redes que tu agrupación «no representa a nadie». Se empieza a compartir.",
+      "opciones": [
+        {"label": "Ignorarlo", "efectos": {"trustAll": -2}, "resultado": "Lo ignoraste, pero el mensaje se instaló."},
+        {"label": "Responder con un comunicado", "costo": {"money": 500}, "azar": {"p": 0.6,
+          "ok": {"texto": "El comunicado fue claro y tuvo buena recepción.", "efectos": {"trustAll": 2}},
+          "fail": {"texto": "El comunicado empeoró las cosas: parecía a la defensiva.", "efectos": {"trustAll": -3}}}},
+        {"label": "Contraatacar con cuentas falsas pagas", "costo": {"black": 800}, "azar": {"p": 0.5,
+          "ok": {"texto": "La campaña sucia funcionó y nadie lo notó.", "efectos": {"trustAll": 3, "exposure": 8}},
+          "fail": {"texto": "Descubrieron las cuentas falsas.", "efectos": {"trustAll": -5, "exposure": 18}}}}
+      ]
+    },
+    {
+      "id": "veterano_cuestiona", "titulo": "Un veterano te cuestiona", "minDia": 25, "minRango": 1, "peso": 1,
+      "texto": "Un militante veterano cuestiona frente a todos que alguien con tan poca trayectoria quiera dar órdenes.",
+      "opciones": [
+        {"label": "Debatir de frente", "azar": {"p": 0.6,
+          "ok": {"texto": "Tu respuesta convenció a la mayoría.", "efectos": {"xp": 2}},
+          "fail": {"texto": "Saliste desairado del debate.", "efectos": {"trustAll": -2}}}},
+        {"label": "Ceder y escucharlo", "efectos": {"xp": 1}, "resultado": "Aprendiste de su experiencia y bajó la tensión."}
+      ]
+    },
+    {
+      "id": "escandalo_filtracion", "titulo": "Se filtra una operación con dinero opaco", "tipo": "escandalo",
+      "texto": "Un periodista consigue pruebas de movimientos de dinero sin registrar en tu agrupación. Pide tu versión antes de publicar.",
+      "opciones": [
+        {"label": "Negarlo todo", "azar": {"p": 0.4,
+          "ok": {"texto": "La nota se cayó por falta de pruebas.", "efectos": {"exposure": -20}},
+          "fail": {"texto": "Publicaron con pruebas y tu negativa quedó como una mentira.", "efectos": {"trustAll": -12, "exposure": 5}}}},
+        {"label": "Pagar para que no se publique (dinero negro)", "costo": {"black": 2500}, "efectos": {"exposure": -35}, "resultado": "La nota nunca salió. Pero ahora alguien tiene tu secreto y lo sabe."},
+        {"label": "Pagar para que no se publique (dinero blanco)", "costo": {"money": 3000}, "efectos": {"exposure": -35}, "resultado": "Pagaste con fondos declarados para evitar la publicación."},
+        {"label": "Asumirlo públicamente", "efectos": {"trustAll": -8, "exposureSet": 10, "xp": 1}, "resultado": "Diste la cara. Costó caro, pero cortaste el problema de raíz."}
+      ]
+    }
+  ]
+}

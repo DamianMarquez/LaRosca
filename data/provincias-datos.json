@@ -1,0 +1,173 @@
+{
+ "fuentes": "INDEC Censo 2022 (definitivo); electores 2025: CNE/DINE vía prensa, ver data/fuentes/README.md",
+ "provincias": {
+  "AR-C": {
+   "nombre": "Ciudad Autónoma de Buenos Aires",
+   "poblacion2010": 2890151,
+   "poblacion2022": 3121707,
+   "electores2025": 2520249,
+   "electoresPorHabitante": 0.807
+  },
+  "AR-B": {
+   "nombre": "Buenos Aires",
+   "poblacion2010": 15625084,
+   "poblacion2022": 17523996,
+   "electores2025": 13353974,
+   "electoresPorHabitante": 0.762
+  },
+  "AR-K": {
+   "nombre": "Catamarca",
+   "poblacion2010": 367828,
+   "poblacion2022": 429562,
+   "electores2025": 347282,
+   "electoresPorHabitante": 0.808
+  },
+  "AR-H": {
+   "nombre": "Chaco",
+   "poblacion2010": 1055259,
+   "poblacion2022": 1129606,
+   "electores2025": 1015693,
+   "electoresPorHabitante": 0.899
+  },
+  "AR-U": {
+   "nombre": "Chubut",
+   "poblacion2010": 509108,
+   "poblacion2022": 592621,
+   "electores2025": 453021,
+   "electoresPorHabitante": 0.764
+  },
+  "AR-X": {
+   "nombre": "Córdoba",
+   "poblacion2010": 3308876,
+   "poblacion2022": 3840905,
+   "electores2025": 3084000,
+   "electoresPorHabitante": 0.803
+  },
+  "AR-W": {
+   "nombre": "Corrientes",
+   "poblacion2010": 992595,
+   "poblacion2022": 1212696,
+   "electores2025": 950576,
+   "electoresPorHabitante": 0.784
+  },
+  "AR-E": {
+   "nombre": "Entre Ríos",
+   "poblacion2010": 1235994,
+   "poblacion2022": 1425578,
+   "electores2025": 1053652,
+   "electoresPorHabitante": 0.739
+  },
+  "AR-P": {
+   "nombre": "Formosa",
+   "poblacion2010": 530162,
+   "poblacion2022": 607419,
+   "electores2025": 491565,
+   "electoresPorHabitante": 0.809
+  },
+  "AR-Y": {
+   "nombre": "Jujuy",
+   "poblacion2010": 673307,
+   "poblacion2022": 811611,
+   "electores2025": 602380,
+   "electoresPorHabitante": 0.742
+  },
+  "AR-L": {
+   "nombre": "La Pampa",
+   "poblacion2010": 318951,
+   "poblacion2022": 361859,
+   "electores2025": 304693,
+   "electoresPorHabitante": 0.842
+  },
+  "AR-F": {
+   "nombre": "La Rioja",
+   "poblacion2010": 333642,
+   "poblacion2022": 383865,
+   "electores2025": 309186,
+   "electoresPorHabitante": 0.805
+  },
+  "AR-M": {
+   "nombre": "Mendoza",
+   "poblacion2010": 1738929,
+   "poblacion2022": 2043540,
+   "electores2025": 1525824,
+   "electoresPorHabitante": 0.747
+  },
+  "AR-N": {
+   "nombre": "Misiones",
+   "poblacion2010": 1101593,
+   "poblacion2022": 1278873,
+   "electores2025": 994317,
+   "electoresPorHabitante": 0.777
+  },
+  "AR-Q": {
+   "nombre": "Neuquén",
+   "poblacion2010": 551266,
+   "poblacion2022": 710814,
+   "electores2025": 609951,
+   "electoresPorHabitante": 0.858
+  },
+  "AR-R": {
+   "nombre": "Río Negro",
+   "poblacion2010": 638645,
+   "poblacion2022": 750768,
+   "electores2025": 617054,
+   "electoresPorHabitante": 0.822
+  },
+  "AR-A": {
+   "nombre": "Salta",
+   "poblacion2010": 1214441,
+   "poblacion2022": 1441351,
+   "electores2025": 1111029,
+   "electoresPorHabitante": 0.771
+  },
+  "AR-J": {
+   "nombre": "San Juan",
+   "poblacion2010": 681055,
+   "poblacion2022": 822853,
+   "electores2025": 606278,
+   "electoresPorHabitante": 0.737
+  },
+  "AR-D": {
+   "nombre": "San Luis",
+   "poblacion2010": 432310,
+   "poblacion2022": 542069,
+   "electores2025": 399321,
+   "electoresPorHabitante": 0.737
+  },
+  "AR-Z": {
+   "nombre": "Santa Cruz",
+   "poblacion2010": 273964,
+   "poblacion2022": 337226,
+   "electores2025": 288732,
+   "electoresPorHabitante": 0.856
+  },
+  "AR-S": {
+   "nombre": "Santa Fe",
+   "poblacion2010": 3194537,
+   "poblacion2022": 3544908,
+   "electores2025": 2815453,
+   "electoresPorHabitante": 0.794
+  },
+  "AR-G": {
+   "nombre": "Santiago del Estero",
+   "poblacion2010": 874006,
+   "poblacion2022": 1060906,
+   "electores2025": 813327,
+   "electoresPorHabitante": 0.767
+  },
+  "AR-V": {
+   "nombre": "Tierra del Fuego, Antártida e Islas del Atlántico Sur",
+   "poblacion2010": 127205,
+   "poblacion2022": 185732,
+   "electores2025": 162527,
+   "electoresPorHabitante": 0.875
+  },
+  "AR-T": {
+   "nombre": "Tucumán",
+   "poblacion2010": 1448188,
+   "poblacion2022": 1731820,
+   "electores2025": 1341563,
+   "electoresPorHabitante": 0.775
+  }
+ }
+}

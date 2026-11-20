@@ -191,12 +191,18 @@
       "base": 72,
       "minRank": 0,
       "gana": {
-        "control": 0.06,
         "trust": 1,
         "xp": 1
       },
       "falla": {
         "trust": -2
+      },
+      "alcance": 1500,
+      "densExp": 0.5,
+      "densPref": 1,
+      "negro": {
+        "bonus": 6,
+        "expo": 5
       }
     },
     {
@@ -208,12 +214,18 @@
       "base": 62,
       "minRank": 0,
       "gana": {
-        "control": 0.08,
         "trust": 0,
         "xp": 1
       },
       "falla": {
         "trust": -5
+      },
+      "alcance": 3000,
+      "densExp": 0.4,
+      "densPref": 1,
+      "negro": {
+        "bonus": 10,
+        "expo": 8
       }
     },
     {
@@ -225,13 +237,15 @@
       "base": 68,
       "minRank": 0,
       "gana": {
-        "control": 0.05,
         "trust": 6,
         "xp": 2
       },
       "falla": {
         "trust": -2
-      }
+      },
+      "alcance": 500,
+      "densExp": 0.3,
+      "densPref": -1
     },
     {
       "id": "comunidad",
@@ -242,12 +256,18 @@
       "base": 64,
       "minRank": 0,
       "gana": {
-        "control": 0.07,
         "trust": 9,
         "xp": 3
       },
       "falla": {
         "trust": -4
+      },
+      "alcance": 800,
+      "densExp": 0.1,
+      "densPref": -1,
+      "negro": {
+        "bonus": 12,
+        "expo": 10
       }
     },
     {
@@ -259,17 +279,31 @@
       "base": 58,
       "minRank": 1,
       "gana": {
-        "control": 0.12,
         "trust": 5,
         "xp": 3
       },
       "falla": {
         "trust": -3
+      },
+      "alcance": 1200,
+      "densExp": 0.5,
+      "densPref": 1,
+      "negro": {
+        "bonus": 10,
+        "expo": 8
       }
     }
   ],
   "start": {
     "money": 5000,
-    "trust": 20
+    "trust": 20,
+    "black": 0
+  },
+  "densidad": {
+    "ref": 3000,
+    "minMult": 0.4,
+    "maxMult": 2.5,
+    "maxBonusRiesgo": 8,
+    "maxControlPorMision": 0.25
   }
 }

@@ -25,14 +25,16 @@ export class GameMap {
       g.appendChild(p);
       this.paths.set(z.id, p);
     }
-    if (data.zonas) for (const z of zones) { // etiquetas (vista ciudad)
+    this.labels = [];
+    if (data.zonas) for (const z of zones.filter(z => z.tipo !== 'fraccion')) { // etiquetas solo de barrios con nombre
       const t = document.createElementNS(NS, 'text');
       t.setAttribute('x', z.cx); t.setAttribute('y', z.cy);
       t.classList.add('lbl');
-      t.style.fontSize = (this.base[2] / 75).toFixed(1) + 'px';
       t.textContent = z.nombre;
       g.appendChild(t);
+      this.labels.push({ el: t, w: this.paths.get(z.id).getBBox().width });
     }
+    this.apply();
     this.bind();
   }
 
@@ -93,5 +95,13 @@ export class GameMap {
     }, { passive: false });
   }
 
-  apply() { this.svg.setAttribute('viewBox', this.vb.map(v => v.toFixed(1)).join(' ')); }
+  apply() {
+    this.svg.setAttribute('viewBox', this.vb.map(v => v.toFixed(1)).join(' '));
+    // Las etiquetas escalan con el zoom y solo se muestran si la zona ocupa suficiente pantalla
+    const fs = (this.vb[2] / 75).toFixed(1) + 'px';
+    for (const l of this.labels ?? []) {
+      l.el.style.fontSize = fs;
+      l.el.style.display = l.w / this.vb[2] > 0.035 ? '' : 'none';
+    }
+  }
 }

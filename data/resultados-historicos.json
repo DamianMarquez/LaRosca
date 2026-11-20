@@ -1,0 +1,747 @@
+{
+ "fuentes": "DINE (Ministerio del Interior). 2019 definitivo; 2023 provisorio, 1ª vuelta. Ver data/fuentes/README.md",
+ "distritos": {
+  "AR-C": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 2710325,
+    "participacion": 0.7658,
+    "resultados": {
+     "JUNTOS POR EL CAMBIO": 0.5264,
+     "FRENTE DE TODOS": 0.3546,
+     "CONSENSO FEDERAL": 0.0643,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0291,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0187,
+     "OTROS": 0.0068
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 2526676,
+    "participacion": 0.7565,
+    "resultados": {
+     "JUNTOS POR EL CAMBIO": 0.4123,
+     "UNION POR LA PATRIA": 0.3228,
+     "LA LIBERTAD AVANZA": 0.1985,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0355,
+     "HACEMOS POR NUESTRO PAIS": 0.0309
+    }
+   }
+  },
+  "AR-B": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 12641013,
+    "participacion": 0.8207,
+    "resultados": {
+     "FRENTE DE TODOS": 0.522,
+     "JUNTOS POR EL CAMBIO": 0.3589,
+     "CONSENSO FEDERAL": 0.063,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.027,
+     "FRENTE NOS": 0.0148,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0144
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 13124435,
+    "participacion": 0.7771,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.4288,
+     "LA LIBERTAD AVANZA": 0.2572,
+     "JUNTOS POR EL CAMBIO": 0.241,
+     "HACEMOS POR NUESTRO PAIS": 0.0373,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0358
+    }
+   }
+  },
+  "AR-K": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 320042,
+    "participacion": 0.8091,
+    "resultados": {
+     "FRENTE DE TODOS": 0.5666,
+     "JUNTOS POR EL CAMBIO": 0.34,
+     "CONSENSO FEDERAL": 0.0564,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.015,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0129,
+     "OTROS": 0.0091
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 340606,
+    "participacion": 0.7281,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.4279,
+     "LA LIBERTAD AVANZA": 0.3204,
+     "JUNTOS POR EL CAMBIO": 0.1717,
+     "HACEMOS POR NUESTRO PAIS": 0.0643,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0157
+    }
+   }
+  },
+  "AR-X": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 2965274,
+    "participacion": 0.79,
+    "resultados": {
+     "JUNTOS POR EL CAMBIO": 0.6131,
+     "FRENTE DE TODOS": 0.2931,
+     "CONSENSO FEDERAL": 0.05,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0165,
+     "FRENTE NOS": 0.014,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0133
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 3060943,
+    "participacion": 0.7619,
+    "resultados": {
+     "LA LIBERTAD AVANZA": 0.3355,
+     "HACEMOS POR NUESTRO PAIS": 0.2901,
+     "JUNTOS POR EL CAMBIO": 0.2263,
+     "UNION POR LA PATRIA": 0.1342,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0139
+    }
+   }
+  },
+  "AR-W": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 874945,
+    "participacion": 0.8074,
+    "resultados": {
+     "FRENTE DE TODOS": 0.5119,
+     "JUNTOS POR EL CAMBIO": 0.4192,
+     "CONSENSO FEDERAL": 0.0312,
+     "FRENTE NOS": 0.018,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0102,
+     "OTROS": 0.0094
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 930212,
+    "participacion": 0.768,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.3721,
+     "JUNTOS POR EL CAMBIO": 0.3212,
+     "LA LIBERTAD AVANZA": 0.2689,
+     "HACEMOS POR NUESTRO PAIS": 0.0274,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0105
+    }
+   }
+  },
+  "AR-H": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 950537,
+    "participacion": 0.776,
+    "resultados": {
+     "FRENTE DE TODOS": 0.5573,
+     "JUNTOS POR EL CAMBIO": 0.3558,
+     "CONSENSO FEDERAL": 0.0381,
+     "FRENTE NOS": 0.0284,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0108,
+     "OTROS": 0.0096
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 1000094,
+    "participacion": 0.7245,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.437,
+     "LA LIBERTAD AVANZA": 0.2777,
+     "JUNTOS POR EL CAMBIO": 0.2414,
+     "HACEMOS POR NUESTRO PAIS": 0.0363,
+     "OTROS": 0.0077
+    }
+   }
+  },
+  "AR-U": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 447970,
+    "participacion": 0.7759,
+    "resultados": {
+     "FRENTE DE TODOS": 0.5242,
+     "JUNTOS POR EL CAMBIO": 0.2935,
+     "CONSENSO FEDERAL": 0.0761,
+     "FRENTE NOS": 0.0428,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0394,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0241
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 474701,
+    "participacion": 0.7454,
+    "resultados": {
+     "LA LIBERTAD AVANZA": 0.3502,
+     "UNION POR LA PATRIA": 0.3226,
+     "JUNTOS POR EL CAMBIO": 0.2059,
+     "HACEMOS POR NUESTRO PAIS": 0.0773,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.044
+    }
+   }
+  },
+  "AR-E": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 1110559,
+    "participacion": 0.8059,
+    "resultados": {
+     "JUNTOS POR EL CAMBIO": 0.4447,
+     "FRENTE DE TODOS": 0.4437,
+     "CONSENSO FEDERAL": 0.0625,
+     "FRENTE NOS": 0.0166,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0165,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.016
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 1145440,
+    "participacion": 0.768,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.3326,
+     "JUNTOS POR EL CAMBIO": 0.3009,
+     "LA LIBERTAD AVANZA": 0.2975,
+     "HACEMOS POR NUESTRO PAIS": 0.0537,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0153
+    }
+   }
+  },
+  "AR-P": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 459875,
+    "participacion": 0.7774,
+    "resultados": {
+     "FRENTE DE TODOS": 0.6521,
+     "JUNTOS POR EL CAMBIO": 0.2846,
+     "CONSENSO FEDERAL": 0.0314,
+     "FRENTE NOS": 0.0151,
+     "OTROS": 0.0168
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 482420,
+    "participacion": 0.7561,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.5233,
+     "LA LIBERTAD AVANZA": 0.2904,
+     "JUNTOS POR EL CAMBIO": 0.154,
+     "HACEMOS POR NUESTRO PAIS": 0.0246,
+     "OTROS": 0.0077
+    }
+   }
+  },
+  "AR-Y": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 558872,
+    "participacion": 0.8178,
+    "resultados": {
+     "FRENTE DE TODOS": 0.4619,
+     "JUNTOS POR EL CAMBIO": 0.415,
+     "CONSENSO FEDERAL": 0.0598,
+     "FRENTE NOS": 0.0234,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0206,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0192
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 590950,
+    "participacion": 0.7835,
+    "resultados": {
+     "LA LIBERTAD AVANZA": 0.3739,
+     "UNION POR LA PATRIA": 0.3232,
+     "JUNTOS POR EL CAMBIO": 0.1994,
+     "HACEMOS POR NUESTRO PAIS": 0.0681,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0354
+    }
+   }
+  },
+  "AR-L": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 287461,
+    "participacion": 0.8123,
+    "resultados": {
+     "FRENTE DE TODOS": 0.5007,
+     "JUNTOS POR EL CAMBIO": 0.3774,
+     "CONSENSO FEDERAL": 0.0659,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0206,
+     "FRENTE NOS": 0.0203,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0151
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 300032,
+    "participacion": 0.7733,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.348,
+     "LA LIBERTAD AVANZA": 0.3353,
+     "JUNTOS POR EL CAMBIO": 0.2192,
+     "HACEMOS POR NUESTRO PAIS": 0.0744,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.023
+    }
+   }
+  },
+  "AR-F": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 289327,
+    "participacion": 0.809,
+    "resultados": {
+     "FRENTE DE TODOS": 0.4737,
+     "JUNTOS POR EL CAMBIO": 0.4443,
+     "CONSENSO FEDERAL": 0.0433,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0155,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0117,
+     "FRENTE NOS": 0.0115
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 304409,
+    "participacion": 0.7962,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.411,
+     "LA LIBERTAD AVANZA": 0.3765,
+     "JUNTOS POR EL CAMBIO": 0.118,
+     "HACEMOS POR NUESTRO PAIS": 0.0851,
+     "OTROS": 0.0092
+    }
+   }
+  },
+  "AR-M": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 1448621,
+    "participacion": 0.8108,
+    "resultados": {
+     "JUNTOS POR EL CAMBIO": 0.501,
+     "FRENTE DE TODOS": 0.3783,
+     "CONSENSO FEDERAL": 0.0656,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0229,
+     "FRENTE NOS": 0.0197,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0125
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 1494888,
+    "participacion": 0.7645,
+    "resultados": {
+     "LA LIBERTAD AVANZA": 0.4236,
+     "JUNTOS POR EL CAMBIO": 0.2585,
+     "UNION POR LA PATRIA": 0.2398,
+     "HACEMOS POR NUESTRO PAIS": 0.0433,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0348
+    }
+   }
+  },
+  "AR-N": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 929542,
+    "participacion": 0.7988,
+    "resultados": {
+     "FRENTE DE TODOS": 0.5771,
+     "JUNTOS POR EL CAMBIO": 0.3388,
+     "CONSENSO FEDERAL": 0.0338,
+     "FRENTE NOS": 0.0293,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0118,
+     "OTROS": 0.0093
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 989204,
+    "participacion": 0.7589,
+    "resultados": {
+     "LA LIBERTAD AVANZA": 0.4213,
+     "UNION POR LA PATRIA": 0.3791,
+     "JUNTOS POR EL CAMBIO": 0.1444,
+     "HACEMOS POR NUESTRO PAIS": 0.0413,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0138
+    }
+   }
+  },
+  "AR-Q": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 508431,
+    "participacion": 0.8397,
+    "resultados": {
+     "FRENTE DE TODOS": 0.4773,
+     "JUNTOS POR EL CAMBIO": 0.3734,
+     "CONSENSO FEDERAL": 0.063,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0374,
+     "FRENTE NOS": 0.0289,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0201
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 554077,
+    "participacion": 0.7986,
+    "resultados": {
+     "LA LIBERTAD AVANZA": 0.3671,
+     "UNION POR LA PATRIA": 0.3178,
+     "JUNTOS POR EL CAMBIO": 0.2054,
+     "HACEMOS POR NUESTRO PAIS": 0.0596,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0502
+    }
+   }
+  },
+  "AR-R": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 563382,
+    "participacion": 0.8026,
+    "resultados": {
+     "FRENTE DE TODOS": 0.5723,
+     "JUNTOS POR EL CAMBIO": 0.2858,
+     "CONSENSO FEDERAL": 0.0635,
+     "FRENTE NOS": 0.0328,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.026,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0196
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 595968,
+    "participacion": 0.7705,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.3785,
+     "LA LIBERTAD AVANZA": 0.3373,
+     "JUNTOS POR EL CAMBIO": 0.1814,
+     "HACEMOS POR NUESTRO PAIS": 0.0626,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0402
+    }
+   }
+  },
+  "AR-A": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 1029950,
+    "participacion": 0.7609,
+    "resultados": {
+     "FRENTE DE TODOS": 0.4882,
+     "JUNTOS POR EL CAMBIO": 0.3474,
+     "CONSENSO FEDERAL": 0.1074,
+     "FRENTE NOS": 0.0217,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0178,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0174
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 1091792,
+    "participacion": 0.7166,
+    "resultados": {
+     "LA LIBERTAD AVANZA": 0.404,
+     "UNION POR LA PATRIA": 0.3761,
+     "JUNTOS POR EL CAMBIO": 0.1394,
+     "HACEMOS POR NUESTRO PAIS": 0.0627,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0177
+    }
+   }
+  },
+  "AR-J": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 564177,
+    "participacion": 0.8241,
+    "resultados": {
+     "FRENTE DE TODOS": 0.5301,
+     "JUNTOS POR EL CAMBIO": 0.3514,
+     "CONSENSO FEDERAL": 0.0723,
+     "FRENTE NOS": 0.0184,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0152,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0126
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 607413,
+    "participacion": 0.7491,
+    "resultados": {
+     "LA LIBERTAD AVANZA": 0.351,
+     "UNION POR LA PATRIA": 0.3323,
+     "JUNTOS POR EL CAMBIO": 0.2323,
+     "HACEMOS POR NUESTRO PAIS": 0.0618,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0226
+    }
+   }
+  },
+  "AR-D": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 391252,
+    "participacion": 0.8124,
+    "resultados": {
+     "JUNTOS POR EL CAMBIO": 0.4503,
+     "FRENTE DE TODOS": 0.4168,
+     "CONSENSO FEDERAL": 0.0676,
+     "FRENTE NOS": 0.0248,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0232,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0173
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 421037,
+    "participacion": 0.7799,
+    "resultados": {
+     "LA LIBERTAD AVANZA": 0.4337,
+     "UNION POR LA PATRIA": 0.272,
+     "JUNTOS POR EL CAMBIO": 0.2097,
+     "HACEMOS POR NUESTRO PAIS": 0.0628,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0218
+    }
+   }
+  },
+  "AR-Z": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 253119,
+    "participacion": 0.7462,
+    "resultados": {
+     "FRENTE DE TODOS": 0.5977,
+     "JUNTOS POR EL CAMBIO": 0.2824,
+     "CONSENSO FEDERAL": 0.0503,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0333,
+     "FRENTE NOS": 0.0285,
+     "OTROS": 0.0077
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 265400,
+    "participacion": 0.7025,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.3788,
+     "LA LIBERTAD AVANZA": 0.363,
+     "JUNTOS POR EL CAMBIO": 0.1636,
+     "HACEMOS POR NUESTRO PAIS": 0.0658,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0288
+    }
+   }
+  },
+  "AR-S": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 2769007,
+    "participacion": 0.7943,
+    "resultados": {
+     "JUNTOS POR EL CAMBIO": 0.4349,
+     "FRENTE DE TODOS": 0.4268,
+     "CONSENSO FEDERAL": 0.0898,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0187,
+     "FRENTE NOS": 0.0154,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0143
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 2827794,
+    "participacion": 0.7322,
+    "resultados": {
+     "LA LIBERTAD AVANZA": 0.3248,
+     "UNION POR LA PATRIA": 0.2968,
+     "JUNTOS POR EL CAMBIO": 0.2689,
+     "HACEMOS POR NUESTRO PAIS": 0.0904,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.019
+    }
+   }
+  },
+  "AR-G": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 760878,
+    "participacion": 0.804,
+    "resultados": {
+     "FRENTE DE TODOS": 0.7495,
+     "JUNTOS POR EL CAMBIO": 0.1837,
+     "CONSENSO FEDERAL": 0.0334,
+     "FRENTE NOS": 0.0153,
+     "OTROS": 0.0181
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 814128,
+    "participacion": 0.7715,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.655,
+     "LA LIBERTAD AVANZA": 0.2298,
+     "JUNTOS POR EL CAMBIO": 0.0809,
+     "HACEMOS POR NUESTRO PAIS": 0.0216,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0127
+    }
+   }
+  },
+  "AR-T": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 1258898,
+    "participacion": 0.8278,
+    "resultados": {
+     "FRENTE DE TODOS": 0.5776,
+     "JUNTOS POR EL CAMBIO": 0.3394,
+     "CONSENSO FEDERAL": 0.0414,
+     "FRENTE NOS": 0.0207,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0123,
+     "OTROS": 0.0086
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 1319493,
+    "participacion": 0.818,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.4498,
+     "LA LIBERTAD AVANZA": 0.3494,
+     "JUNTOS POR EL CAMBIO": 0.1462,
+     "HACEMOS POR NUESTRO PAIS": 0.0402,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0145
+    }
+   }
+  },
+  "AR-V": {
+   "2019": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "definitivo",
+    "electores": 138264,
+    "participacion": 0.7587,
+    "resultados": {
+     "FRENTE DE TODOS": 0.5693,
+     "JUNTOS POR EL CAMBIO": 0.2609,
+     "CONSENSO FEDERAL": 0.0766,
+     "FRENTE NOS": 0.0386,
+     "UNITE POR LA LIBERTAD Y LA DIGNIDAD": 0.0276,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0271
+    }
+   },
+   "2023": {
+    "tipo": "generales",
+    "cargo": "Presidente y Vice",
+    "escrutinio": "provisorio",
+    "electores": 147968,
+    "participacion": 0.7411,
+    "resultados": {
+     "UNION POR LA PATRIA": 0.3821,
+     "LA LIBERTAD AVANZA": 0.3382,
+     "JUNTOS POR EL CAMBIO": 0.1496,
+     "HACEMOS POR NUESTRO PAIS": 0.0915,
+     "FRENTE DE IZQUIERDA Y DE TRABAJADORES - UNIDAD": 0.0386
+    }
+   }
+  }
+ }
+}

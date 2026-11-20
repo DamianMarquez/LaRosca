@@ -1,5 +1,8 @@
 // Núcleo de juego: estado, misiones y simulación diaria. Sin DOM.
 import { generateCity } from './city.js';
+import { perfil, intencionVoto } from './electoral.js';
+import { sortear, resolver } from './events.js';
+import { SCHEMA } from './save.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -11,12 +14,28 @@ export class Game {
     this.prov = { id: provId, nombre: provName };
     this.city = city ?? generateCity(provId, cap.ciudad, cap.pop);
     this.zonas = Object.fromEntries(this.city.zonas.map(z => [z.id, { ...z, control: 0, trust: cfg.start.trust }]));
-    this.player = { rank: 0, xp: 0, money: cfg.start.money };
-    this.jobs = [];       // {mission, zone, start, end}
+    this.player = { rank: 0, xp: 0, money: cfg.start.money, black: cfg.start.black ?? 0 };
+    this.exposure = 0;    // 0..100: riesgo de escándalo por uso de dinero opaco
+    this.pending = null;  // evento esperando decisión del jugador
+    this.ultimoEvento = 0;
+    this.jobs = [];       // {mission, zone, start, end, pago}
     this.log = [];        // {day, text, kind}
     this.day = 0;
     this.listeners = [];
     this.note('Fundaste el partido en ' + cap.ciudad + '. Empezás como afiliado, sin poder interno.', 'info');
+  }
+
+  // Datos reales de la provincia (INDEC 2022 / padrón 2025), si están cargados
+  get provData() { return this.cfg.datos?.provincias?.[this.prov.id] ?? null; }
+  // Electores estimados de una zona: población × proporción de electores de la provincia
+  electores(z) { const d = this.provData; return d ? Math.round(z.pop * d.electoresPorHabitante) : null; }
+
+  // Panorama electoral histórico de la provincia (partidos ficticios)
+  get perfilElectoral() { return perfil(this.cfg.historicos, this.cfg.partidos?.partidos ?? [], this.prov.id); }
+  // Intención de voto del partido del jugador en la ciudad (0..1)
+  get intencionVoto() {
+    const d = this.provData;
+    return intencionVoto(Object.values(this.zonas), d ? d.electoresPorHabitante : 0.75);
   }
 
   get slots() { return this.cfg.personalSlots[this.player.rank]; }
@@ -30,28 +49,56 @@ export class Game {
 
   mission(id) { return this.cfg.missions.find(m => m.id === id); }
 
+  // Efecto de la densidad (hab/km²) de la zona sobre una misión.
+  // mult: multiplicador de alcance; riesgo: puntos de probabilidad (+ si la densidad favorece a esta misión)
+  densidadEfecto(m, z) {
+    const D = this.cfg.densidad, d = z.densidad ?? D.ref;           // zona sin dato: neutral
+    const ratio = Math.max(d, 50) / D.ref;
+    const mult = clamp(Math.pow(ratio, m.densExp ?? 0), D.minMult, D.maxMult);
+    const riesgo = Math.round(clamp(Math.log10(ratio) * 6, -D.maxBonusRiesgo, D.maxBonusRiesgo) * (m.densPref ?? 0));
+    return { densidad: Math.round(d), mult, riesgo };
+  }
+
+  // Personas alcanzadas por la misión y cuánto sube el control del barrio (0..1)
+  alcance(m, z) {
+    const personas = Math.round(m.alcance * this.densidadEfecto(m, z).mult);
+    const control = Math.min(this.cfg.densidad.maxControlPorMision, personas / Math.max(z.pop, 100));
+    return { personas, control };
+  }
+
   // Probabilidad de éxito (%) y factores visibles
-  chance(m, z) {
+  // pago: 'blanco' (fondos declarados) o 'negro' (opaco: más eficaz, pero sube la exposición)
+  chance(m, z, pago = 'blanco') {
+    const de = this.densidadEfecto(m, z);
     const factors = [['Dificultad base', m.base], ['Confianza local', Math.round((z.trust - 50) * 0.25)]];
+    if (de.riesgo) factors.push([`Densidad (${de.densidad.toLocaleString('es-AR')} hab/km²)`, de.riesgo]);
     if (z.control > 0.5) factors.push(['Presencia previa', 4]);
+    if (pago === 'negro' && m.negro) factors.push(['Dinero negro', m.negro.bonus]);
     const c = clamp(factors.reduce((s, f) => s + f[1], 0), 5, 95);
     return { c, factors };
   }
 
-  canStart(m, zoneId) {
+  canStart(m, zoneId, pago = 'blanco') {
+    if (this.pending) return 'Resolvé el evento pendiente';
     if (this.player.rank < m.minRank) return 'Requiere rango: ' + this.cfg.ranks[m.minRank];
     if (this.freeSlots <= 0) return 'No tenés bloques libres';
-    if (this.player.money < m.costo) return 'Falta dinero';
+    if (pago === 'negro') {
+      if (!m.negro) return 'No admite dinero negro';
+      if (this.player.black < m.costo) return 'Falta dinero negro';
+    } else if (this.player.money < m.costo) return 'Falta dinero';
     if (this.jobs.some(j => j.zone === zoneId && j.mission === m.id)) return 'Ya en curso aquí';
     return null;
   }
 
-  start(missionId, zoneId) {
+  start(missionId, zoneId, pago = 'blanco') {
     const m = this.mission(missionId);
-    if (this.canStart(m, zoneId)) return false;
-    this.player.money -= m.costo;
-    this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + m.dias });
-    this.note(`Empezaste «${m.nombre}» en ${this.zonas[zoneId].nombre}.`);
+    if (this.canStart(m, zoneId, pago)) return false;
+    if (pago === 'negro') {
+      this.player.black -= m.costo;
+      this.exposure = clamp(this.exposure + m.negro.expo, 0, 100);
+    } else this.player.money -= m.costo;
+    this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + m.dias, pago });
+    this.note(`Empezaste «${m.nombre}» en ${this.zonas[zoneId].nombre}${pago === 'negro' ? ' con dinero negro' : ''}.`);
     return true;
   }
 
@@ -62,19 +109,42 @@ export class Game {
     this.jobs = this.jobs.filter(j => j.end > this.day);
     // Con el tiempo, la confianza se enfría lentamente hacia 20 si no hay actividad
     for (const z of Object.values(this.zonas)) z.trust += (20 - z.trust) * 0.002;
+    this.exposure = Math.max(0, this.exposure - 0.15);        // el olvido enfría los rumores
+    const ev = sortear(this);
+    if (ev) {
+      this.pending = ev;
+      this.ultimoEvento = this.day;
+      this.note(`Evento: ${ev.titulo}.`, ev.tipo === 'escandalo' ? 'bad' : 'info');
+      this.emit('event');
+    }
+  }
+
+  // El jugador elige una opción del evento pendiente
+  choose(idx) {
+    const ev = this.pending;
+    if (!ev) return null;
+    const r = resolver(this, ev, idx);
+    if (!r) return null;
+    this.pending = null;
+    this.ultimoEvento = this.day;
+    this.note(r.texto, r.ok ? 'ok' : 'bad');
+    this.checkPromotion();
+    return r;
   }
 
   resolve(j) {
     const m = this.mission(j.mission), z = this.zonas[j.zone];
-    const ok = Math.random() * 100 < this.chance(m, z).c;
+    const ok = Math.random() * 100 < this.chance(m, z, j.pago).c;
     if (ok) {
-      z.control = clamp(z.control + m.gana.control, 0, 1);
+      const al = this.alcance(m, z);
+      z.control = clamp(z.control + al.control, 0, 1);
       z.trust = clamp(z.trust + m.gana.trust, 0, 100);
       this.player.xp += m.gana.xp;
-      this.note(`«${m.nombre}» salió bien en ${z.nombre}.`, 'ok');
+      this.note(`«${m.nombre}» salió bien en ${z.nombre}: llegaste a unas ${al.personas.toLocaleString('es-AR')} personas.`, 'ok');
     } else {
       z.trust = clamp(z.trust + m.falla.trust, 0, 100);
-      this.note(`«${m.nombre}» falló en ${z.nombre}: se perdieron recursos y confianza.`, 'bad');
+      if (j.pago === 'negro') this.exposure = clamp(this.exposure + m.negro.expo, 0, 100); // si sale mal con plata opaca, se nota más
+      this.note(`«${m.nombre}» falló en ${z.nombre}: se perdieron recursos y confianza${j.pago === 'negro' ? ' y creció la sospecha' : ''}.`, 'bad');
     }
     this.checkPromotion();
   }
@@ -88,5 +158,29 @@ export class Game {
     }
   }
 
-  toJSON() { return { schemaVersion: 2, prov: this.prov, zonas: this.zonas, player: this.player, jobs: this.jobs, log: this.log, day: this.day }; }
+  // Estado serializable. Las zonas guardan solo lo que cambia (control y confianza): el resto sale de data/ciudades.
+  toJSON() {
+    return {
+      schemaVersion: SCHEMA, prov: this.prov, day: this.day, exposure: this.exposure, ultimoEvento: this.ultimoEvento,
+      player: this.player, jobs: this.jobs, log: this.log, pending: this.pending?.id ?? null,
+      zonas: Object.fromEntries(Object.entries(this.zonas).map(([id, z]) => [id, { control: +z.control.toFixed(5), trust: +z.trust.toFixed(3) }])),
+    };
+  }
+
+  // Reconstruye una partida validada (ver save.js). city: mismos datos de ciudad que la partida original.
+  static fromJSON(cfg, d, city = null) {
+    const g = new Game(cfg, d.prov.id, d.prov.nombre, city);
+    for (const [id, z] of Object.entries(d.zonas)) {
+      if (g.zonas[id]) { g.zonas[id].control = clamp(z.control, 0, 1); g.zonas[id].trust = clamp(z.trust, 0, 100); }
+    }
+    const p = d.player;
+    g.player = { rank: clamp(Math.floor(p.rank), 0, cfg.ranks.length - 1), xp: Math.max(0, p.xp), money: Math.max(0, p.money), black: Math.max(0, p.black) };
+    g.day = Math.floor(d.day);
+    g.exposure = clamp(d.exposure, 0, 100);
+    g.ultimoEvento = isFinite(d.ultimoEvento) ? d.ultimoEvento : g.day;
+    g.jobs = d.jobs.filter(j => g.zonas[j.zone]).map(j => ({ mission: j.mission, zone: j.zone, start: j.start, end: j.end, pago: j.pago === 'negro' ? 'negro' : 'blanco' }));
+    g.log = d.log.slice(0, 60).map(e => ({ day: Number(e.day) || 0, text: String(e.text ?? ''), kind: ['ok', 'bad', 'promo', 'info'].includes(e.kind) ? e.kind : 'info' }));
+    g.pending = d.pending ? (cfg.eventos?.eventos.find(e => e.id === d.pending) ?? null) : null;
+    return g;
+  }
 }

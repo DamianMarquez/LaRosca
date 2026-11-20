@@ -43,3 +43,27 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .ev { padding: 1px 0; color: var(--muted); } .ev:first-child { color: var(--ink); }
 .ev.ok { color: #7fd1a0; } .ev.bad { color: #e48a7c; } .ev.promo { color: var(--accent); font-weight: 600; }
 .attrib { font-size: 11px; margin-top: 20px; }
+.vote-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 6px 0; }
+.vote-bar i { display: block; height: 100%; }
+.vote-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+.vote-legend b { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+.small { font-size: 12px; margin: 6px 0 0; }
+
+/* Dinero negro y eventos */
+.expo { color: var(--muted); } .expo.mid { color: #e0b24a; } .expo.hi { color: #e4604f; font-weight: 700; }
+.btns { display: flex; gap: 6px; } .btns button { flex: 1; }
+button.negro { border-color: #6b4f8a; background: #2a2236; } button.negro:disabled { background: var(--zone); }
+.modal { position: fixed; inset: 0; background: rgba(8, 10, 14, .72); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+.modal .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; max-width: 520px; width: 100%; }
+.modal .card.scandal { border-color: #e4604f; }
+.modal h2 { margin: 0 0 8px; } .modal p { margin: 0 0 14px; line-height: 1.5; }
+.choices { display: grid; gap: 8px; }
+.choices button { text-align: left; padding: 10px 12px; } .choices small { display: block; color: var(--muted); margin-top: 2px; }
+
+/* Guardado */
+.file-actions { display: flex; gap: 6px; }
+.file-actions button { font-size: 12px; padding: 4px 8px; }
+#continue { display: block; width: 100%; margin-bottom: 14px; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--panel); border: 1px solid var(--accent); padding: 10px 16px; border-radius: 8px; opacity: 0; pointer-events: none; transition: .25s; z-index: 20; max-width: 90vw; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.stats { margin-left: auto; } .file-actions { margin-left: 8px; }

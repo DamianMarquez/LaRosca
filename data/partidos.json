@@ -1,0 +1,11 @@
+{
+  "nota": "Partidos ficticios. 'equivale' lista fragmentos (en mayúsculas) del nombre de las agrupaciones reales de data/resultados-historicos.json que se absorben en cada partido por espacio político. El juego nunca muestra los nombres reales.",
+  "partidos": [
+    {"id": "fpu", "nombre": "Frente Popular Unido", "espacio": "centroizquierda / peronismo", "color": "#4aa3df", "equivale": ["FRENTE DE TODOS", "UNION POR LA PATRIA"]},
+    {"id": "ar", "nombre": "Alianza Republicana", "espacio": "centroderecha", "color": "#e5c04b", "equivale": ["JUNTOS POR EL CAMBIO"]},
+    {"id": "al", "nombre": "Avanzada Libertaria", "espacio": "derecha libertaria", "color": "#a45ee0", "equivale": ["LA LIBERTAD AVANZA", "UNITE POR LA LIBERTAD"]},
+    {"id": "fu", "nombre": "Federales Unidos", "espacio": "centro federal / provincial", "color": "#4fc38a", "equivale": ["CONSENSO FEDERAL", "HACEMOS POR NUESTRO PAIS"]},
+    {"id": "fo", "nombre": "Frente Obrero", "espacio": "izquierda", "color": "#e0605e", "equivale": ["FRENTE DE IZQUIERDA"]},
+    {"id": "otros", "nombre": "Otros", "espacio": "varios", "color": "#6b7586", "equivale": []}
+  ]
+}
