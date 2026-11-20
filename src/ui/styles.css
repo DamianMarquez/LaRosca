@@ -45,7 +45,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .vote-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 6px 0; }
 .vote-bar i { display: block; height: 100%; }
 .vote-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
-.vote-legend b { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+.vote-legend .dot { width: 8px; height: 8px; margin: 0 4px 0 0; flex: none; }
 .small { font-size: 12px; margin: 6px 0 0; }
 
 /* Dinero negro y eventos */
@@ -94,7 +94,7 @@ button.negro { border-color: #6b4f8a; background: #2a2236; } button.negro:disabl
 .factors li.pos b { color: #7fd1a0; } .factors li.neg b { color: #e48a7c; }
 .btns { flex-wrap: wrap; } .btns button { min-width: 0; font-size: 13px; }
 .rival { margin: 8px 0; } .rival-top { display: flex; align-items: center; gap: 6px; } .rival-top .rn { flex: 1; font-weight: 600; } .rival-top .rp { font-variant-numeric: tabular-nums; color: var(--muted); }
-.rival b, .rival-line b, .alert-rival b { display: inline-block; flex: 0 0 10px; width: 10px; height: 10px; border-radius: 3px; margin-top: 3px; }
+.dot { display: inline-block; flex: 0 0 10px; width: 10px; height: 10px; border-radius: 3px; margin-top: 3px; }
 .react { display: block; color: #e0b24a; margin-top: 2px; }
 .rival-line, .alert-rival { display: flex; gap: 8px; margin: 6px 0; align-items: flex-start; }
 .alert-rival { background: #2a1d1d; border: 1px solid #5a2f2f; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
@@ -112,3 +112,22 @@ button.negro { border-color: #6b4f8a; background: #2a2236; } button.negro:disabl
 .prog-fill { fill: var(--accent); }
 .prog-txt { fill: #fff; text-anchor: middle; font-weight: 700; paint-order: stroke; stroke: #000; stroke-linejoin: round; pointer-events: none; }
 .prog { pointer-events: none; }
+
+/* Rivales vivos, choques y línea partidaria */
+.clash { display: flex; gap: 8px; align-items: flex-start; background: #2a2417; border: 1px solid #5a4a22; border-radius: 8px; padding: 6px 8px; font-size: 12.5px; }
+.clash.rumor { border-style: dashed; } .clash em, .alert-rival em { font-style: normal; color: var(--muted); }
+.alert-rival.propia { background: #1d222c; border-color: var(--line); }
+.rcard { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.r-act { margin-top: 8px; font-size: 13px; } .r-act.hostil b { color: #e4604f; } .r-act.idle { margin-top: 6px; }
+.feed-item { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.feed-item.cumplida { color: #7fd1a0; } .feed-item.vencida, .feed-item.rechazo { color: #e48a7c; }
+.leader { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.leader-head { display: flex; flex-direction: column; margin-bottom: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.chip { font-size: 11px; border: 1px solid var(--line); border-radius: 99px; padding: 2px 8px; color: var(--muted); } .chip.common { border-color: var(--accent); color: var(--accent); }
+.directive { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 8px; } .directive.new { border-color: var(--accent); background: #2a2517; }
+.directive p { margin: 4px 0 8px; }
+.ping { color: var(--accent); font-size: 10px; vertical-align: super; animation: ping 1.4s ease-in-out infinite; } @keyframes ping { 50% { opacity: .25; } }
+.ev.rival { color: #e0b24a; } .ev.linea { color: #8fb4e8; }
+.rmark { pointer-events: auto; }
+.tabs button { padding: 8px 2px; font-size: 14px; }

@@ -2,7 +2,8 @@
 import { generateCity } from './city.js';
 import { perfil, intencionVoto } from './electoral.js';
 import { sortear, resolver } from './events.js';
-import { tick as tickRivales, efectosActivos } from './rivals.js';
+import { tick as tickRivales, efectosActivos, nuevosBots, choques, sanearBots, sanearHistorial, sanearPres } from './rivals.js';
+import * as linea from './linea.js';
 import { SCHEMA } from './save.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -21,6 +22,9 @@ export class Game {
     this.exposure = 0;    // 0..100: riesgo de escándalo por uso de dinero opaco
     this.pending = null;  // evento esperando decisión del jugador
     this.ultimoEvento = 0;
+    this.bots = nuevosBots(this);      // acción actual de cada rival (una a la vez)
+    this.historialRivales = [];        // acciones rivales ya hechas, para el feed y los choques
+    this.linea = linea.iniciar(this);  // líder superior y directivas
     this.jobs = [];       // {mission, zone, start, end, pago, modo}
     this.log = [];        // {day, text, kind}
     this.day = 0;
@@ -94,7 +98,8 @@ export class Game {
 
   // Probabilidad de éxito (%) y factores visibles
   // pago: 'blanco' o 'negro' (más eficaz, sube la exposición) · modo: 'personal' o 'delegada' (equipo, menos eficaz)
-  chance(m, z, pago = 'blanco', modo = 'personal') {
+  // ventana: [desde, hasta] de la misión (por defecto, si la lanzaras hoy) para detectar choques con los rivales
+  chance(m, z, pago = 'blanco', modo = 'personal', ventana = null) {
     const de = this.densidadEfecto(m, z);
     const factors = [['Dificultad base', m.base], ['Confianza local', Math.round((z.trust - 50) * 0.25)]];
     if (de.riesgo) factors.push([`Densidad (${de.densidad.toLocaleString('es-AR')} hab/km²)`, de.riesgo]);
@@ -103,10 +108,12 @@ export class Game {
     if (modo === 'delegada') factors.push(['Equipo con menos experiencia', -this.cfg.delegacion.penal]);
     const pr = this.modsPrincipios(m);
     if (pr.chance) factors.push([`Principios (${pr.nombres.join(', ')})`, pr.chance]);
-    for (const e of efectosActivos(this, z.id)) {
-      const a = this.cfg.rivales.acciones.find(x => x.id === e.accion), c = a?.chance?.[m.id];
-      if (c) factors.push([`${this.rival(e.rival).nombre}: ${a.nombre.toLowerCase()}`, c]);
+    const [desde, hasta] = ventana ?? [this.day, this.day + m.dias];
+    for (const c of choques(this, m, z.id, desde, hasta)) {
+      factors.push([`Choque con ${this.rival(c.rival).nombre}: ${c.accion.nombre.toLowerCase()}${c.enCurso ? '' : ` (en ${c.enDias} d)`}`, c.chance]);
     }
+    const fl = linea.factorLider(this);
+    if (fl) factors.push(fl);
     const c = clamp(factors.reduce((s, f) => s + f[1], 0), 5, 95);
     return { c, factors };
   }
@@ -146,6 +153,7 @@ export class Game {
     if (pago === 'negro') {
       this.player.black -= m.costo;
       this.exposure = clamp(this.exposure + Math.round(m.negro.expo * this.modsPrincipios(m).expoMult), 0, 100);
+      linea.alUsarNegro(this);
     } else this.player.money -= m.costo;
     this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + m.dias, pago, modo });
     this.note(`${modo === 'delegada' ? 'Delegaste' : 'Empezaste'} «${m.nombre}» en ${this.zonas[zoneId].nombre}${pago === 'negro' ? ' con dinero negro' : ''}.`);
@@ -161,6 +169,7 @@ export class Game {
     for (const z of Object.values(this.zonas)) z.trust += (20 - z.trust) * 0.002;
     this.exposure = Math.max(0, this.exposure - 0.15);        // el olvido enfría los rumores
     tickRivales(this);
+    linea.tick(this);
     const ev = sortear(this);
     if (ev) {
       this.pending = ev;
@@ -169,6 +178,9 @@ export class Game {
       this.emit('event');
     }
   }
+
+  // Aceptar o rechazar la directiva que baja el partido / tu líder
+  responderDirectiva(aceptar) { return linea.responder(this, aceptar); }
 
   // El jugador elige una opción del evento pendiente
   choose(idx) {
@@ -185,7 +197,8 @@ export class Game {
 
   resolve(j) {
     const m = this.mission(j.mission), z = this.zonas[j.zone], pr = this.modsPrincipios(m);
-    const ok = Math.random() * 100 < this.chance(m, z, j.pago, j.modo ?? 'personal').c;
+    const ok = Math.random() * 100 < this.chance(m, z, j.pago, j.modo ?? 'personal', [j.start, j.end]).c;
+    linea.alResolver(this, j, ok);
     if (ok) {
       const al = this.alcance(m, z);
       z.control = clamp(z.control + al.control, 0, 1);
@@ -204,6 +217,7 @@ export class Game {
     const p = this.player;
     while (p.rank < this.cfg.ranks.length - 1 && p.xp >= this.cfg.promotionXp[p.rank + 1]) {
       p.rank++;
+      linea.alAscender(this);
       this.note(`¡Ascendiste a ${this.rankName}!`, 'promo');
       this.emit('promotion');
     }
@@ -214,7 +228,8 @@ export class Game {
     return {
       schemaVersion: SCHEMA, prov: this.prov, partido: this.partido, day: this.day, exposure: this.exposure, ultimoEvento: this.ultimoEvento,
       player: this.player, jobs: this.jobs, log: this.log, pending: this.pending?.id ?? null,
-      zonas: Object.fromEntries(Object.entries(this.zonas).map(([id, z]) => [id, { control: +z.control.toFixed(5), trust: +z.trust.toFixed(3), efectos: z.efectos }])),
+      bots: this.bots, historialRivales: this.historialRivales, linea: this.linea,
+      zonas: Object.fromEntries(Object.entries(this.zonas).map(([id, z]) => [id, { control: +z.control.toFixed(5), trust: +z.trust.toFixed(3), efectos: z.efectos, rivalPres: z.rivalPres }])),
     };
   }
 
@@ -234,8 +249,13 @@ export class Game {
     g.exposure = clamp(d.exposure, 0, 100);
     g.ultimoEvento = isFinite(d.ultimoEvento) ? d.ultimoEvento : g.day;
     g.jobs = d.jobs.filter(j => g.zonas[j.zone]).map(j => ({ mission: j.mission, zone: j.zone, start: j.start, end: j.end, pago: j.pago === 'negro' ? 'negro' : 'blanco', modo: j.modo === 'delegada' ? 'delegada' : 'personal' }));
-    g.log = d.log.slice(0, 60).map(e => ({ day: Number(e.day) || 0, text: String(e.text ?? ''), kind: ['ok', 'bad', 'promo', 'info'].includes(e.kind) ? e.kind : 'info' }));
+    g.log = d.log.slice(0, 60).map(e => ({ day: Number(e.day) || 0, text: String(e.text ?? ''), kind: ['ok', 'bad', 'promo', 'info', 'rival', 'linea'].includes(e.kind) ? e.kind : 'info' }));
     g.pending = d.pending ? (cfg.eventos?.eventos.find(e => e.id === d.pending) ?? null) : null;
+    // Campos opcionales (las partidas anteriores no los traen: quedan con sus valores iniciales)
+    for (const [id, z] of Object.entries(d.zonas)) if (g.zonas[id]) g.zonas[id].rivalPres = sanearPres(g, z.rivalPres);
+    g.bots = sanearBots(g, d.bots);
+    g.historialRivales = sanearHistorial(g, d.historialRivales);
+    g.linea = linea.sanear(g, d.linea);
     return g;
   }
 }

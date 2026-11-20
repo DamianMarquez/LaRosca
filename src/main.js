@@ -3,7 +3,7 @@ import { Game } from './core/game.js';
 import { fitView } from './core/city.js';
 import { GameMap } from './map/map.js';
 import { validate, validarFundacion, limpiarNombre, resumen, SAVE_KEY, MAX_BYTES } from './core/save.js';
-import { renderPanel, renderStats, renderLog, renderEvento, renderFundacion, progresoMapa } from './ui/ui.js';
+import { renderPanel, renderStats, renderLog, renderEvento, renderFundacion, progresoMapa, marcasRivales } from './ui/ui.js';
 
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -14,7 +14,7 @@ let CFG = null, PROV = null;
 async function boot() {
   const load = u => fetch(u).then(r => r.json()).catch(() => null);
   [PROV, CFG] = await Promise.all([load('data/provincias.json'), load('data/game.json')]);
-  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales']]) CFG[k] = await load(`data/${f}.json`);
+  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea']]) CFG[k] = await load(`data/${f}.json`);
   setSpeed(0);
   showPicker();
   wireClock();
@@ -178,6 +178,8 @@ function wirePanel() {
     if (!game) return;
     const t = e.target.closest('[data-tab]');
     if (t) { tab = t.dataset.tab; refreshAll(); return; }
+    const ln = e.target.closest('[data-linea]');
+    if (ln) { if (game.responderDirectiva(ln.dataset.linea === 'aceptar')) refreshAll(); return; }
     const b = e.target.closest('[data-start]');
     if (b && !b.disabled && game.start(b.dataset.start, selected, b.dataset.pago ?? 'blanco', b.dataset.modo ?? 'personal')) refreshAll();
   });
@@ -189,6 +191,8 @@ function refreshAll() {
   $('#date').textContent = Clock.format(clock.day);
   map.paint(id => game.zonas[id].control);
   map.setBusy(new Set(game.jobs.map(j => j.zone)));
+  map.setProgress(progresoMapa(game, clock.day, clock.acc));   // también en cada cambio, no solo por fotograma
+  map.setRivalMarks(marcasRivales(game));
   $('#stats').innerHTML = renderStats(game);
   panel.innerHTML = renderPanel(game, selected, clock.day, tab);
   panel.scrollTop = top;                                   // no perder el lugar al refrescar
@@ -215,6 +219,7 @@ function refreshLive() {
     if (txt) txt.textContent = Math.round(frac * 100) + '%';
   });
   map.setProgress(progresoMapa(game, clock.day, f));
+  map.setRivalMarks(marcasRivales(game));
 }
 
 function setSpeed(s) {

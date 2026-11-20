@@ -39,6 +39,11 @@ export function validate(d, cfg) {
     if (!z || !isNum(z.control) || !isNum(z.trust)) return 'Datos de zonas inválidos.';
     if (z.efectos !== undefined && (!Array.isArray(z.efectos) || z.efectos.some(e => !e || typeof e.rival !== 'string' || typeof e.accion !== 'string' || !isNum(e.hasta)))) return 'Datos de zonas inválidos.';
   }
+  // Campos opcionales (partidas anteriores no los traen): si están, deben tener la forma esperada; el contenido se sanea al cargar
+  const obj = v => v && typeof v === 'object' && !Array.isArray(v);
+  if (d.bots !== undefined && !obj(d.bots)) return 'Datos de los rivales inválidos.';
+  if (d.historialRivales !== undefined && !Array.isArray(d.historialRivales)) return 'Historial de los rivales inválido.';
+  if (d.linea !== undefined && !obj(d.linea)) return 'Datos de la línea partidaria inválidos.';
   if (!Array.isArray(d.jobs) || !Array.isArray(d.log)) return 'Misiones o historial inválidos.';
   for (const j of d.jobs) {
     if (!j || !cfg.missions.some(m => m.id === j.mission) || typeof j.zone !== 'string' || !isNum(j.start) || !isNum(j.end)) return 'Misiones inválidas.';

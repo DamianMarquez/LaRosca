@@ -1,78 +1,28 @@
 {
-  "nota": "Acciones que un rival puede emprender contra el jugador en una zona donde este ya tiene presencia. bloquea: misiones que no se pueden lanzar mientras dure; chance: puntos de éxito de otras misiones; trustAhora: golpe inmediato a la confianza. peso[partido]: preferencia de cada rival.",
+  "nota": "Bots rivales. Cada rival hace UNA acción a la vez. 'propias' son campañas para ganar presencia; 'acciones' son golpes contra el jugador (con fase de preparación visible). peso[partido]: preferencia de cada rival. chance: puntos de éxito que restan a las misiones del jugador que se crucen con la acción. bloquea: misiones que no se pueden lanzar mientras está en curso (si solo está planeada, resta penalBloqueo). compite: misiones del jugador que compiten con una campaña propia.",
   "base": {
-    "probDiaria": 0.0015,
+    "arranque": 7,
+    "pausa": [2, 6],
     "presenciaMin": 0.08,
     "controlMin": 0.03,
-    "maxPorDia": 2
+    "hostilBase": 0.04,
+    "hostilPorAmenaza": 2.5,
+    "hostilMax": 0.5,
+    "penalBloqueo": 12,
+    "penalCompetencia": 6,
+    "certeza": {"control": 0.1, "confianza": 45},
+    "historial": 30
   },
+  "propias": [
+    {"id": "volantes", "nombre": "Volanteada", "texto": "reparte volantes", "dias": 3, "presencia": 0.03, "erosion": 0.01, "compite": ["volantes", "pintadas"], "peso": {"fpu": 1, "ar": 2, "al": 1, "fu": 1, "fo": 2}},
+    {"id": "pintadas", "nombre": "Pintadas", "texto": "hace pintadas", "dias": 3, "presencia": 0.04, "erosion": 0.015, "compite": ["pintadas"], "peso": {"fpu": 1, "ar": 2, "al": 3, "fu": 1, "fo": 3}},
+    {"id": "acto", "nombre": "Acto público", "texto": "organiza un acto público", "dias": 5, "presencia": 0.06, "erosion": 0.02, "compite": ["reunion", "volantes"], "peso": {"fpu": 3, "ar": 1, "al": 1, "fu": 2, "fo": 3}},
+    {"id": "ayuda", "nombre": "Reparto de ayuda", "texto": "reparte ayuda a los vecinos", "dias": 8, "presencia": 0.05, "erosion": 0.015, "compite": ["comunidad", "visitas"], "peso": {"fpu": 3, "ar": 1, "al": 1, "fu": 2, "fo": 1}}
+  ],
   "acciones": [
-    {
-      "id": "contrapintada",
-      "nombre": "Contrapintadas",
-      "texto": "tapa tus pintadas y llena todo de sus afiches",
-      "dias": 9,
-      "bloquea": [
-        "pintadas"
-      ],
-      "chance": {
-        "volantes": -5
-      },
-      "peso": {
-        "fpu": 1,
-        "ar": 2,
-        "al": 2,
-        "fu": 1,
-        "fo": 3
-      }
-    },
-    {
-      "id": "desprestigio",
-      "nombre": "Campaña de desprestigio",
-      "texto": "difunde rumores sobre tu partido",
-      "dias": 0,
-      "trustAhora": -5,
-      "peso": {
-        "fpu": 1,
-        "ar": 3,
-        "al": 3,
-        "fu": 1,
-        "fo": 1
-      }
-    },
-    {
-      "id": "clientelismo",
-      "nombre": "Reparto clientelar",
-      "texto": "se adelanta repartiendo ayuda",
-      "dias": 14,
-      "chance": {
-        "comunidad": -10,
-        "visitas": -6
-      },
-      "trustAhora": -3,
-      "peso": {
-        "fpu": 3,
-        "ar": 1,
-        "al": 1,
-        "fu": 2,
-        "fo": 1
-      }
-    },
-    {
-      "id": "copar_reunion",
-      "nombre": "Copan el espacio",
-      "texto": "ocupa los salones y centros de reunión",
-      "dias": 10,
-      "bloquea": [
-        "reunion"
-      ],
-      "peso": {
-        "fpu": 2,
-        "ar": 1,
-        "al": 1,
-        "fu": 2,
-        "fo": 2
-      }
-    }
+    {"id": "contrapintada", "nombre": "Contrapintadas", "texto": "tapa tus pintadas y llena todo de sus afiches", "dias": 9, "preparacion": [2, 5], "bloquea": ["pintadas"], "chance": {"volantes": -5}, "peso": {"fpu": 1, "ar": 2, "al": 2, "fu": 1, "fo": 3}},
+    {"id": "desprestigio", "nombre": "Campaña de desprestigio", "texto": "difunde rumores sobre tu partido", "dias": 0, "preparacion": [1, 3], "trustAhora": -5, "peso": {"fpu": 1, "ar": 3, "al": 3, "fu": 1, "fo": 1}},
+    {"id": "clientelismo", "nombre": "Reparto clientelar", "texto": "se adelanta repartiendo ayuda", "dias": 14, "preparacion": [2, 4], "chance": {"comunidad": -10, "visitas": -6}, "trustAhora": -3, "peso": {"fpu": 3, "ar": 1, "al": 1, "fu": 2, "fo": 1}},
+    {"id": "copar_reunion", "nombre": "Copan el espacio", "texto": "ocupa los salones y centros de reunión", "dias": 10, "preparacion": [3, 5], "bloquea": ["reunion"], "peso": {"fpu": 2, "ar": 1, "al": 1, "fu": 2, "fo": 2}}
   ]
 }

@@ -37,6 +37,9 @@ export class GameMap {
     this.layer = document.createElementNS(NS, 'g');   // capa de progreso de misiones
     g.appendChild(this.layer);
     this.prog = new Map();
+    this.markLayer = document.createElementNS(NS, 'g');   // marcas de acciones rivales
+    g.appendChild(this.markLayer);
+    this.marks = new Map();
     this.apply();
     this.bind();
   }
@@ -59,6 +62,26 @@ export class GameMap {
       n.txt.setAttribute('x', it.cx); n.txt.setAttribute('y', it.cy - u * 0.4);
       n.txt.style.fontSize = (u * 2.6).toFixed(2) + 'px'; n.txt.style.strokeWidth = (u * 0.7).toFixed(2) + 'px';
       n.txt.textContent = it.text;
+    }
+  }
+
+  // Marcas de rivales: items [{key, cx, cy, i, color, planeada, hostil, titulo}]
+  setRivalMarks(items) {
+    const u = this.vb[2] / 90, live = new Set(items.map(i => i.key));
+    for (const [k, n] of this.marks) if (!live.has(k)) { n.remove(); this.marks.delete(k); }
+    for (const it of items) {
+      let c = this.marks.get(it.key);
+      if (!c) {
+        c = document.createElementNS(NS, 'circle'); c.setAttribute('class', 'rmark');
+        const t = document.createElementNS(NS, 'title'); c.appendChild(t);
+        this.markLayer.appendChild(c); this.marks.set(it.key, c);
+      }
+      c.setAttribute('cx', it.cx - u * 1.7 + it.i * u * 3.6); c.setAttribute('cy', it.cy - u * 4.2); c.setAttribute('r', u * 1.5);
+      c.setAttribute('stroke-width', (u * (it.hostil ? 0.7 : 0.4)).toFixed(2));
+      c.setAttribute('stroke', it.hostil ? '#fff' : it.color);
+      c.setAttribute('fill', it.planeada ? 'rgba(10,12,16,.7)' : it.color);
+      c.setAttribute('stroke-dasharray', it.planeada ? `${(u * 0.6).toFixed(2)} ${(u * 0.5).toFixed(2)}` : '');
+      c.firstChild.textContent = it.titulo;
     }
   }
 

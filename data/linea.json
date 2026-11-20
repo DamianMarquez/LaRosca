@@ -1,0 +1,24 @@
+{
+  "nota": "Línea partidaria y líder superior. Nombres ficticios generados al azar (semilla fija por partido y rango). Las directivas son opcionales: cumplirlas sube la relación con el líder, ignorarlas o fallarlas la baja.",
+  "nombres": {
+    "nombre": ["Ramiro", "Elena", "Gustavo", "Marta", "Esteban", "Norma", "Julián", "Silvia", "Aníbal", "Lorena", "Mateo", "Irene"],
+    "apellido": ["Quiroga", "Bermúdez", "Ledesma", "Salvatierra", "Ocampo", "Arrieta", "Valdivia", "Sandoval", "Echeverría", "Montoya", "Ferreyra", "Cabrera"]
+  },
+  "base": {
+    "primera": 15,
+    "intervalo": [25, 35],
+    "respuesta": 7,
+    "relacionInicial": 50,
+    "porPrincipio": 5,
+    "respaldo": {"alto": 70, "bajo": 30, "puntos": 2},
+    "historial": 8
+  },
+  "etiquetas": [[20, "hostil"], [40, "frío"], [60, "neutral"], [80, "cercano"], [101, "aliado"]],
+  "recompensa": {"relacion": 8, "xp": 2, "dinero": 800},
+  "penal": {"vencida": -10, "rechazo": -5, "ignorada": -2},
+  "directivas": [
+    {"tipo": "controlar_zona", "dias": 30, "sumar": 0.1},
+    {"tipo": "sin_negro", "dias": 20},
+    {"tipo": "hacer_mision", "dias": 30, "n": 2}
+  ]
+}
