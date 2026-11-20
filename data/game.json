@@ -24,16 +24,16 @@
     88
   ],
   "personalSlots": [
-    2,
-    2,
-    2,
-    3,
-    3,
-    3,
-    4,
-    4,
-    4,
-    4
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
   ],
   "capitales": {
     "AR-B": {
@@ -203,7 +203,8 @@
       "negro": {
         "bonus": 6,
         "expo": 5
-      }
+      },
+      "delegable": true
     },
     {
       "id": "pintadas",
@@ -226,7 +227,8 @@
       "negro": {
         "bonus": 10,
         "expo": 8
-      }
+      },
+      "delegable": true
     },
     {
       "id": "visitas",
@@ -245,7 +247,8 @@
       },
       "alcance": 500,
       "densExp": 0.3,
-      "densPref": -1
+      "densPref": -1,
+      "delegable": true
     },
     {
       "id": "comunidad",
@@ -268,7 +271,8 @@
       "negro": {
         "bonus": 12,
         "expo": 10
-      }
+      },
+      "delegable": true
     },
     {
       "id": "reunion",
@@ -291,7 +295,8 @@
       "negro": {
         "bonus": 10,
         "expo": 8
-      }
+      },
+      "delegable": true
     }
   ],
   "start": {
@@ -305,5 +310,21 @@
     "maxMult": 2.5,
     "maxBonusRiesgo": 8,
     "maxControlPorMision": 0.25
+  },
+  "equipoSlots": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    4
+  ],
+  "delegacion": {
+    "penal": 8,
+    "rangoMin": 3
   }
 }

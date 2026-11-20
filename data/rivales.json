@@ -1,0 +1,78 @@
+{
+  "nota": "Acciones que un rival puede emprender contra el jugador en una zona donde este ya tiene presencia. bloquea: misiones que no se pueden lanzar mientras dure; chance: puntos de éxito de otras misiones; trustAhora: golpe inmediato a la confianza. peso[partido]: preferencia de cada rival.",
+  "base": {
+    "probDiaria": 0.0015,
+    "presenciaMin": 0.08,
+    "controlMin": 0.03,
+    "maxPorDia": 2
+  },
+  "acciones": [
+    {
+      "id": "contrapintada",
+      "nombre": "Contrapintadas",
+      "texto": "tapa tus pintadas y llena todo de sus afiches",
+      "dias": 9,
+      "bloquea": [
+        "pintadas"
+      ],
+      "chance": {
+        "volantes": -5
+      },
+      "peso": {
+        "fpu": 1,
+        "ar": 2,
+        "al": 2,
+        "fu": 1,
+        "fo": 3
+      }
+    },
+    {
+      "id": "desprestigio",
+      "nombre": "Campaña de desprestigio",
+      "texto": "difunde rumores sobre tu partido",
+      "dias": 0,
+      "trustAhora": -5,
+      "peso": {
+        "fpu": 1,
+        "ar": 3,
+        "al": 3,
+        "fu": 1,
+        "fo": 1
+      }
+    },
+    {
+      "id": "clientelismo",
+      "nombre": "Reparto clientelar",
+      "texto": "se adelanta repartiendo ayuda",
+      "dias": 14,
+      "chance": {
+        "comunidad": -10,
+        "visitas": -6
+      },
+      "trustAhora": -3,
+      "peso": {
+        "fpu": 3,
+        "ar": 1,
+        "al": 1,
+        "fu": 2,
+        "fo": 1
+      }
+    },
+    {
+      "id": "copar_reunion",
+      "nombre": "Copan el espacio",
+      "texto": "ocupa los salones y centros de reunión",
+      "dias": 10,
+      "bloquea": [
+        "reunion"
+      ],
+      "peso": {
+        "fpu": 2,
+        "ar": 1,
+        "al": 1,
+        "fu": 2,
+        "fo": 2
+      }
+    }
+  ]
+}

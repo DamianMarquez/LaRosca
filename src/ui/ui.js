@@ -1,25 +1,60 @@
 // Vistas HTML (cadenas). Sin estado propio.
+import { amenaza, presencia, efectosActivos } from '../core/rivals.js';
+import { NOMBRE_MAX } from '../core/save.js';
+
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('es-AR');
 const pct = v => Math.round(v * 100) + '%';
+const approx5 = v => '~' + Math.round(v * 20) * 5 + '%';          // estimaciones: nunca exactas
+const jobFrac = (j, day, acc = 0) => Math.min(1, Math.max(0, (day - j.start + acc) / (j.end - j.start)));
 
+export const TABS = [['zona', 'Zona'], ['partido', 'Partido'], ['provincia', 'Provincia']];
+
+// ---------- Barra superior ----------
 export function renderStats(g) {
   const p = g.player, next = g.nextXp;
-  return `<span title="Rango">🎖 ${esc(g.rankName)}${next ? ` <small>(${p.xp}/${next} XP)</small>` : ''}</span>
+  return `<span title="Tu rango en el partido">🎖 ${esc(g.rankName)}${next ? ` <small>(${p.xp}/${next} XP)</small>` : ''}</span>
     <span title="Dinero blanco del partido">💵 ${money(p.money)}</span>
-    <span title="Bloques personales libres">⏳ ${g.freeSlots}/${g.slots}</span>
     <span title="Dinero negro: fondos opacos, más eficaces pero aumentan la exposición">🕶 ${money(p.black)}</span>
     <span class="expo ${g.exposure >= 60 ? 'hi' : g.exposure >= 30 ? 'mid' : ''}" title="Exposición: riesgo diario de escándalo por uso de dinero opaco">⚠ ${Math.round(g.exposure)}%</span>
     <span title="Seguidores estimados">👥 ${g.followers.toLocaleString('es-AR')}</span>
     <span title="Intención de voto de tu partido en la ciudad">🗳 ${(g.intencionVoto * 100).toFixed(g.intencionVoto < 0.01 ? 3 : 1)}%</span>`;
 }
 
-function negroBtn(g, m, z, zoneId) {
-  const lock = g.canStart(m, zoneId, 'negro'), ch = g.chance(m, z, 'negro').c;
-  return `<button class="negro" data-start="${m.id}" data-pago="negro" ${lock ? 'disabled' : ''} title="Éxito ${ch}% · exposición +${m.negro.expo}">🕶 ${lock ? esc(lock) : 'Con negro · ' + ch + '%'}</button>`;
+// ---------- Fundación del partido ----------
+export function renderFundacion(cfg, provincia, estado) {
+  const cat = cfg.principios.principios, k = cfg.principios.elegir;
+  const cards = cat.map(p => {
+    const on = estado.principios.includes(p.id), full = estado.principios.length >= k && !on;
+    return `<label class="principle ${on ? 'on' : ''} ${full ? 'off' : ''}">
+      <input type="checkbox" data-principio="${esc(p.id)}" ${on ? 'checked' : ''} ${full ? 'disabled' : ''}>
+      <span><b>${esc(p.nombre)}</b><br><small>${esc(p.texto)}</small><br><small class="muted">${esc(modsTexto(p, cfg))}</small></span></label>`;
+  }).join('');
+  const rivales = cfg.partidos.partidos.filter(p => p.id !== 'otros').map(p =>
+    `<div class="rival-line"><b style="background:${p.color}"></b><span><b>${esc(p.nombre)}</b> · <small class="muted">${esc(p.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small></span></div>`).join('');
+  return `<div class="city">Fundación · ${esc(provincia)}</div><h2>Fundá tu partido</h2>
+    <label class="field">Nombre del partido
+      <input id="party-name" type="text" maxlength="${NOMBRE_MAX}" value="${esc(estado.nombre)}" placeholder="Ej.: Vecinos en Acción" autocomplete="off"></label>
+    <h3>Tus principios (elegí ${k}) · ${estado.principios.length}/${k}</h3>
+    <div class="principles">${cards}</div>
+    <p class="muted small">Son la identidad de tu partido: marcan cómo trabajás y qué te cuesta. Más adelante serán la base de tus habilidades.</p>
+    <h3>Otros partidos y lo que defienden</h3>${rivales}
+    <p id="founding-error" class="error" role="alert">${esc(estado.error ?? '')}</p>
+    <button id="found-confirm" class="primary">Fundar el partido</button>`;
 }
 
-// Modal de evento: contexto, opciones con su costo y los motivos por los que no se pueden elegir
+// Resumen legible de los efectos de un principio
+export function modsTexto(p, cfg) {
+  const x = p.mods ?? {}, out = [];
+  for (const [id, v] of Object.entries(x.chance ?? {})) out.push(`${cfg.missions.find(m => m.id === id)?.nombre ?? id} ${v > 0 ? '+' : ''}${v}% éxito`);
+  if (x.expoMult > 1) out.push(`Dinero negro: exposición ×${x.expoMult}`);
+  if (x.expoMult < 1) out.push(`Dinero negro: exposición ×${x.expoMult}`);
+  if (x.negroConfianzaMult < 1) out.push('Con dinero negro ganás menos confianza');
+  if (x.alcanceMult > 1) out.push(`Alcance de misiones +${Math.round((x.alcanceMult - 1) * 100)}%`);
+  return out.join(' · ');
+}
+
+// ---------- Eventos ----------
 export function renderEvento(g) {
   const ev = g.pending;
   if (!ev) return '';
@@ -34,43 +69,106 @@ export function renderEvento(g) {
   return `<div class="modal"><div class="card ${ev.tipo === 'escandalo' ? 'scandal' : ''}"><h2>${esc(ev.titulo)}</h2><p>${esc(ev.texto)}</p><div class="choices">${ops}</div></div></div>`;
 }
 
-export function renderPanel(g, zoneId, day) {
+// ---------- Acciones en curso (siempre visibles arriba del panel) ----------
+export function renderAcciones(g, day) {
   const jobs = g.jobs.map((j, i) => {
-    const m = g.mission(j.mission);
-    return `<div class="job"><b>${esc(m.nombre)}</b> · ${esc(g.zonas[j.zone].nombre)}
-      <div class="bar"><i data-job-bar="${i}" style="width:${((day - j.start) / (j.end - j.start)) * 100}%"></i></div>
-      <small class="muted">termina en ${j.end - day} d</small></div>`;
-  }).join('') || '<p class="muted">Sin misiones en curso.</p>';
+    const m = g.mission(j.mission), f = jobFrac(j, day);
+    return `<div class="job" data-job-zone="${esc(j.zone)}">
+      <div class="job-head"><b>${esc(m.nombre)}</b><span class="badge">${j.modo === 'delegada' ? '🤝 Equipo' : '🧍 Vos'}${j.pago === 'negro' ? ' · 🕶' : ''}</span></div>
+      <div class="job-sub">${esc(g.zonas[j.zone].nombre)} · termina en <span data-job-eta="${i}">${Math.max(0, j.end - day)}</span> d</div>
+      <div class="bar big"><i data-job-bar="${i}" style="width:${(f * 100).toFixed(1)}%"></i><span data-job-pct="${i}">${Math.round(f * 100)}%</span></div></div>`;
+  }).join('');
+  const free = g.freeSlots > 0;
+  const equipo = g.equipo > 0 ? `🤝 Equipo ${g.freeEquipo}/${g.equipo} libres` : `🤝 Equipo: desde ${esc(g.cfg.ranks[g.cfg.delegacion.rangoMin])}`;
+  return `<section class="actions"><div class="actions-head"><h3>En curso</h3>
+      <span class="slots"><span class="${free ? 'free' : 'busy-txt'}">🧍 ${free ? 'Libre' : 'Ocupado'}</span> · ${equipo}</span></div>
+    ${jobs || '<p class="muted">Sin acciones en curso. Sos una sola persona: una acción personal a la vez.</p>'}</section>`;
+}
 
-  let zone = '<p class="muted">Elegí un barrio en el mapa para ver sus datos y lanzar misiones.</p>';
-  if (zoneId) {
-    const z = g.zonas[zoneId];
-    const ms = g.cfg.missions.map(m => {
-      const lock = g.canStart(m, zoneId), ch = g.chance(m, z);
-      const why = ch.factors.map(f => `${f[0]}: ${f[1] >= 0 ? '+' : ''}${f[1]}`).join(' · ');
-      return `<div class="mission ${lock ? 'locked' : ''}">
-        <div><b>${esc(m.nombre)}</b><br><small class="muted">${esc(m.desc)}</small></div>
-        <div class="meta"><small>${m.dias} d · ${money(m.costo)} · éxito ${ch.c}% · alcance ~${g.alcance(m, z).personas.toLocaleString('es-AR')} pers. (+${(g.alcance(m, z).control * 100).toFixed(1)}% control)</small><br><small class="muted" title="${esc(why)}">${esc(why)}</small></div>
-        <div class="btns"><button data-start="${m.id}" ${lock ? 'disabled' : ''}>${lock ? esc(lock) : 'Lanzar'}</button>${m.negro ? negroBtn(g, m, z, zoneId) : ''}</div></div>`;
-    }).join('');
-    zone = `<h2>${esc(z.nombre)}</h2>
-      <p class="muted">${z.pop.toLocaleString('es-AR')} hab.${z.popFuente ? '' : ' (est.)'}${z.densidad ? ' · ' + z.densidad.toLocaleString('es-AR') + ' hab/km²' : ''}${g.electores(z) !== null ? ' · ~' + g.electores(z).toLocaleString('es-AR') + ' electores' : ''}<br>Control ${pct(z.control)} · Confianza ${Math.round(z.trust)}</p>
-      <h3>Misiones</h3>${ms}`;
-  }
+// ---------- Pestañas ----------
+export function renderPanel(g, zoneId, day, tab = 'zona') {
+  const tabs = `<nav class="tabs" role="tablist">${TABS.map(([id, label]) => `<button role="tab" data-tab="${id}" class="${id === tab ? 'on' : ''}" aria-selected="${id === tab}">${label}</button>`).join('')}</nav>`;
+  const body = tab === 'partido' ? renderPartido(g) : tab === 'provincia' ? renderProvincia(g) : renderZona(g, zoneId);
+  return `<div class="city">${esc(g.partido.nombre)} · ${esc(g.city.ciudad)}, ${esc(g.prov.nombre)}</div>${renderAcciones(g, day)}${tabs}<div class="tab-body">${body}</div>`;
+}
+
+function btnLabel(lock, ok) { return lock ? esc(lock) : ok; }
+
+function renderZona(g, zoneId) {
+  if (!zoneId) return '<p class="muted">Elegí un barrio en el mapa para ver sus datos, a los rivales que hay y lanzar misiones.</p>';
+  const z = g.zonas[zoneId], cfg = g.cfg;
+  const ms = cfg.missions.map(m => {
+    const lock = g.canStart(m, zoneId), ch = g.chance(m, z), al = g.alcance(m, z);
+    const why = ch.factors.map(f => `<li class="${f[1] < 0 ? 'neg' : 'pos'}"><span>${esc(f[0])}</span><b>${f[1] >= 0 ? '+' : ''}${f[1]}</b></li>`).join('');
+    const delLock = g.canStart(m, zoneId, 'blanco', 'delegada');
+    return `<div class="mission ${lock ? 'locked' : ''}">
+      <div><b>${esc(m.nombre)}</b><br><small class="muted">${esc(m.desc)}</small></div>
+      <div class="meta"><span>⏱ ${m.dias} d</span><span>💵 ${money(m.costo)}</span><span>🎯 éxito ${ch.c}%</span><span>👥 ~${al.personas.toLocaleString('es-AR')} pers. (+${(al.control * 100).toFixed(1)}% control)</span></div>
+      <details><summary>Por qué ${ch.c}%</summary><ul class="factors">${why}</ul></details>
+      <div class="btns"><button data-start="${m.id}" ${lock ? 'disabled' : ''}>${btnLabel(lock, 'Lanzar yo')}</button>
+        ${m.negro ? negroBtn(g, m, z, zoneId) : ''}
+        <button data-start="${m.id}" data-modo="delegada" ${delLock ? 'disabled' : ''} title="${delLock ? esc(delLock) : 'Un equipo la hace por vos, con menos éxito'}">🤝 Delegar${delLock ? ' 🔒' : ''}</button></div></div>`;
+  }).join('');
+  return `<h2>${esc(z.nombre)}</h2>
+    <p class="muted">${z.pop.toLocaleString('es-AR')} hab.${z.popFuente ? '' : ' (est.)'}${z.densidad ? ' · ' + z.densidad.toLocaleString('es-AR') + ' hab/km²' : ''}${g.electores(z) !== null ? ' · ~' + g.electores(z).toLocaleString('es-AR') + ' electores' : ''}<br>
+    Control ${pct(z.control)} · Confianza ${Math.round(z.trust)}</p>
+    <h3>Misiones</h3>${ms}${renderRivales(g, z)}`;
+}
+
+function negroBtn(g, m, z, zoneId) {
+  const lock = g.canStart(m, zoneId, 'negro'), ch = g.chance(m, z, 'negro').c;
+  return `<button class="negro" data-start="${m.id}" data-pago="negro" ${lock ? 'disabled' : ''} title="Éxito ${ch}% · exposición +${Math.round(m.negro.expo * g.modsPrincipios(m).expoMult)}">🕶 ${lock ? esc(lock) : 'Con negro · ' + ch + '%'}</button>`;
+}
+
+// Rivales en la zona: presencia, principios, estimación de reacciones y acciones vigentes
+function renderRivales(g, z) {
+  const pres = presencia(g, z.id), am = amenaza(g, z), cat = g.cfg.principios.principios;
+  const activos = efectosActivos(g, z.id).map(e => {
+    const a = g.cfg.rivales.acciones.find(x => x.id === e.accion), r = g.rival(e.rival);
+    const bl = a.bloquea?.length ? ` · bloquea: ${a.bloquea.map(id => g.mission(id).nombre).join(', ')}` : '';
+    return `<div class="alert-rival"><b style="background:${r.color}"></b><span><b>${esc(r.nombre)}</b>: ${esc(a.nombre.toLowerCase())} — ${e.hasta - g.day} d${esc(bl)}</span></div>`;
+  }).join('');
+  const rows = am.detalle.map(d => {
+    const r = d.partido, ps = r.principios.map(id => cat.find(c => c.id === id)?.nombre).filter(Boolean).join(', ');
+    const react = d.prob30 > 0.01 && d.accion ? `<small class="react">Podría: ${esc(d.accion.nombre.toLowerCase())} · ${approx5(d.prob30)} en 30 d</small>` : '';
+    return `<div class="rival"><div class="rival-top"><b style="background:${r.color}"></b><span class="rn">${esc(r.nombre)}</span><span class="rp">${approx5(pres[r.id])}</span></div>
+      <div class="bar thin"><i style="width:${(pres[r.id] * 100).toFixed(0)}%;background:${r.color}"></i></div>
+      <small class="muted">${esc(ps)}</small>${react}</div>`;
+  }).join('');
+  const nivelTxt = { ninguna: 'Todavía no te toman como amenaza: con poco control en el barrio, los rivales no reaccionan.', baja: 'Riesgo de reacción rival: <b>bajo</b>.', media: 'Riesgo de reacción rival: <b class="mid">medio</b>.', alta: 'Riesgo de reacción rival: <b class="hi">alto</b>.' }[am.nivel];
+  return `<h3>Rivales en la zona <small class="muted">(estimación)</small></h3><p class="muted small-p">${nivelTxt}</p>${activos}${rows}`;
+}
+
+function renderPartido(g) {
+  const cat = g.cfg.principios.principios, p = g.player;
+  const mine = g.principios.map(x => `<div class="principle on static"><span><b>${esc(x.nombre)}</b><br><small>${esc(x.texto)}</small><br><small class="muted">${esc(modsTexto(x, g.cfg))}</small></span></div>`).join('');
+  const rivals = g.cfg.partidos.partidos.filter(r => r.id !== 'otros').map(r =>
+    `<div class="rival-line"><b style="background:${r.color}"></b><span><b>${esc(r.nombre)}</b> <small class="muted">· ${esc(r.espacio)}</small><br><small>${esc(r.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small></span></div>`).join('');
+  const next = g.nextXp;
+  return `<h2>${esc(g.partido.nombre)}</h2>
+    <p class="muted">${esc(g.rankName)}${next ? ` · ${p.xp}/${next} XP para el próximo rango` : ''}</p>
+    <div class="bar"><i style="width:${next ? Math.min(100, (p.xp / next) * 100) : 100}%"></i></div>
+    <h3>Nuestros principios</h3>${mine}
+    <h3>Recursos</h3>
+    <div class="kv"><span>Dinero blanco</span><b>${money(p.money)}</b><span>Dinero negro</span><b>${money(p.black)}</b><span>Exposición</span><b>${Math.round(g.exposure)}%</b><span>Seguidores</span><b>${g.followers.toLocaleString('es-AR')}</b><span>Intención de voto (ciudad)</span><b>${(g.intencionVoto * 100).toFixed(g.intencionVoto < 0.01 ? 3 : 1)}%</b></div>
+    <h3>Otros partidos y lo que defienden</h3>${rivals}`;
+}
+
+function renderProvincia(g) {
   const pd = g.provData;
-  const prov = pd ? `<p class="muted prov">${esc(g.prov.nombre)}: ${pd.poblacion2022.toLocaleString('es-AR')} hab. · ${pd.electores2025.toLocaleString('es-AR')} electores</p>` : '';
-  return `<div class="city">${esc(g.city.ciudad)}, ${esc(g.prov.nombre)}</div>${prov}${renderElectoral(g)}${zone}<h3>En curso</h3>${jobs}
+  const prov = pd ? `<p class="muted">${pd.poblacion2022.toLocaleString('es-AR')} hab. (Censo 2022) · ${pd.electores2025.toLocaleString('es-AR')} electores (padrón 2025)</p>` : '';
+  return `<h2>${esc(g.prov.nombre)}</h2>${prov}${renderElectoral(g)}
     <p class="muted attrib">${g.city.fuente ? 'Barrios: © ' + esc(g.city.fuente) + '. Resto: fracciones censales' : g.city.fuentePoblacion ? 'Zonas: fracciones censales INDEC (sin barrios OSM en esta ciudad)' : 'Barrios sintéticos (sin datos reales para esta ciudad)'}${g.city.fuentePoblacion ? '<br>Población: ' + esc(g.city.fuentePoblacion) : ''}<br>Provincias: INDEC Censo 2022; padrón 2025 CNE/DINE.</p>`;
 }
 
-// Resultado de la última elección en la provincia (partidos ficticios) + tu intención de voto en la ciudad
+// Resultado de la última elección en la provincia (partidos ficticios)
 function renderElectoral(g) {
   const ps = g.cfg.partidos?.partidos, pf = g.perfilElectoral[0];
   if (!ps || !pf) return '';
   const byId = Object.fromEntries(ps.map(p => [p.id, p]));
   const entries = Object.entries(pf.partidos).sort((a, b) => b[1] - a[1]);
   const bar = entries.map(([id, v]) => `<i style="width:${(v * 100).toFixed(1)}%;background:${byId[id].color}" title="${esc(byId[id].nombre)} ${pct(v)}"></i>`).join('');
-  const legend = entries.slice(0, 4).map(([id, v]) => `<span><b style="background:${byId[id].color}"></b>${esc(byId[id].nombre)} ${pct(v)}</span>`).join('');
+  const legend = entries.slice(0, 5).map(([id, v]) => `<span><b style="background:${byId[id].color}"></b>${esc(byId[id].nombre)} ${pct(v)}</span>`).join('');
   const lider = pf.lider ? byId[pf.lider].nombre : '—';
   return `<h3>Panorama electoral · ${esc(pf.año)}</h3>
     <div class="vote-bar">${bar}</div><div class="vote-legend">${legend}</div>
@@ -79,4 +177,12 @@ function renderElectoral(g) {
 
 export function renderLog(g) {
   return g.log.slice(0, 8).map(e => `<div class="ev ${e.kind}">${esc(e.text)}</div>`).join('');
+}
+
+// Items para la superposición de progreso sobre el mapa
+export function progresoMapa(g, day, acc) {
+  return g.jobs.map(j => {
+    const z = g.zonas[j.zone], f = jobFrac(j, day, acc);
+    return { id: j.zone, cx: z.cx, cy: z.cy, frac: f, text: `${g.mission(j.mission).nombre} ${Math.round(f * 100)}%` };
+  });
 }

@@ -1,0 +1,113 @@
+{
+  "nota": "Catálogo de principios fundacionales. mods: chance {idMision:+/-puntos}, expoMult (× exposición por dinero negro), negroConfianzaMult (× confianza ganada si se paga con negro), alcanceMult. Base del futuro árbol de habilidades.",
+  "elegir": 3,
+  "principios": [
+    {
+      "id": "honestidad",
+      "nombre": "Honestidad",
+      "texto": "No robaremos: todo lo que entra y sale se declara.",
+      "mods": {
+        "expoMult": 1.6,
+        "negroConfianzaMult": 0.5,
+        "chance": {
+          "comunidad": 3
+        }
+      }
+    },
+    {
+      "id": "escucha",
+      "nombre": "Escuchar al vecino",
+      "texto": "Escuchamos y hablamos con la gente antes de decidir.",
+      "mods": {
+        "chance": {
+          "visitas": 8,
+          "comunidad": 4
+        }
+      }
+    },
+    {
+      "id": "justicia_social",
+      "nombre": "Justicia social",
+      "texto": "La comunidad primero: nadie queda atrás.",
+      "mods": {
+        "chance": {
+          "comunidad": 8
+        }
+      }
+    },
+    {
+      "id": "mercado",
+      "nombre": "Libre mercado",
+      "texto": "Menos Estado y más iniciativa privada.",
+      "mods": {
+        "chance": {
+          "pintadas": 4,
+          "reunion": 4
+        }
+      }
+    },
+    {
+      "id": "orden",
+      "nombre": "Orden y seguridad",
+      "texto": "Reglas claras y autoridad respetada.",
+      "mods": {
+        "chance": {
+          "volantes": 5,
+          "reunion": 3
+        }
+      }
+    },
+    {
+      "id": "federalismo",
+      "nombre": "Federalismo",
+      "texto": "Que decida cada provincia y cada barrio.",
+      "mods": {
+        "chance": {
+          "visitas": 4,
+          "comunidad": 4
+        }
+      }
+    },
+    {
+      "id": "pragmatismo",
+      "nombre": "Pragmatismo",
+      "texto": "El fin justifica los medios: lo que funciona, funciona.",
+      "mods": {
+        "expoMult": 0.7,
+        "chance": {
+          "pintadas": 3
+        }
+      }
+    },
+    {
+      "id": "tradicion",
+      "nombre": "Tradición y familia",
+      "texto": "Cuidar lo que nos une y nos viene de antes.",
+      "mods": {
+        "chance": {
+          "reunion": 6,
+          "comunidad": 3
+        }
+      }
+    },
+    {
+      "id": "trabajo",
+      "nombre": "Trabajo y organización",
+      "texto": "La fuerza está en los que trabajan y se organizan.",
+      "mods": {
+        "chance": {
+          "reunion": 6,
+          "volantes": 4
+        }
+      }
+    },
+    {
+      "id": "datos",
+      "nombre": "Decidir con datos",
+      "texto": "Medir antes de actuar: cada acción llega más lejos.",
+      "mods": {
+        "alcanceMult": 1.1
+      }
+    }
+  ]
+}

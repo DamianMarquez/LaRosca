@@ -2,7 +2,7 @@
 // Provisorio: se reemplazará por límites reales de barrios (OSM) más adelante.
 export const CITY_W = 1000, CITY_H = 700;
 
-function rng(seed) { // mulberry32
+export function rng(seed) { // mulberry32
   let a = [...seed].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
   return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }

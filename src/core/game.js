@@ -2,27 +2,30 @@
 import { generateCity } from './city.js';
 import { perfil, intencionVoto } from './electoral.js';
 import { sortear, resolver } from './events.js';
+import { tick as tickRivales, efectosActivos } from './rivals.js';
 import { SCHEMA } from './save.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export class Game {
-  // city: datos reales de OSM (data/ciudades/<id>.json) o null para usar barrios sintéticos
-  constructor(cfg, provId, provName, city = null) {
+  // city: datos reales (data/ciudades/<id>.json) o null para barrios sintéticos
+  // partido: { nombre, principios: [ids] } fundado por el jugador
+  constructor(cfg, provId, provName, city = null, partido = null) {
     this.cfg = cfg;
     const cap = cfg.capitales[provId];
     this.prov = { id: provId, nombre: provName };
+    this.partido = { nombre: partido?.nombre ?? 'Tu partido', principios: partido?.principios ?? [] };
     this.city = city ?? generateCity(provId, cap.ciudad, cap.pop);
-    this.zonas = Object.fromEntries(this.city.zonas.map(z => [z.id, { ...z, control: 0, trust: cfg.start.trust }]));
+    this.zonas = Object.fromEntries(this.city.zonas.map(z => [z.id, { ...z, control: 0, trust: cfg.start.trust, efectos: [] }]));
     this.player = { rank: 0, xp: 0, money: cfg.start.money, black: cfg.start.black ?? 0 };
     this.exposure = 0;    // 0..100: riesgo de escándalo por uso de dinero opaco
     this.pending = null;  // evento esperando decisión del jugador
     this.ultimoEvento = 0;
-    this.jobs = [];       // {mission, zone, start, end, pago}
+    this.jobs = [];       // {mission, zone, start, end, pago, modo}
     this.log = [];        // {day, text, kind}
     this.day = 0;
     this.listeners = [];
-    this.note('Fundaste el partido en ' + cap.ciudad + '. Empezás como afiliado, sin poder interno.', 'info');
+    this.note(`Fundaste «${this.partido.nombre}» en ${cap.ciudad}. Empezás como afiliado, sin poder interno.`, 'info');
   }
 
   // Datos reales de la provincia (INDEC 2022 / padrón 2025), si están cargados
@@ -38,8 +41,13 @@ export class Game {
     return intencionVoto(Object.values(this.zonas), d ? d.electoresPorHabitante : 0.75);
   }
 
+  // Capacidad de acción: el jugador es una sola persona (1 acción personal a la vez).
+  // Al subir de rango se suma "equipo" para delegar, que es un contador aparte.
   get slots() { return this.cfg.personalSlots[this.player.rank]; }
-  get freeSlots() { return this.slots - this.jobs.length; }
+  get equipo() { return this.cfg.equipoSlots[this.player.rank]; }
+  usados(modo) { return this.jobs.filter(j => (j.modo ?? 'personal') === modo).length; }
+  get freeSlots() { return this.slots - this.usados('personal'); }
+  get freeEquipo() { return this.equipo - this.usados('delegada'); }
   get rankName() { return this.cfg.ranks[this.player.rank]; }
   get nextXp() { return this.cfg.promotionXp[this.player.rank + 1] ?? null; }
   get followers() { return Math.round(Object.values(this.zonas).reduce((s, z) => s + z.pop * z.control * 0.02, 0)); }
@@ -48,6 +56,24 @@ export class Game {
   emit(ev) { this.listeners.forEach(f => f(ev)); }
 
   mission(id) { return this.cfg.missions.find(m => m.id === id); }
+
+  // Principios fundacionales del partido (catálogo en data/principios.json)
+  get principios() {
+    const cat = this.cfg.principios?.principios ?? [];
+    return this.partido.principios.map(id => cat.find(p => p.id === id)).filter(Boolean);
+  }
+  // Modificadores acumulados de los principios para una misión
+  modsPrincipios(m) {
+    let chance = 0, expoMult = 1, negroConfianzaMult = 1, alcanceMult = 1;
+    const nombres = [];
+    for (const p of this.principios) {
+      const x = p.mods ?? {};
+      const c = x.chance?.[m.id] ?? 0;
+      if (c) { chance += c; nombres.push(p.nombre); }
+      expoMult *= x.expoMult ?? 1; negroConfianzaMult *= x.negroConfianzaMult ?? 1; alcanceMult *= x.alcanceMult ?? 1;
+    }
+    return { chance, expoMult, negroConfianzaMult, alcanceMult, nombres };
+  }
 
   // Efecto de la densidad (hab/km²) de la zona sobre una misión.
   // mult: multiplicador de alcance; riesgo: puntos de probabilidad (+ si la densidad favorece a esta misión)
@@ -61,27 +87,51 @@ export class Game {
 
   // Personas alcanzadas por la misión y cuánto sube el control del barrio (0..1)
   alcance(m, z) {
-    const personas = Math.round(m.alcance * this.densidadEfecto(m, z).mult);
+    const personas = Math.round(m.alcance * this.densidadEfecto(m, z).mult * this.modsPrincipios(m).alcanceMult);
     const control = Math.min(this.cfg.densidad.maxControlPorMision, personas / Math.max(z.pop, 100));
     return { personas, control };
   }
 
   // Probabilidad de éxito (%) y factores visibles
-  // pago: 'blanco' (fondos declarados) o 'negro' (opaco: más eficaz, pero sube la exposición)
-  chance(m, z, pago = 'blanco') {
+  // pago: 'blanco' o 'negro' (más eficaz, sube la exposición) · modo: 'personal' o 'delegada' (equipo, menos eficaz)
+  chance(m, z, pago = 'blanco', modo = 'personal') {
     const de = this.densidadEfecto(m, z);
     const factors = [['Dificultad base', m.base], ['Confianza local', Math.round((z.trust - 50) * 0.25)]];
     if (de.riesgo) factors.push([`Densidad (${de.densidad.toLocaleString('es-AR')} hab/km²)`, de.riesgo]);
     if (z.control > 0.5) factors.push(['Presencia previa', 4]);
     if (pago === 'negro' && m.negro) factors.push(['Dinero negro', m.negro.bonus]);
+    if (modo === 'delegada') factors.push(['Equipo con menos experiencia', -this.cfg.delegacion.penal]);
+    const pr = this.modsPrincipios(m);
+    if (pr.chance) factors.push([`Principios (${pr.nombres.join(', ')})`, pr.chance]);
+    for (const e of efectosActivos(this, z.id)) {
+      const a = this.cfg.rivales.acciones.find(x => x.id === e.accion), c = a?.chance?.[m.id];
+      if (c) factors.push([`${this.rival(e.rival).nombre}: ${a.nombre.toLowerCase()}`, c]);
+    }
     const c = clamp(factors.reduce((s, f) => s + f[1], 0), 5, 95);
     return { c, factors };
   }
 
-  canStart(m, zoneId, pago = 'blanco') {
+  rival(id) { return this.cfg.partidos.partidos.find(p => p.id === id); }
+
+  // Acción rival que impide lanzar la misión en la zona (o null)
+  bloqueo(m, zoneId) {
+    for (const e of efectosActivos(this, zoneId)) {
+      const a = this.cfg.rivales.acciones.find(x => x.id === e.accion);
+      if (a?.bloquea?.includes(m.id)) return { texto: `${this.rival(e.rival).nombre}: ${a.nombre.toLowerCase()}`, dias: e.hasta - this.day };
+    }
+    return null;
+  }
+
+  canStart(m, zoneId, pago = 'blanco', modo = 'personal') {
     if (this.pending) return 'Resolvé el evento pendiente';
     if (this.player.rank < m.minRank) return 'Requiere rango: ' + this.cfg.ranks[m.minRank];
-    if (this.freeSlots <= 0) return 'No tenés bloques libres';
+    if (modo === 'delegada') {
+      if (!m.delegable) return 'No se puede delegar';
+      if (this.equipo === 0) return 'Requiere rango: ' + this.cfg.ranks[this.cfg.delegacion.rangoMin];
+      if (this.freeEquipo <= 0) return 'Tu equipo está ocupado';
+    } else if (this.freeSlots <= 0) return 'Ya estás en una acción';
+    const b = this.bloqueo(m, zoneId);
+    if (b) return `Bloqueada (${b.dias} d)`;
     if (pago === 'negro') {
       if (!m.negro) return 'No admite dinero negro';
       if (this.player.black < m.costo) return 'Falta dinero negro';
@@ -90,15 +140,15 @@ export class Game {
     return null;
   }
 
-  start(missionId, zoneId, pago = 'blanco') {
+  start(missionId, zoneId, pago = 'blanco', modo = 'personal') {
     const m = this.mission(missionId);
-    if (this.canStart(m, zoneId, pago)) return false;
+    if (this.canStart(m, zoneId, pago, modo)) return false;
     if (pago === 'negro') {
       this.player.black -= m.costo;
-      this.exposure = clamp(this.exposure + m.negro.expo, 0, 100);
+      this.exposure = clamp(this.exposure + Math.round(m.negro.expo * this.modsPrincipios(m).expoMult), 0, 100);
     } else this.player.money -= m.costo;
-    this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + m.dias, pago });
-    this.note(`Empezaste «${m.nombre}» en ${this.zonas[zoneId].nombre}${pago === 'negro' ? ' con dinero negro' : ''}.`);
+    this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + m.dias, pago, modo });
+    this.note(`${modo === 'delegada' ? 'Delegaste' : 'Empezaste'} «${m.nombre}» en ${this.zonas[zoneId].nombre}${pago === 'negro' ? ' con dinero negro' : ''}.`);
     return true;
   }
 
@@ -110,6 +160,7 @@ export class Game {
     // Con el tiempo, la confianza se enfría lentamente hacia 20 si no hay actividad
     for (const z of Object.values(this.zonas)) z.trust += (20 - z.trust) * 0.002;
     this.exposure = Math.max(0, this.exposure - 0.15);        // el olvido enfría los rumores
+    tickRivales(this);
     const ev = sortear(this);
     if (ev) {
       this.pending = ev;
@@ -133,17 +184,17 @@ export class Game {
   }
 
   resolve(j) {
-    const m = this.mission(j.mission), z = this.zonas[j.zone];
-    const ok = Math.random() * 100 < this.chance(m, z, j.pago).c;
+    const m = this.mission(j.mission), z = this.zonas[j.zone], pr = this.modsPrincipios(m);
+    const ok = Math.random() * 100 < this.chance(m, z, j.pago, j.modo ?? 'personal').c;
     if (ok) {
       const al = this.alcance(m, z);
       z.control = clamp(z.control + al.control, 0, 1);
-      z.trust = clamp(z.trust + m.gana.trust, 0, 100);
+      z.trust = clamp(z.trust + m.gana.trust * (j.pago === 'negro' ? pr.negroConfianzaMult : 1), 0, 100);
       this.player.xp += m.gana.xp;
       this.note(`«${m.nombre}» salió bien en ${z.nombre}: llegaste a unas ${al.personas.toLocaleString('es-AR')} personas.`, 'ok');
     } else {
       z.trust = clamp(z.trust + m.falla.trust, 0, 100);
-      if (j.pago === 'negro') this.exposure = clamp(this.exposure + m.negro.expo, 0, 100); // si sale mal con plata opaca, se nota más
+      if (j.pago === 'negro') this.exposure = clamp(this.exposure + Math.round(m.negro.expo * pr.expoMult), 0, 100); // si sale mal con plata opaca, se nota más
       this.note(`«${m.nombre}» falló en ${z.nombre}: se perdieron recursos y confianza${j.pago === 'negro' ? ' y creció la sospecha' : ''}.`, 'bad');
     }
     this.checkPromotion();
@@ -158,27 +209,31 @@ export class Game {
     }
   }
 
-  // Estado serializable. Las zonas guardan solo lo que cambia (control y confianza): el resto sale de data/ciudades.
+  // Estado serializable. Las zonas guardan solo lo que cambia: el resto sale de data/ciudades.
   toJSON() {
     return {
-      schemaVersion: SCHEMA, prov: this.prov, day: this.day, exposure: this.exposure, ultimoEvento: this.ultimoEvento,
+      schemaVersion: SCHEMA, prov: this.prov, partido: this.partido, day: this.day, exposure: this.exposure, ultimoEvento: this.ultimoEvento,
       player: this.player, jobs: this.jobs, log: this.log, pending: this.pending?.id ?? null,
-      zonas: Object.fromEntries(Object.entries(this.zonas).map(([id, z]) => [id, { control: +z.control.toFixed(5), trust: +z.trust.toFixed(3) }])),
+      zonas: Object.fromEntries(Object.entries(this.zonas).map(([id, z]) => [id, { control: +z.control.toFixed(5), trust: +z.trust.toFixed(3), efectos: z.efectos }])),
     };
   }
 
   // Reconstruye una partida validada (ver save.js). city: mismos datos de ciudad que la partida original.
   static fromJSON(cfg, d, city = null) {
-    const g = new Game(cfg, d.prov.id, d.prov.nombre, city);
+    const g = new Game(cfg, d.prov.id, d.prov.nombre, city, d.partido);
     for (const [id, z] of Object.entries(d.zonas)) {
-      if (g.zonas[id]) { g.zonas[id].control = clamp(z.control, 0, 1); g.zonas[id].trust = clamp(z.trust, 0, 100); }
+      if (!g.zonas[id]) continue;
+      g.zonas[id].control = clamp(z.control, 0, 1);
+      g.zonas[id].trust = clamp(z.trust, 0, 100);
+      g.zonas[id].efectos = (z.efectos ?? []).filter(e => cfg.rivales.acciones.some(a => a.id === e.accion) && cfg.partidos.partidos.some(p => p.id === e.rival) && Number.isFinite(e.hasta))
+        .map(e => ({ rival: e.rival, accion: e.accion, hasta: e.hasta }));
     }
     const p = d.player;
     g.player = { rank: clamp(Math.floor(p.rank), 0, cfg.ranks.length - 1), xp: Math.max(0, p.xp), money: Math.max(0, p.money), black: Math.max(0, p.black) };
     g.day = Math.floor(d.day);
     g.exposure = clamp(d.exposure, 0, 100);
     g.ultimoEvento = isFinite(d.ultimoEvento) ? d.ultimoEvento : g.day;
-    g.jobs = d.jobs.filter(j => g.zonas[j.zone]).map(j => ({ mission: j.mission, zone: j.zone, start: j.start, end: j.end, pago: j.pago === 'negro' ? 'negro' : 'blanco' }));
+    g.jobs = d.jobs.filter(j => g.zonas[j.zone]).map(j => ({ mission: j.mission, zone: j.zone, start: j.start, end: j.end, pago: j.pago === 'negro' ? 'negro' : 'blanco', modo: j.modo === 'delegada' ? 'delegada' : 'personal' }));
     g.log = d.log.slice(0, 60).map(e => ({ day: Number(e.day) || 0, text: String(e.text ?? ''), kind: ['ok', 'bad', 'promo', 'info'].includes(e.kind) ? e.kind : 'info' }));
     g.pending = d.pending ? (cfg.eventos?.eventos.find(e => e.id === d.pending) ?? null) : null;
     return g;

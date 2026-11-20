@@ -15,7 +15,7 @@ Abrí http://localhost:8765. Para publicar (por ejemplo en Plesk) subí el conte
 ## Guardar y recuperar la partida
 
 - **Autoguardado:** se guarda solo en este navegador (`localStorage`) en cada cambio. Al volver, el mapa ofrece **Continuar**.
-- **Exportar / Importar:** los botones de la barra superior descargan o cargan la partida como JSON (`schemaVersion` 3). El archivo importado se valida antes de usarse.
+- **Exportar / Importar:** los botones de la barra superior descargan o cargan la partida como JSON (`schemaVersion` 4). El archivo importado se valida antes de usarse.
 - **Nueva:** borra el guardado local.
 
 ## Estructura

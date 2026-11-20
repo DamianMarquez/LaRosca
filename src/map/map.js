@@ -34,8 +34,32 @@ export class GameMap {
       g.appendChild(t);
       this.labels.push({ el: t, w: this.paths.get(z.id).getBBox().width });
     }
+    this.layer = document.createElementNS(NS, 'g');   // capa de progreso de misiones
+    g.appendChild(this.layer);
+    this.prog = new Map();
     this.apply();
     this.bind();
+  }
+
+  // Muestra el avance de las misiones sobre su zona: items [{id, cx, cy, frac, text}]
+  setProgress(items) {
+    const u = this.vb[2] / 90, live = new Set(items.map(i => i.id));
+    for (const [id, n] of this.prog) if (!live.has(id)) { n.g.remove(); this.prog.delete(id); }
+    for (const it of items) {
+      let n = this.prog.get(it.id);
+      if (!n) {
+        const mk = (tag, cls) => { const e = document.createElementNS(NS, tag); e.setAttribute('class', cls); return e; };
+        n = { g: mk('g', 'prog'), bg: mk('rect', 'prog-bg'), fill: mk('rect', 'prog-fill'), txt: mk('text', 'prog-txt') };
+        n.g.append(n.bg, n.fill, n.txt);
+        this.layer.appendChild(n.g);
+        this.prog.set(it.id, n);
+      }
+      const w = u * 17, h = u * 2.4, x = it.cx - w / 2, y = it.cy + u * 1.2;
+      for (const [el, ww] of [[n.bg, w], [n.fill, w * it.frac]]) { el.setAttribute('x', x); el.setAttribute('y', y); el.setAttribute('width', ww); el.setAttribute('height', h); el.setAttribute('rx', h / 2); }
+      n.txt.setAttribute('x', it.cx); n.txt.setAttribute('y', it.cy - u * 0.4);
+      n.txt.style.fontSize = (u * 2.6).toFixed(2) + 'px'; n.txt.style.strokeWidth = (u * 0.7).toFixed(2) + 'px';
+      n.txt.textContent = it.text;
+    }
   }
 
   setBusy(ids) {
