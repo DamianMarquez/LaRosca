@@ -2,11 +2,12 @@
 const NS = 'http://www.w3.org/2000/svg';
 
 export class GameMap {
-  constructor(svg, data, { onSelect }) {
+  constructor(svg, data, { onSelect, onHover = () => {} }) {
     this.svg = svg;
     this.base = data.viewBox.slice();
     this.vb = data.viewBox.slice();
     this.onSelect = onSelect;
+    this.onHover = onHover;
     this.paths = new Map();
     this.selected = null;
     svg.replaceChildren();
@@ -65,23 +66,28 @@ export class GameMap {
     }
   }
 
-  // Marcas de rivales: items [{key, cx, cy, i, color, planeada, hostil, titulo}]
+  // Marcas de rivales: items [{key, cx, cy, i, color, planeada, hostil, inicial, titulo}]
+  // Círculo del color del rival con su inicial; punteado si solo está planeando; borde blanco si es un golpe contra vos.
   setRivalMarks(items) {
     const u = this.vb[2] / 90, live = new Set(items.map(i => i.key));
-    for (const [k, n] of this.marks) if (!live.has(k)) { n.remove(); this.marks.delete(k); }
+    for (const [k, n] of this.marks) if (!live.has(k)) { n.g.remove(); this.marks.delete(k); }
     for (const it of items) {
-      let c = this.marks.get(it.key);
-      if (!c) {
-        c = document.createElementNS(NS, 'circle'); c.setAttribute('class', 'rmark');
-        const t = document.createElementNS(NS, 'title'); c.appendChild(t);
-        this.markLayer.appendChild(c); this.marks.set(it.key, c);
+      let n = this.marks.get(it.key);
+      if (!n) {
+        const g = document.createElementNS(NS, 'g'), c = document.createElementNS(NS, 'circle'), t = document.createElementNS(NS, 'text');
+        g.setAttribute('class', 'rmark'); t.setAttribute('class', 'rmark-i'); t.setAttribute('text-anchor', 'middle');
+        g.append(c, t); this.markLayer.appendChild(g);
+        n = { g, c, t }; this.marks.set(it.key, n);
       }
-      c.setAttribute('cx', it.cx - u * 1.7 + it.i * u * 3.6); c.setAttribute('cy', it.cy - u * 4.2); c.setAttribute('r', u * 1.5);
-      c.setAttribute('stroke-width', (u * (it.hostil ? 0.7 : 0.4)).toFixed(2));
-      c.setAttribute('stroke', it.hostil ? '#fff' : it.color);
-      c.setAttribute('fill', it.planeada ? 'rgba(10,12,16,.7)' : it.color);
-      c.setAttribute('stroke-dasharray', it.planeada ? `${(u * 0.6).toFixed(2)} ${(u * 0.5).toFixed(2)}` : '');
-      c.firstChild.textContent = it.titulo;
+      const x = it.cx - u * 1.7 + it.i * u * 3.6, y = it.cy - u * 4.2, r = u * 1.7;
+      n.c.setAttribute('cx', x); n.c.setAttribute('cy', y); n.c.setAttribute('r', r);
+      n.c.setAttribute('stroke-width', (u * (it.hostil ? 0.7 : 0.4)).toFixed(2));
+      n.c.setAttribute('stroke', it.hostil ? '#fff' : it.color);
+      n.c.setAttribute('fill', it.planeada ? 'rgba(10,12,16,.75)' : it.color);
+      n.c.setAttribute('stroke-dasharray', it.planeada ? `${(u * 0.6).toFixed(2)} ${(u * 0.5).toFixed(2)}` : '');
+      n.t.setAttribute('x', x); n.t.setAttribute('y', y + u * 0.75); n.t.style.fontSize = (u * 2.1).toFixed(2) + 'px';
+      n.t.setAttribute('fill', it.planeada ? it.color : '#10131a');
+      n.t.textContent = it.inicial ?? '';
     }
   }
 
@@ -111,7 +117,7 @@ export class GameMap {
       svg.setPointerCapture(e.pointerId);
     });
     svg.addEventListener('pointermove', e => {
-      if (!drag) return;
+      if (!drag) { const z = e.target.closest?.('.zone'); this.onHover(z ? z.dataset.id : null, e.clientX, e.clientY); return; }
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
       if (!drag.moved) return;
@@ -120,6 +126,7 @@ export class GameMap {
       this.vb[1] = drag.vb[1] - dy * s;
       this.apply();
     });
+    svg.addEventListener('pointerleave', () => this.onHover(null));
     svg.addEventListener('pointerup', e => {
       if (drag && !drag.moved) {
         const z = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('.zone');

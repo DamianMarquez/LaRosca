@@ -4,6 +4,9 @@ import { progreso as progresoDirectiva, etiqueta as etiquetaRelacion } from '../
 import { nombreVacante, cargoDef, titular, probCaptar } from '../core/plantel.js';
 import { relacion as relacionRival, pactoCon, tipoDef, etiquetaRelacion as etiquetaRel } from '../core/pactos.js';
 import { NOMBRE_MAX } from '../core/save.js';
+import { consejos } from '../core/consejos.js';
+import { ico } from './iconos.js';
+import * as personaje from '../core/personaje.js';
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('es-AR');
@@ -11,18 +14,22 @@ const pct = v => Math.round(v * 100) + '%';
 const approx5 = v => '~' + Math.round(v * 20) * 5 + '%';          // estimaciones: nunca exactas
 const jobFrac = (j, day, acc = 0) => Math.min(1, Math.max(0, (day - j.start + acc) / (j.end - j.start)));
 
-export const TABS = [['zona', 'Zona'], ['rivales', 'Rivales'], ['partido', 'Partido'], ['finanzas', 'Finanzas'], ['provincia', 'Provincia']];
+export const TABS = [['zona', 'Zona'], ['rivales', 'Rivales'], ['partido', 'Partido'], ['yo', 'Yo'], ['datos', 'Datos']];
 
-// ---------- Barra superior ----------
+// Estado de la interfaz que sobrevive a los refrescos (no es parte de la partida)
+export const uiState = { abiertas: new Set(), secs: { terr: true, recaud: false, ilegal: false, rivZona: false }, datosSub: 'finanzas', logFiltro: 'todo', logAbierto: false };
+
+// ---------- Barra superior: tres grupos (rango · recursos · fuerza) con tooltips; lo que vale cero no se muestra ----------
 export function renderStats(g) {
-  const p = g.player, next = g.nextXp;
-  return `<span title="Tu rango en el partido">🎖 ${esc(g.rankName)}${next ? ` <small>(${p.xp}/${next} XP)</small>` : ''}</span>
-    <span class="${p.money < 0 ? 'rojo' : ''}" title="Dinero blanco del partido. Entre paréntesis, el resultado proyectado del mes (ingresos − gastos fijos)">💵 ${money(p.money)} <small class="${g.flujo.neto < 0 ? 'neg' : 'pos'}">(${g.flujo.neto >= 0 ? '+' : '−'}${money(Math.abs(g.flujo.neto))}/mes)</small></span>
-    <span title="Dinero negro: fondos opacos, más eficaces pero aumentan la exposición">🕶 ${money(p.black)}</span>
-    <span class="expo ${g.exposure >= 60 ? 'hi' : g.exposure >= 30 ? 'mid' : ''}" title="Exposición: riesgo diario de escándalo por uso de dinero opaco">⚠ ${Math.round(g.exposure)}%</span>
-    <span title="Afiliados formales (pagan cuota) · etapa del partido: ${esc(g.etapa.nombre)}">🪪 ${g.afiliados.toLocaleString('es-AR')}</span>
-    <span title="Seguidores estimados">👥 ${g.followers.toLocaleString('es-AR')}</span>
-    <span title="Intención de voto de tu partido en la ciudad">🗳 ${(g.intencionVoto * 100).toFixed(g.intencionVoto < 0.01 ? 3 : 1)}%</span>`;
+  const p = g.player, next = g.nextXp, flujo = g.flujo.neto, voto = g.intencionVoto * 100;
+  const chip = (tip, icono, html, cls = '') => `<span class="chip ${cls}" tabindex="0" data-tip="${tip}">${ico(icono)}${html}</span>`;
+  return `<div class="grp">${chip('rango', 'rango', `<b>${esc(g.rankName)}</b>${next ? `<small class="detalle">${Math.floor(p.xp)}/${next} XP</small>` : ''}`)}</div>
+    <div class="grp">${chip('dinero', 'dinero', `<b>${money(p.money)}</b><small class="${flujo < 0 ? 'neg' : 'pos'}">${flujo >= 0 ? '+' : '−'}${money(Math.abs(flujo))}/mes</small>`, p.money < 0 ? 'rojo' : '')}
+      ${p.black > 0 ? chip('negro', 'negro', `<b>${money(p.black)}</b>`) : ''}
+      ${g.exposure >= 1 ? chip('exposicion', 'alerta', `<b>${Math.round(g.exposure)}%</b>`, g.exposure >= 60 ? 'hi' : g.exposure >= 30 ? 'mid' : '') : ''}</div>
+    <div class="grp">${chip('afiliados', 'afiliados', `<b>${g.afiliados.toLocaleString('es-AR')}</b>`)}
+      ${chip('seguidores', 'seguidores', `<b>${g.followers.toLocaleString('es-AR')}</b>`, 'detalle')}
+      ${chip('voto', 'voto', `<b>${voto.toFixed(voto < 1 ? 2 : 1)}%</b>`)}</div>`;
 }
 
 // ---------- Fundación del partido ----------
@@ -39,6 +46,12 @@ export function renderFundacion(cfg, provincia, estado) {
   return `<div class="city">Fundación · ${esc(provincia)}</div><h2>Fundá tu partido</h2>
     <label class="field">Nombre del partido
       <input id="party-name" type="text" maxlength="${NOMBRE_MAX}" value="${esc(estado.nombre)}" placeholder="Ej.: Vecinos en Acción" autocomplete="off"></label>
+    <label class="field">Tu nombre <small class="muted">(opcional)</small>
+      <input id="player-name" type="text" maxlength="30" value="${esc(estado.jugadorNombre ?? '')}" placeholder="Si lo dejás vacío, te ponemos uno" autocomplete="off"></label>
+    <h3>Tu situación familiar</h3>
+    <div class="principles">${(cfg.vida?.familia ?? []).map(f => `<label class="principle ${estado.familia === f.id ? 'on' : ''}">
+      <input type="radio" name="familia" data-familia="${esc(f.id)}" ${estado.familia === f.id ? 'checked' : ''}>
+      <span><b>${esc(f.nombre)}</b><br><small>${esc(f.texto)}</small></span></label>`).join('')}</div>
     <h3>Tu trasfondo: de qué vivís</h3>
     <div class="principles">${(cfg.trasfondos?.trasfondos ?? []).map(t => `<label class="principle ${estado.trasfondo === t.id ? 'on' : ''}">
       <input type="radio" name="trasfondo" data-trasfondo="${esc(t.id)}" ${estado.trasfondo === t.id ? 'checked' : ''}>
@@ -83,7 +96,7 @@ export function renderEvento(g) {
     if (c.money) parts.push(money(c.money) + ' blancos');
     if (c.black) parts.push(money(c.black) + ' negros');
     if (op.azar) parts.push(Math.round(op.azar.p * 100) + '% de salir bien');
-    const lock = (c.money ?? 0) > g.player.money ? 'Falta dinero blanco' : (c.black ?? 0) > g.player.black ? 'Falta dinero negro' : null;
+    const lock = (c.money ?? 0) > 0 && c.money > g.player.money ? 'Falta dinero blanco' : (c.black ?? 0) > 0 && c.black > g.player.black ? 'Falta dinero negro' : null;
     return `<button data-event-choice="${i}" ${lock ? 'disabled' : ''}>${esc(op.label)}<small>${esc(lock ?? (parts.join(' · ') || 'Sin costo'))}</small></button>`;
   }).join('');
   return `<div class="modal"><div class="card ${ev.tipo === 'escandalo' ? 'scandal' : ''}"><h2>${esc(ev.titulo)}</h2><p>${esc(ev.texto)}</p><div class="choices">${ops}</div></div></div>`;
@@ -94,30 +107,50 @@ export function renderAcciones(g, day) {
   const jobs = g.jobs.map((j, i) => {
     const m = g.mission(j.mission), f = jobFrac(j, day);
     return `<div class="job" data-job-zone="${esc(j.zone)}">
-      <div class="job-head"><b>${esc(m.nombre)}</b><span class="badge">${j.modo === 'delegada' ? '🤝 Equipo' : '🧍 Vos'}${j.pago === 'negro' ? ' · 🕶' : ''}</span></div>
+      <div class="job-head"><b>${esc(m.nombre)}</b><span class="badge">${ico(j.modo === 'delegada' ? 'equipo' : 'persona')}${j.modo === 'delegada' ? 'Equipo' : 'Vos'}${j.pago === 'negro' ? ' · negro' : ''}</span></div>
       <div class="job-sub">${esc(g.zonas[j.zone].nombre)} · termina en <span data-job-eta="${i}">${Math.max(0, j.end - day)}</span> d</div>
       <div class="bar big"><i data-job-bar="${i}" style="width:${(f * 100).toFixed(1)}%"></i><span data-job-pct="${i}">${Math.round(f * 100)}%</span></div></div>`;
   }).join('');
-  const free = g.freeSlots > 0;
-  const equipo = g.equipo > 0 ? `🤝 Equipo ${g.freeEquipo}/${g.equipo} libres` : `🤝 Equipo: desde ${esc(g.cfg.ranks[g.cfg.delegacion.rangoMin])}`;
+  const desc = g.jugador.descanso, free = g.freeSlots > 0;
+  const descTxt = desc ? `<div class="job"><div class="job-head"><b>Descansando</b><span class="badge">${ico('persona')}Vos</span></div><div class="job-sub">Recuperás fuerzas · terminás en ${Math.max(0, desc.hasta - day)} d</div></div>` : '';
+  const equipo = g.equipo > 0 ? `<span tabindex="0" data-tip="equipo">${ico('equipo')}Equipo ${g.freeEquipo}/${g.equipo}</span>` : `<span class="detalle" tabindex="0" data-tip="equipo">${ico('equipo')}Equipo desde ${esc(g.cfg.ranks[g.cfg.delegacion.rangoMin])}</span>`;
   return `<section class="actions"><div class="actions-head"><h3>En curso</h3>
-      <span class="slots"><span class="${free ? 'free' : 'busy-txt'}">🧍 ${free ? 'Libre' : 'Ocupado'}</span> · ${equipo}</span></div>
-    ${jobs || '<p class="muted">Sin acciones en curso. Sos una sola persona: una acción personal a la vez.</p>'}</section>`;
+      <span class="slots"><span class="${free ? 'free' : 'busy-txt'}" tabindex="0" data-tip="accion">${ico('persona')}${desc ? 'Descansando' : free ? 'Libre' : 'Ocupado'}</span> ${equipo}</span></div>
+    ${descTxt}${jobs || (desc ? '' : '<p class="muted">Sin acciones en curso. Sos una sola persona: una acción personal a la vez.</p>')}</section>`;
 }
 
 // ---------- Pestañas ----------
 export function renderPanel(g, zoneId, day, tab = 'zona') {
-  const tabs = `<nav class="tabs" role="tablist">${TABS.map(([id, label]) => `<button role="tab" data-tab="${id}" class="${id === tab ? 'on' : ''}" aria-selected="${id === tab}">${label}${id === 'partido' && (g.linea?.directiva?.estado === 'propuesta' || g.plantel.vacantes.length || g.requisitos?.todos) ? ' <span class="ping" title="Hay algo esperando tu decisión: directiva, vacante o ascenso">●</span>' : ''}</button>`).join('')}</nav>`;
-  const body = tab === 'partido' ? renderPartido(g) : tab === 'provincia' ? renderProvincia(g) : tab === 'rivales' ? renderTabRivales(g, zoneId) : tab === 'finanzas' ? renderFinanzas(g) : renderZona(g, zoneId);
-  return `<div class="city">${esc(g.partido.nombre)} · ${esc(g.city.ciudad)}, ${esc(g.prov.nombre)}</div>${renderAcciones(g, day)}${tabs}<div class="tab-body">${body}</div>`;
+  const cs = consejos(g);
+  const pendiente = id => cs.some(c => c.tab === id && c.nivel !== 'info');
+  const tabs = `<nav class="tabs" role="tablist">${TABS.map(([id, label]) => `<button role="tab" data-tab="${id}" class="${id === tab ? 'on' : ''}" aria-selected="${id === tab}">${label}${pendiente(id) ? ' <span class="ping" role="img" aria-label="hay algo pendiente">●</span>' : ''}</button>`).join('')}</nav>`;
+  const body = tab === 'partido' ? renderPartido(g) : tab === 'datos' ? renderDatos(g) : tab === 'yo' ? renderYo(g) : tab === 'rivales' ? renderTabRivales(g, zoneId) : renderZona(g, zoneId);
+  return `<div class="city">${esc(g.partido.nombre)} · ${esc(g.city.ciudad)}, ${esc(g.prov.nombre)}</div>${renderAcciones(g, day)}${renderAhora(cs)}${tabs}<div class="tab-body">${body}</div>`;
+}
+
+// Franja "Ahora": lo más importante del momento. Rápido muestra solo la primera; Detallado, todas.
+function renderAhora(cs) {
+  if (!cs.length) return '';
+  const items = cs.map((c, i) => {
+    const icono = ico(c.nivel === 'urgente' || c.nivel === 'alerta' ? 'alerta' : c.nivel === 'oportunidad' ? 'flecha' : 'ayuda');
+    const attrs = c.tab ? `data-ir="${c.tab}"${c.sub ? ` data-sub="${c.sub}"` : ''}` : 'disabled';
+    return `<button class="ahora ${c.nivel} ${i ? 'detalle' : ''}" ${attrs}>${icono}<span>${esc(c.texto)}</span></button>`;
+  }).join('');
+  return `<section class="ahora-box" aria-label="Qué hacer ahora"><h3>Ahora</h3>${items}${cs.length > 1 ? `<small class="muted solo-rapido">+${cs.length - 1} más en modo Detallado</small>` : ''}</section>`;
+}
+
+// Datos: finanzas y provincia en una sola pestaña, con selector interno
+function renderDatos(g) {
+  const sub = uiState.datosSub;
+  return `<div class="seg" role="tablist">${[['finanzas', 'Finanzas'], ['provincia', 'Provincia']].map(([id, l]) => `<button role="tab" data-sub="${id}" class="${sub === id ? 'on' : ''}" aria-selected="${sub === id}">${l}</button>`).join('')}</div>${sub === 'provincia' ? renderProvincia(g) : renderFinanzas(g)}`;
 }
 
 function btnLabel(lock, ok) { return lock ? esc(lock) : ok; }
 
 const diasTxt = n => (n <= 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} d`);
-const certTxt = c => (c === 'confirmado' ? '✔ confirmado' : '❓ rumor');
+const certTxt = c => `<span class="cert" tabindex="0" data-tip="certeza">${c === 'confirmado' ? '✔ confirmado' : '❓ rumor'}</span>`;
 
-// Línea de aviso: qué hace un rival que se cruza con la misión que estás planificando y qué riesgo trae
+// Línea de aviso: qué hace un rival que se cruza con la misión que estás planificando y qué riesgo trae (siempre visible)
 function avisoChoque(g, c) {
   const r = g.rival(c.rival), a = c.accion;
   const que = c.tipo === 'propia' ? `${a.texto}` : c.enCurso ? `tiene en curso «${a.nombre.toLowerCase()}»` : `planea «${a.nombre.toLowerCase()}» (${diasTxt(c.enDias)})`;
@@ -125,37 +158,59 @@ function avisoChoque(g, c) {
   return `<div class="clash ${c.certeza}"><span class="dot" style="background:${r.color}"></span><span>⚠ <b>${esc(r.nombre)}</b> ${esc(que)} · <em>${certTxt(c.certeza)}</em> → ${esc(efecto)}</span></div>`;
 }
 
-function misionCard(g, m, z, zoneId) {
+// Valor esperado por día de trabajo: sirve para marcar la opción recomendada de cada sección
+function valorMision(g, m, z) {
+  const ch = g.chance(m, z).c / 100;
+  if (m.categoria === 'finanzas') return (g.ingresoEsperado(m, z) * ch - m.costo) / g.dias(m);
+  return g.alcance(m, z).control * 100 * ch / (g.dias(m) * (1 + m.costo / 2000));
+}
+function recomendada(g, lista, z, zoneId) {
+  let mejor = null, v = -Infinity;
+  for (const m of lista) { if (g.canStart(m, zoneId)) continue; const x = valorMision(g, m, z); if (x > v) { v = x; mejor = m.id; } }
+  return mejor;
+}
+
+// Tarjeta de misión: fila compacta (nombre · éxito · tiempo · costo · Lanzar). El resto vive en "…" (Rápido) o a la vista (Detallado).
+function misionCard(g, m, z, zoneId, rec) {
   const lock = g.canStart(m, zoneId), ch = g.chance(m, z), al = g.alcance(m, z), fin = m.categoria === 'finanzas';
   const why = ch.factors.map(f => `<li class="${f[1] < 0 ? 'neg' : 'pos'}"><span>${esc(f[0])}</span><b>${f[1] >= 0 ? '+' : ''}${f[1]}</b></li>`).join('');
   const delLock = g.canStart(m, zoneId, 'blanco', 'delegada');
   const avisos = choques(g, m, zoneId, g.day, g.day + g.dias(m)).map(c => avisoChoque(g, c)).join('');
+  const abierta = uiState.abiertas.has(m.id);
   const resultado = fin
-    ? `<span>${m.ilegal ? '🕶 ~' : '💰 ~'}${money(g.ingresoEsperado(m, z))}${m.ilegal ? ` en negro · exposición +${Math.round(m.expo * g.modsPrincipios(m).expoMult)}` : ''}</span>`
-    : `<span>👥 ~${al.personas.toLocaleString('es-AR')} pers. (+${(al.control * 100).toFixed(1)}% control)</span>`;
-  return `<div class="mission ${lock ? 'locked' : ''} ${m.ilegal ? 'ilegal' : ''}">
-      <div><b>${esc(m.nombre)}</b>${m.ilegal ? ' <span class="tag">ilegal</span>' : ''}<br><small class="muted">${esc(m.desc)}</small></div>
-      <div class="meta"><span>⏱ ${g.dias(m)} d</span>${m.costo ? `<span>💵 ${money(m.costo)}</span>` : '<span>💵 sin costo</span>'}<span>🎯 éxito ${ch.c}%</span>${resultado}</div>
+    ? `<span>${ico(m.ilegal ? 'negro' : 'dinero')}~${money(g.ingresoEsperado(m, z))}${m.ilegal ? ` en negro · exposición +${Math.round(m.expo * g.modsPrincipios(m).expoMult)}` : ''}</span>`
+    : `<span>${ico('seguidores')}~${al.personas.toLocaleString('es-AR')} pers. (+${(al.control * 100).toFixed(1)}% <span tabindex="0" data-tip="control">control</span>)</span>`;
+  return `<div class="mission compact ${lock ? 'locked' : ''} ${m.ilegal ? 'ilegal' : ''} ${abierta ? 'abierta' : ''}" data-m="${esc(m.id)}">
+      <div class="m-row">
+        <div class="m-name"><b>${esc(m.nombre)}</b>${rec ? ' <span class="rec" tabindex="0" data-tip-titulo="Recomendada" data-tip-texto="La mejor opción disponible ahora, según su resultado esperado por día de trabajo.">★ Recomendada</span>' : ''}${m.ilegal ? ' <span class="tag">ilegal</span>' : ''}</div>
+        <div class="m-quick"><span tabindex="0" data-tip="exito">${ico('objetivo')}${ch.c}%</span><span>${ico('reloj')}${g.dias(m)} d</span><span>${ico('dinero')}${m.costo ? money(m.costo) : 'gratis'}</span></div>
+        <button class="go" data-start="${m.id}" ${lock ? 'disabled' : ''}>Lanzar</button>
+        <button class="mas-btn" data-mas="${esc(m.id)}" aria-expanded="${abierta}" aria-label="Más opciones de ${esc(m.nombre)}">${ico('mas')}</button>
+      </div>
+      ${lock ? `<small class="lock-why">${esc(lock)}</small>` : ''}
       ${avisos}
-      <details><summary>Por qué ${ch.c}%</summary><ul class="factors">${why}</ul></details>
-      <div class="btns"><button data-start="${m.id}" ${lock ? 'disabled' : ''}>${btnLabel(lock, 'Lanzar yo')}</button>
-        ${m.negro ? negroBtn(g, m, z, zoneId) : ''}
-        ${m.delegable ? `<button data-start="${m.id}" data-modo="delegada" ${delLock ? 'disabled' : ''} title="${delLock ? esc(delLock) : 'Un equipo la hace por vos, con menos éxito'}">🤝 Delegar${delLock ? ' 🔒' : ''}</button>` : ''}</div></div>`;
+      <div class="detalle m-extra">
+        <small class="muted">${esc(m.desc)}</small>
+        <div class="meta">${resultado}</div>
+        <details><summary>Por qué ${ch.c}%</summary><ul class="factors">${why}</ul></details>
+        <div class="btns">${m.negro ? negroBtn(g, m, z, zoneId) : ''}
+          ${m.delegable ? `<button data-start="${m.id}" data-modo="delegada" ${delLock ? 'disabled' : ''} data-tip-texto="${delLock ? esc(delLock) : 'Un equipo la hace por vos, con menos éxito. No ocupa tu acción personal.'}">${ico('equipo')} Delegar${delLock ? ' 🔒' : ''}</button>` : ''}</div>
+      </div></div>`;
 }
+
+const seccion = (id, titulo, nota, cards, n) => `<details class="sec" data-sec="${id}" ${uiState.secs[id] ? 'open' : ''}><summary><span>${titulo}</span><span class="count">${n}</span></summary>${nota ? `<p class="muted small-p">${nota}</p>` : ''}${cards}</details>`;
 
 function renderZona(g, zoneId) {
   if (!zoneId) return '<p class="muted">Elegí un barrio en el mapa para ver sus datos, a los rivales que hay y lanzar misiones.</p>';
   const z = g.zonas[zoneId], ms = g.cfg.missions;
-  const terr = ms.filter(m => m.categoria !== 'finanzas').map(m => misionCard(g, m, z, zoneId)).join('');
-  const legal = ms.filter(m => m.categoria === 'finanzas' && !m.ilegal).map(m => misionCard(g, m, z, zoneId)).join('');
-  const ilegal = ms.filter(m => m.ilegal).map(m => misionCard(g, m, z, zoneId)).join('');
+  const grupo = (f) => ms.filter(f), terr = grupo(m => m.categoria !== 'finanzas'), legal = grupo(m => m.categoria === 'finanzas' && !m.ilegal), ilegal = grupo(m => m.ilegal);
+  const cards = (lista, rec) => lista.map(m => misionCard(g, m, z, zoneId, m.id === rec)).join('');
   return `<h2>${esc(z.nombre)}</h2>
-    <p class="muted">${z.pop.toLocaleString('es-AR')} hab.${z.popFuente ? '' : ' (est.)'}${z.densidad ? ' · ' + z.densidad.toLocaleString('es-AR') + ' hab/km²' : ''}${g.electores(z) !== null ? ' · ~' + g.electores(z).toLocaleString('es-AR') + ' electores' : ''}<br>
-    Control ${pct(z.control)} · Confianza ${Math.round(z.trust)}</p>
-    <h3>Misiones</h3>${terr}
-    <h3>Recaudación</h3><p class="muted small-p">Plata para sostener el partido. Hacerlo ocupa tu única acción personal.</p>${legal}
-    <h3>Dinero ilegal</h3><p class="muted small-p">Mucha plata rápido, en negro. Sube la exposición y te deja deudas de favor.</p>${ilegal}
-    ${renderRivales(g, z)}`;
+    <p class="z-resumen"><span tabindex="0" data-tip="control">Control <b>${pct(z.control)}</b></span> · <span tabindex="0" data-tip="confianza">Confianza <b>${Math.round(z.trust)}</b></span> · ${z.pop.toLocaleString('es-AR')} hab.${z.popFuente ? '' : ' (est.)'}<span class="detalle muted"> · ${z.densidad ? z.densidad.toLocaleString('es-AR') + ' hab/km²' : ''}${g.electores(z) !== null ? ' · ~' + g.electores(z).toLocaleString('es-AR') + ' electores' : ''}</span></p>
+    ${seccion('terr', 'Misiones', '', cards(terr, recomendada(g, terr, z, zoneId)), terr.length)}
+    ${seccion('recaud', 'Recaudación', 'Plata para sostener el partido. Hacerlo ocupa tu única acción personal.', cards(legal, recomendada(g, legal, z, zoneId)), legal.length)}
+    ${seccion('ilegal', 'Dinero ilegal', 'Mucha plata rápido, en negro. Sube la exposición y te deja deudas de favor.', cards(ilegal, null), ilegal.length)}
+    ${seccion('rivZona', 'Rivales en esta zona', '', renderRivalesBody(g, z), 5)}`;
 }
 
 function negroBtn(g, m, z, zoneId) {
@@ -164,7 +219,7 @@ function negroBtn(g, m, z, zoneId) {
 }
 
 // Rivales en la zona: presencia, principios, estimación de reacciones y acciones vigentes
-function renderRivales(g, z) {
+function renderRivalesBody(g, z) {
   const pres = presencia(g, z.id), am = amenaza(g, z), cat = g.cfg.principios.principios;
   const activos = efectosActivos(g, z.id).map(e => {
     const a = g.cfg.rivales.acciones.find(x => x.id === e.accion), r = g.rival(e.rival);
@@ -180,10 +235,10 @@ function renderRivales(g, z) {
     const react = d.prob30 > 0.01 && d.accion ? `<small class="react">Podría: ${esc(d.accion.nombre.toLowerCase())} · ${approx5(d.prob30)} en 30 d</small>` : '';
     return `<div class="rival"><div class="rival-top"><span class="dot" style="background:${r.color}"></span><span class="rn">${esc(r.nombre)}</span><span class="rp">${approx5(pres[r.id])}</span></div>
       <div class="bar thin"><i style="width:${(pres[r.id] * 100).toFixed(0)}%;background:${r.color}"></i></div>
-      <small class="muted">${esc(ps)}</small>${react}</div>`;
+      <small class="muted detalle">${esc(ps)}</small>${react}</div>`;
   }).join('');
   const nivelTxt = { ninguna: 'Todavía no te toman como amenaza: con poco control en el barrio, los rivales no reaccionan.', baja: 'Riesgo de reacción rival: <b>bajo</b>.', media: 'Riesgo de reacción rival: <b class="mid">medio</b>.', alta: 'Riesgo de reacción rival: <b class="hi">alto</b>.' }[am.nivel];
-  return `<h3>Rivales en la zona <small class="muted">(estimación)</small></h3><p class="muted small-p">${nivelTxt}</p>${enZona}${activos}${rows}`;
+  return `<p class="muted small-p">${nivelTxt} <small>(estimación)</small></p>${enZona}${activos}${rows}`;
 }
 
 // Pestaña Rivales: qué está haciendo cada partido ahora y qué hizo hace poco
@@ -220,9 +275,9 @@ function renderTabRivales(g, zoneId) {
         ${lider ? '' : `<span class="btns"><button data-captar="${esc(r.id)}" data-mid="${esc(m.id)}" data-con="blanco" ${g.player.money < K.costoBlanco ? 'disabled' : ''} title="Probabilidad estimada ${approx5(probCaptar(m))}">Captar ${money(K.costoBlanco)}</button><button class="negro" data-captar="${esc(r.id)}" data-mid="${esc(m.id)}" data-con="negro" ${g.player.black < K.costoNegro ? 'disabled' : ''} title="Con dinero negro: exposición +${K.exposicionNegro}">🕶 ${money(K.costoNegro)}</button></span>`}</div>`;
     }).join('');
     return `<div class="rcard"><div class="rival-top"><span class="dot" style="background:${r.color}"></span><span class="rn">${esc(r.nombre)}</span><span class="rp" title="Presencia media en la ciudad (estimada)">${approx5(presenciaCiudad(g, r.id))}</span></div>
-      <small class="muted">${esc(r.espacio)} · ${esc(r.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small>
-      <div class="rel-line"><small class="muted">Relación contigo: <b>${esc(etiquetaRel(rel))}</b> (${rel})</small><span class="meter ${rel < 30 ? 'bad' : ''}"><i style="width:${rel}%"></i></span></div>${pactoHtml}${estado}
-      <details class="cuadros"><summary>Sus cuadros</summary>${cuadros}<small class="muted">Captar a alguien lo suma a tu plantel, pero el rival se entera del intento si falla.</small></details></div>`;
+      <small class="muted detalle">${esc(r.espacio)} · ${esc(r.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small>
+      <div class="rel-line"><small class="muted"><span tabindex="0" data-tip="relacion">Relación</span> contigo: <b>${esc(etiquetaRel(rel))}</b><span class="detalle"> (${rel})</span></small><span class="meter ${rel < 30 ? 'bad' : ''}"><i style="width:${rel}%"></i></span></div>${pactoHtml}${estado}
+      <details class="cuadros detalle"><summary>Sus cuadros</summary>${cuadros}<small class="muted">Captar a alguien lo suma a tu plantel, pero el rival se entera del intento si falla.</small></details></div>`;
   }).join('');
   const feed = g.historialRivales.slice(0, 8).map(h => {
     const r = g.rival(h.rival), z = g.zonas[h.zona], def = defAccion(g, h);
@@ -287,7 +342,7 @@ function renderEscalafon(g) {
 const meter = (v, cls = '') => `<span class="meter ${cls}"><i style="width:${v}%"></i></span>`;
 const origenTxt = { fundador: 'fundador', interno: 'ascenso interno', externo: 'incorporado', captado: 'captado de un rival', interino: 'interino', rival: 'rival' };
 const miembroCard = (m, extra = '') => `<div class="miembro"><div class="m-head"><b>${esc(m.nombre)}</b><small class="muted">${esc(origenTxt[m.origen] ?? '')}</small></div>
-  <div class="m-stats"><span title="Capacidad: qué tan bien hace el trabajo">Cap. ${m.capacidad}${meter(m.capacidad)}</span><span title="Lealtad: qué tan difícil es que se vaya">Leal. ${m.lealtad}${meter(m.lealtad, m.lealtad < 40 ? 'bad' : '')}</span><span title="Ambición: qué tan probable es que busque algo mejor, incluso en otro partido">Amb. ${m.ambicion}${meter(m.ambicion, m.ambicion > 70 ? 'warn' : '')}</span></div>${extra}</div>`;
+  <div class="m-stats"><span tabindex="0" data-tip="capacidad">Cap. ${m.capacidad}${meter(m.capacidad)}</span><span tabindex="0" data-tip="lealtad">Leal. ${m.lealtad}${meter(m.lealtad, m.lealtad < 40 ? 'bad' : '')}</span><span tabindex="0" data-tip="ambicion">Amb. ${m.ambicion}${meter(m.ambicion, m.ambicion > 70 ? 'warn' : '')}</span></div>${extra}</div>`;
 
 // Plantel: cargos, referentes de barrio, vacantes con candidatos
 function renderPlantel(g) {
@@ -301,9 +356,43 @@ function renderPlantel(g) {
   const refs = S.miembros.filter(m => m.cargo?.startsWith('ref:')).map(m => miembroCard(m, `<small class="muted">Referente de ${esc(g.zonas[m.cargo.slice(4)]?.nombre ?? 'un barrio')}</small>`)).join('');
   const libres = S.miembros.filter(m => !m.cargo).map(m => miembroCard(m, '<small class="muted">Sin cargo: podés designarlo en una vacante.</small>')).join('');
   const vacs = S.vacantes.map(v => `<div class="vacancia"><div class="c-title"><b>Vacante: ${esc(nombreVacante(g, v))}</b><small class="muted">Quedan ${Math.max(0, v.vence - g.day)} d; después asume un interino</small></div>
-    ${v.candidatos.map(c => `<div class="candidato">${miembroCard(c)}<button data-designar="${esc(v.id)}" data-cand="${esc(c.id)}" ${c.costo > g.player.money ? 'disabled' : ''}>Designar${c.costo ? ' · ' + money(c.costo) : ' · sin costo'}</button></div>`).join('')}</div>`).join('');
+    ${v.candidatos.map(c => `<div class="candidato">${miembroCard(c)}<button data-designar="${esc(v.id)}" data-cand="${esc(c.id)}" ${c.costo > 0 && c.costo > g.player.money ? 'disabled' : ''}>Designar${c.costo ? ' · ' + money(c.costo) : ' · sin costo'}</button></div>`).join('')}</div>`).join('');
   return `<h3>Plantel</h3>${vacs ? `<div class="vacantes"><p class="small-p"><b>Hay vacantes por cubrir.</b> Elegí a quien tenga más capacidad y lealtad.</p>${vacs}</div>` : ''}
     ${cargos}${refs ? `<h3>Referentes de barrio</h3>${refs}` : ''}${libres ? `<h3>Militantes sin cargo</h3>${libres}` : ''}`;
+}
+
+// Pestaña Yo: quién sos, qué sabés hacer, cómo estás y de qué vivís
+const pips = (n, max = 5) => Array.from({ length: max }, (_, i) => `<i class="pip ${i < n ? 'on' : ''}"></i>`).join('');
+function renderYo(g) {
+  const J = g.jugador, V = g.cfg.vida, H = g.cfg.habilidades, E = V.efectosFamilia;
+  const estado = personaje.estadoDesgaste(g), d = Math.round(J.desgaste);
+  const desgasteHtml = `<div class="desgaste ${estado}"><div class="d-top"><span tabindex="0" data-tip="desgaste"><b>Desgaste</b></span><span>${d}/100 · ${estado}</span></div>
+      <div class="bar"><i style="width:${d}%"></i></div>
+      <button class="full" data-descansar ${g.freeSlots <= 0 || g.pending || J.descanso ? 'disabled' : ''}>${J.descanso ? 'Descansando…' : `Descansar ${V.desgaste.descansoDias} días`}</button>
+      <small class="muted detalle">Sube cada día que estás ocupado, más con hijos; baja cuando estás libre y mucho más descansando. ${V.desgaste.alto}+ resta éxito y ${V.desgaste.critico}+ resta mucho.</small></div>`;
+  const ramas = H.ramas.map(r => {
+    const n = personaje.nivel(g, r.id), pr = personaje.progresoNivel(g, r.id), puedo = J.puntos > 0 && n < H.maximo;
+    const ventajas = Object.entries(r.ventajas).map(([lvl, t]) => `<li class="${n >= +lvl ? 'on' : ''}"><b>Nivel ${lvl}</b> ${esc(t)}</li>`).join('');
+    return `<div class="rama"><div class="r-top"><b>${esc(r.nombre)}</b><span class="pips">${pips(n)}</span><button data-habilidad="${esc(r.id)}" ${puedo ? '' : 'disabled'} aria-label="Subir ${esc(r.nombre)}">+1</button></div>
+      ${pr ? `<div class="bar thin" title="Entrenamiento hacia el próximo nivel"><i style="width:${(pr.frac * 100).toFixed(0)}%"></i></div>` : '<small class="muted">La práctica ya no da más: solo con puntos.</small>'}
+      <div class="detalle"><small class="muted">${esc(r.texto)} ${esc(r.porNivel)}.</small><ul class="ventajas">${ventajas}</ul></div></div>`;
+  }).join('');
+  const t = J.trabajo, tr = g.trasfondo;
+  const cd = V.trabajo.enfriamiento - (g.day - t.ultimoCambio);
+  const btnT = (estado, label, tip) => `<button data-trabajo="${estado}" ${t.estado === estado || t.estado === 'sin' || cd > 0 ? 'disabled' : ''} data-tip-texto="${esc(cd > 0 && t.estado !== 'sin' ? `Cambiaste hace poco: esperá ${cd} días.` : tip)}">${label}</button>`;
+  const tiempo = personaje.tiempoMult(g, null), gastoFam = personaje.gastoFamiliar(g);
+  return `<h2>${esc(J.nombre)}</h2>
+    <p class="muted">${esc(g.rankName)} · ${esc(tr?.nombre ?? '')} · ${esc(personaje.familiaNombre(g))}</p>
+    <h3>Cómo estás</h3>${desgasteHtml}
+    <h3>Habilidades${J.puntos > 0 ? ` <span class="tag warn">${J.puntos} punto${J.puntos > 1 ? 's' : ''}</span>` : ''}</h3>
+    <p class="muted small-p detalle">Se entrenan haciendo misiones afines y mejoran con los puntos que ganás al ascender.</p>${ramas}
+    <h3>Trabajo</h3>
+    <div class="trabajo"><div class="kv"><span>Situación</span><b>${esc(personaje.trabajoNombre(t.estado))}</b><span>Aporte mensual</span><b>${money(personaje.aporteTrabajo(g))}</b></div>
+      <div class="btns">${btnT('completo', 'Jornada completa', 'Más ingreso, pero tus acciones tardan más.')}${btnT('reducido', 'Media jornada', 'La mitad del ingreso, a cambio de más tiempo para el partido.')}${btnT('sin', 'Dejar el trabajo', 'Sin ingreso propio, pero con todo el tiempo. No se puede revertir por tu cuenta.')}</div>
+      ${t.estado === 'sin' ? '<small class="muted">Sin trabajo: espera una oportunidad. Con el tiempo pueden aparecer ofertas.</small>' : ''}</div>
+    <h3>Familia</h3><div class="detalle-vacio"><p class="small-p">${esc(personaje.familiaNombre(g))}</p>
+      <div class="kv detalle"><span>Gasto familiar</span><b>${money(gastoFam)}/mes</b><span>Tu tiempo disponible</span><b>${tiempo >= 1 ? '−' : '+'}${Math.round(Math.abs(1 - tiempo) * 100)}% rapidez</b><span>Cuánto te duele un escándalo</span><b>×${personaje.vulnerabilidad(g).toFixed(2)}</b></div>
+      <small class="muted solo-rapido">Gasto ${money(gastoFam)}/mes · Más familia: más apoyo y gasto, y los escándalos duelen más.</small></div>`;
 }
 
 function renderPartido(g) {
@@ -345,15 +434,24 @@ function renderElectoral(g) {
     <p class="muted small">Participación ${pct(pf.participacion)} · primera fuerza: ${esc(lider)}${pf.escrutinio === 'provisorio' ? ' · escrutinio provisorio' : ''}</p>`;
 }
 
+const FILTROS = [['todo', 'Todo'], ['rival', 'Rivales'], ['plata', 'Plata'], ['partido', 'Partido']];
+const esPlata = e => /recaud|\$|dinero|cierre del mes|favor|aporte|plata|negro/i.test(e.text);
+const esPartido = e => e.kind === 'linea' || e.kind === 'promo' || /plantel|vacante|ascend|designaste|directiva|superior|cuadro|pacto/i.test(e.text);
+
+// Registro de novedades: 3 líneas por defecto, filtrable y desplegable
 export function renderLog(g) {
-  return g.log.slice(0, 8).map(e => `<div class="ev ${e.kind}">${esc(e.text)}</div>`).join('');
+  const { logFiltro: f, logAbierto: abierto } = uiState;
+  const lista = g.log.filter(e => f === 'todo' || (f === 'rival' && e.kind === 'rival') || (f === 'plata' && esPlata(e)) || (f === 'partido' && esPartido(e)));
+  const items = lista.slice(0, abierto ? 14 : 3).map(e => `<div class="ev ${e.kind}"><i class="k-dot"></i><span>${esc(e.text)}</span></div>`).join('') || '<div class="ev"><span class="muted">Sin novedades en este filtro.</span></div>';
+  const chips = FILTROS.map(([id, l]) => `<button class="chip-f ${f === id ? 'on' : ''}" data-log-filtro="${id}" aria-pressed="${f === id}">${l}</button>`).join('');
+  return `<div class="log-bar"><span class="chips-f">${chips}</span><button class="chip-f" data-log-toggle aria-expanded="${abierto}">${abierto ? 'Ver menos' : 'Ver más'}</button></div><div class="log-items ${abierto ? 'abierto' : ''}">${items}</div>`;
 }
 
 // Items para la superposición de progreso sobre el mapa
 export function progresoMapa(g, day, acc) {
   return g.jobs.map(j => {
     const z = g.zonas[j.zone], f = jobFrac(j, day, acc);
-    return { id: j.zone, cx: z.cx, cy: z.cy, frac: f, text: `${g.mission(j.mission).nombre} ${Math.round(f * 100)}%` };
+    return { id: j.zone, cx: z.cx, cy: z.cy, frac: f, text: `${Math.round(f * 100)}%` };
   });
 }
 
@@ -363,6 +461,6 @@ export function marcasRivales(g) {
   return agenda(g).map(a => {
     const z = g.zonas[a.zona], i = (porZona[a.zona] = (porZona[a.zona] ?? -1) + 1);
     const r = g.rival(a.rival);
-    return { key: `${a.zona}:${a.rival}`, cx: z.cx, cy: z.cy, i, color: r.color, planeada: a.fase === 'planeada', hostil: a.tipo === 'hostil', titulo: `${r.nombre}: ${a.fase === 'planeada' ? 'prepara ' : ''}${a.def.nombre.toLowerCase()}` };
+    return { key: `${a.zona}:${a.rival}`, cx: z.cx, cy: z.cy, i, color: r.color, planeada: a.fase === 'planeada', hostil: a.tipo === 'hostil', inicial: r.nombre[0], titulo: `${r.nombre}: ${a.fase === 'planeada' ? 'prepara ' : ''}${a.def.nombre.toLowerCase()}` };
   });
 }

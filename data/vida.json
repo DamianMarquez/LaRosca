@@ -1,0 +1,310 @@
+{
+  "nota": "Vida personal del jugador: familia, trabajo y desgaste, más los eventos de vida (tipo 'vida', los sortea personaje.js una vez por mes).",
+  "familia": [
+    {
+      "id": "soltero",
+      "nombre": "Soltero/a",
+      "texto": "Sin cargas: más libertad, menos contención.",
+      "pareja": false,
+      "hijos": 0
+    },
+    {
+      "id": "pareja",
+      "nombre": "En pareja",
+      "texto": "Alguien te sostiene, pero también espera tiempo de vos.",
+      "pareja": true,
+      "hijos": 0
+    },
+    {
+      "id": "hijo1",
+      "nombre": "Pareja y un hijo",
+      "texto": "Una familia que acompaña y que hay que mantener.",
+      "pareja": true,
+      "hijos": 1
+    },
+    {
+      "id": "hijos2",
+      "nombre": "Pareja y dos hijos",
+      "texto": "Mucho apoyo, mucho gasto y poco tiempo libre.",
+      "pareja": true,
+      "hijos": 2
+    },
+    {
+      "id": "mono1",
+      "nombre": "Criás solo/a a un hijo",
+      "texto": "Todo recae en vos: menos tiempo y más cansancio.",
+      "pareja": false,
+      "hijos": 1
+    }
+  ],
+  "efectosFamilia": {
+    "gastoPareja": 250,
+    "gastoHijo": 300,
+    "tiempoPareja": 0.03,
+    "tiempoHijo": 0.04,
+    "desgastePareja": -0.15,
+    "desgasteHijo": 0.06,
+    "imagenPareja": 1,
+    "imagenHijo": 1,
+    "vulnerabilidadPareja": 0.1,
+    "vulnerabilidadHijo": 0.08,
+    "maxHijos": 3
+  },
+  "trabajo": {
+    "reducidoIngreso": 0.5,
+    "sinDuracion": 0.9,
+    "enfriamiento": 30,
+    "despidoMensual": 0.06
+  },
+  "desgaste": {
+    "diaOcupado": 1.0,
+    "diaLibre": -2.5,
+    "descansoDia": -9,
+    "descansoDias": 3,
+    "alto": 60,
+    "critico": 85,
+    "penalAlto": -5,
+    "penalCritico": -12,
+    "crisis": 95,
+    "enfriamientoCrisis": 30
+  },
+  "eventoMensual": 0.28,
+  "eventos": [
+    {
+      "id": "hijo_enfermo",
+      "tipo": "vida",
+      "titulo": "Tu hijo está enfermo",
+      "cond": {
+        "hijos": 1
+      },
+      "texto": "Tu hijo amaneció con fiebre alta. La agenda del partido no espera, pero él te necesita.",
+      "opciones": [
+        {
+          "label": "Quedarte con él unos días",
+          "efectos": {
+            "descanso": 3,
+            "desgaste": -10
+          },
+          "resultado": "Te quedaste a su lado. Él mejoró y vos recuperaste fuerzas."
+        },
+        {
+          "label": "Seguir con tu agenda",
+          "azar": {
+            "p": 0.5,
+            "ok": {
+              "texto": "Pudiste cubrir las dos cosas, a costa de cansancio.",
+              "efectos": {
+                "desgaste": 8
+              }
+            },
+            "fail": {
+              "texto": "No llegaste a ningún lado: te sentiste culpable y rindió poco.",
+              "efectos": {
+                "desgaste": 15,
+                "trustAll": -1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "crisis_pareja",
+      "tipo": "vida",
+      "titulo": "Tensión en casa",
+      "cond": {
+        "pareja": true
+      },
+      "texto": "Tu pareja te dice que casi no te ve. Hace falta una charla de verdad.",
+      "opciones": [
+        {
+          "label": "Dedicarle tiempo",
+          "efectos": {
+            "descanso": 2,
+            "desgaste": -8
+          },
+          "resultado": "Pararon dos días y hablaron mucho. Volvieron más unidos."
+        },
+        {
+          "label": "Postergar la charla",
+          "azar": {
+            "p": 0.5,
+            "ok": {
+              "texto": "Se calmó solo, por ahora.",
+              "efectos": {}
+            },
+            "fail": {
+              "texto": "La relación no aguantó: se separaron.",
+              "efectos": {
+                "familia": {
+                  "pareja": false
+                },
+                "desgaste": 20
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "nacimiento",
+      "tipo": "vida",
+      "titulo": "¡Esperan un hijo!",
+      "cond": {
+        "pareja": true,
+        "hijosMenosDe": 3
+      },
+      "texto": "Tu pareja y vos reciben la noticia: la familia crece. Va a haber más alegría, más gastos y menos tiempo.",
+      "opciones": [
+        {
+          "label": "Celebrar y organizarte",
+          "efectos": {
+            "familia": {
+              "hijos": 1
+            },
+            "desgaste": -5
+          },
+          "resultado": "Nació tu hijo. La vida cambió para siempre."
+        }
+      ]
+    },
+    {
+      "id": "familia_acompana",
+      "tipo": "vida",
+      "titulo": "Tu familia en el acto",
+      "cond": {
+        "familia": true
+      },
+      "texto": "Tu familia te acompaña en un acto del barrio. La gente ve a alguien normal, con una vida como la suya.",
+      "opciones": [
+        {
+          "label": "Compartir el momento",
+          "efectos": {
+            "trustAll": 2,
+            "desgaste": -5
+          },
+          "resultado": "La imagen de familia sumó confianza en el barrio."
+        }
+      ]
+    },
+    {
+      "id": "jefe_presiona",
+      "tipo": "vida",
+      "titulo": "Tu jefe pone un límite",
+      "cond": {
+        "trabajo": "completo"
+      },
+      "texto": "Tu jefe te dice que tus ausencias se notan. Tenés que elegir entre el trabajo y la política.",
+      "opciones": [
+        {
+          "label": "Pedir jornada reducida",
+          "efectos": {
+            "trabajo": "reducido"
+          },
+          "resultado": "Quedaste con media jornada: más tiempo para el partido, menos ingreso."
+        },
+        {
+          "label": "Cumplir y aguantar",
+          "efectos": {
+            "desgaste": 8
+          },
+          "resultado": "Seguiste con todo. Te cuesta cada vez más."
+        },
+        {
+          "label": "Renunciar",
+          "efectos": {
+            "trabajo": "sin",
+            "trustAll": 1
+          },
+          "resultado": "Dejaste el trabajo para dedicarte de lleno. Sin sueldo, pero con todo el tiempo."
+        }
+      ]
+    },
+    {
+      "id": "ascenso_laboral",
+      "tipo": "vida",
+      "titulo": "Te ofrecen un ascenso en el trabajo",
+      "cond": {
+        "trabajo": "completo"
+      },
+      "texto": "Tu empleador reconoce tu desempeño y te ofrece un puesto mejor pago, con más responsabilidades.",
+      "opciones": [
+        {
+          "label": "Aceptar el ascenso",
+          "efectos": {
+            "trabajoMejora": 0.15,
+            "desgaste": 5
+          },
+          "resultado": "Ganás más, pero el cansancio se nota."
+        },
+        {
+          "label": "Rechazarlo",
+          "efectos": {},
+          "resultado": "Preferiste mantener tu tiempo."
+        }
+      ]
+    },
+    {
+      "id": "oferta_trabajo",
+      "tipo": "vida",
+      "titulo": "Surge una oportunidad de trabajo",
+      "cond": {
+        "trabajo": "sin"
+      },
+      "texto": "Alguien te ofrece un trabajo de media jornada. Volverías a tener un ingreso propio.",
+      "opciones": [
+        {
+          "label": "Aceptar la media jornada",
+          "efectos": {
+            "trabajo": "reducido"
+          },
+          "resultado": "Volviste a trabajar medio tiempo."
+        },
+        {
+          "label": "Rechazarla",
+          "efectos": {},
+          "resultado": "Seguís dedicado de lleno al partido."
+        }
+      ]
+    },
+    {
+      "id": "crisis_agotamiento",
+      "tipo": "vida",
+      "titulo": "Estás agotado",
+      "cond": {
+        "nunca": true
+      },
+      "texto": "Llevás demasiado tiempo sin parar y el cuerpo te pasa factura. Hoy casi no podés pensar.",
+      "opciones": [
+        {
+          "label": "Tomarte unos días",
+          "efectos": {
+            "descanso": 5,
+            "desgaste": -35
+          },
+          "resultado": "Frenaste a tiempo. Volvés con la cabeza despejada."
+        },
+        {
+          "label": "Seguir adelante",
+          "azar": {
+            "p": 0.4,
+            "ok": {
+              "texto": "Aguantaste una vez más, pero estás al límite.",
+              "efectos": {
+                "desgaste": -10
+              }
+            },
+            "fail": {
+              "texto": "Cometiste errores por cansancio y se notaron.",
+              "efectos": {
+                "trustAll": -4,
+                "money": -500,
+                "desgaste": -5
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

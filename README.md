@@ -21,6 +21,19 @@ Abrí http://localhost:8765. Para publicar (por ejemplo en Plesk) subí el conte
 - **Escalafón:** para ascender hay que cumplir varios requisitos a la vez (experiencia, afiliados, barrios con control, relación con tu líder y un puesto vacante). Se pide desde Partido.
 - **Rivales:** cada partido hace una acción a la vez, te puede quitar terreno, captar cuadros o bloquear misiones. Podés pactar con ellos (no agresión, apoyo en un barrio, favores), con riesgo de traición.
 
+## Interfaz
+
+- **Modo Rápido / Detallado** (barra superior o tecla `M`): Rápido muestra lo esencial; Detallado, todos los números y explicaciones. Es una preferencia del navegador, no de la partida.
+- **«Ahora»:** una franja con lo más importante del momento (vacante, ascenso listo, golpe rival, números rojos). Tocala para ir directo.
+- **Tooltips:** pasá el mouse o enfocá con `Tab` cualquier dato subrayado. El botón `?` abre el glosario completo.
+- **Atajos:** `Espacio` pausa, `0 1 2 3` velocidades, `Z R P Y D` pestañas, `M` modo, `?` ayuda, `Esc` cierra.
+
+## Tu personaje
+
+- **Habilidades** (Oratoria, Organización, Calle, Negociación, Finanzas): se entrenan haciendo misiones afines y mejoran con los puntos que ganás al ascender.
+- **Familia y trabajo:** tu situación familiar y laboral cambian tu tiempo, tus gastos y cuánto te duele un escándalo. Podés reducir jornada o dejar el trabajo, con consecuencias.
+- **Desgaste:** sube mientras estás ocupado y baja descansando. Alto, resta éxito; muy alto, provoca una crisis. Pestaña **Yo**.
+
 ## Guardar y recuperar la partida
 
 - **Autoguardado:** se guarda solo en este navegador (`localStorage`) en cada cambio. Al volver, el mapa ofrece **Continuar**.

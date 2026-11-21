@@ -2,6 +2,7 @@
 // avisos de choque y estimaciones para la interfaz. Sin DOM.
 import { rng } from './city.js';
 import { captacionRival } from './plantel.js';
+import * as personaje from './personaje.js';
 import { noAgresion, apoyoEn } from './pactos.js';
 
 export const rivales = g => (g.cfg.partidos?.partidos ?? []).filter(p => p.id !== 'otros');
@@ -178,7 +179,7 @@ function terminar(g, r, bot, rnd) {
   const a = bot.accion, def = defAccion(g, a), z = g.zonas[a.zona], B = g.cfg.rivales.base;
   if (a.tipo === 'propia') {
     sumarPresencia(g, a.zona, r.id, def.presencia);
-    const erosion = Math.min(z.control, def.erosion * presencia(g, a.zona)[r.id] / 0.25);
+    const erosion = Math.min(z.control, def.erosion * presencia(g, a.zona)[r.id] / 0.25 * personaje.erosionMult(g));
     if (z.control > 0 && erosion > 0) {
       z.control = clamp(z.control - erosion, 0, 1);
       g.note(`${r.nombre} ${def.texto} en ${z.nombre} y te quita terreno (−${(erosion * 100).toFixed(1)}% de control).`, 'rival');

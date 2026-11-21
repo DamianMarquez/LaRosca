@@ -1,6 +1,7 @@
 // Pactos con otros partidos: relación con cada rival, propuestas, efectos, traiciones. Sin DOM.
 import { registrarFavor } from './economia.js';
 import { bono } from './plantel.js';
+import * as personaje from './personaje.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const fin = Number.isFinite;
@@ -33,9 +34,9 @@ export function apoyosZona(g, zonaId, presenciaDe) {
 
 // Costo en dinero (el cargo de Campaña lo abarata) y probabilidad de que acepte
 export function oferta(g, rid, tipoId) {
-  const t = tipoDef(g, tipoId), rel = relacion(g, rid), camp = bono(g, 'campana');
-  const costo = Math.round(t.costoMoney * (1 - P(g).campana.descuento * camp));
-  let p = rel < t.requiere ? 0 : clamp(0.25 + ((rel - t.requiere) / 100) * 0.9 + P(g).campana.aceptacion * camp - 0.1 * g.alianzas.pactos.length, 0.05, 0.9);
+  const t = tipoDef(g, tipoId), rel = relacion(g, rid), camp = bono(g, 'campana'), neg = personaje.pactoBonus(g);
+  const costo = Math.round(t.costoMoney * (1 - P(g).campana.descuento * camp) * (1 - neg.descuento));
+  let p = rel < t.requiere ? 0 : clamp(0.25 + ((rel - t.requiere) / 100) * 0.9 + P(g).campana.aceptacion * camp + neg.aceptacion - 0.1 * g.alianzas.pactos.length, 0.05, 0.9);
   return { tipo: t, costo, p, relacion: rel };
 }
 
@@ -51,7 +52,7 @@ export function proponer(g, rid, tipoId, { zona = null, con = 'blanco' } = {}, r
   if (o.relacion < t.requiere) return { error: `${r.nombre} no te toma en serio todavía (necesitás relación ${t.requiere}; tenés ${Math.round(o.relacion)}).` };
   const cuenta = con === 'negro' ? 'black' : 'money';
   if (o.costo > 0 && g.player[cuenta] < o.costo) return { error: `Falta dinero ${con === 'negro' ? 'negro' : 'blanco'}.` };
-  g.alianzas.enfriamiento[rid] = g.day + P(g).enfriamiento;
+  g.alianzas.enfriamiento[rid] = g.day + P(g).enfriamiento - personaje.pactoBonus(g).enfriamiento;
   if (rnd() >= o.p) { cambiarRelacion(g, rid, -2); return { ok: false, texto: `${r.nombre} rechazó tu propuesta de «${t.nombre.toLowerCase()}».` }; }
   if (o.costo > 0) { g.player[cuenta] -= o.costo; if (con === 'negro') g.exposure = clamp(g.exposure + 6, 0, 100); }
   const pacto = { id: `p${g.day}_${rid}`, rival: rid, tipo: tipoId, desde: g.day, hasta: g.day + t.dias };
@@ -82,7 +83,7 @@ export function tick(g, rnd = Math.random) {
     if (g.day >= p.hasta) { terminar(g, p, null); continue; }
     const pop = Object.values(g.zonas).reduce((s, z) => s + z.pop, 0) || 1;
     const amenaza = Object.values(g.zonas).reduce((s, z) => s + z.pop * z.control, 0) / pop;
-    const h = P(g).traicion.base * (1 + P(g).traicion.porAmenaza * amenaza + (100 - relacion(g, p.rival)) / 100);
+    const h = P(g).traicion.base * (1 + P(g).traicion.porAmenaza * amenaza + (100 - relacion(g, p.rival)) / 100) * personaje.pactoBonus(g).traicion;
     if (rnd() < h) {
       const rid = p.rival, r = g.rival(rid);
       terminar(g, p, `${r.nombre} te traicionó`);

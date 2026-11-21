@@ -1,6 +1,7 @@
 // Economía del partido: ingresos y gastos mensuales, recaudación, dinero ilegal y deudas de favor. Sin DOM.
 import { rng } from './city.js';
 import { bono } from './plantel.js';
+import * as personaje from './personaje.js';
 import { cambiarRelacion } from './pactos.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -16,16 +17,17 @@ export const estadoInicial = () => ({ historial: [], enRojos: false });
 export function proyeccion(g) {
   const C = E(g), t = g.trasfondo, afil = g.afiliados;
   const ingresos = {
-    [`Aporte propio (${t?.nombre ?? 'trabajo'})`]: t?.ingresoMensual ?? 0,
+    [`Aporte propio (${t?.nombre ?? 'trabajo'})`]: personaje.aporteTrabajo(g),
     'Cuotas de afiliados': Math.round(afil * C.cuota.mensual * C.cuota.tasaPago * (1 + g.cfg.plantel.bonos.finanzas.cuotas * bono(g, 'finanzas'))),
   };
   // Los gastos fijos también escalan con el tamaño de la ciudad (sale menos una sede en Rawson que en Córdoba)
-  const mult = (t?.gastoMult ?? 1) * (1 - g.cfg.plantel.bonos.finanzas.gastos * bono(g, 'finanzas')) * clamp(g.escala, 0.35, 1) * (1 + (C.rangoCosto ?? 0) * g.player.rank), G = C.gastos;   // más rango, más estructura que sostener
+  const mult = (t?.gastoMult ?? 1) * (1 - g.cfg.plantel.bonos.finanzas.gastos * bono(g, 'finanzas')) * clamp(g.escala, 0.35, 1) * (1 + (C.rangoCosto ?? 0) * g.player.rank) * personaje.gastoFijoMult(g), G = C.gastos;   // más rango, más estructura que sostener
   const gastos = {
     'Materiales y movilidad': Math.round((G.materiales.base + G.materiales.porAfiliado * afil) * mult),
     ...(afil >= g.umbral(G.sede.desdeAfiliados) ? { 'Sede partidaria': Math.round(G.sede.costo * mult) } : {}),
     ...(g.plantel.miembros.some(m => m.cargo) ? { 'Viáticos del plantel': Math.round((g.plantel.miembros.filter(m => m.cargo && !m.cargo.startsWith('ref:')).length * G.plantel.porCargo + g.plantel.miembros.filter(m => m.cargo?.startsWith('ref:')).length * G.plantel.porReferente) * mult) } : {}),
     ...(g.equipo > 0 ? { 'Equipo de trabajo': Math.round(g.equipo * G.equipo.porMiembro * mult) } : {}),
+    ...(personaje.gastoFamiliar(g) > 0 ? { 'Gastos de tu familia': personaje.gastoFamiliar(g) } : {}),
   };
   const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
   return { ingresos, gastos, totalIngresos: sum(ingresos), totalGastos: sum(gastos), neto: sum(ingresos) - sum(gastos) };
@@ -36,7 +38,7 @@ export function ingresoMision(g, m, z) {
   const c = m.ilegal ? m.ingresoNegro : m.ingreso;
   if (!c) return 0;
   const bruto = c.base + (z.pop / 1000) * c.porMilHab;
-  return Math.round(m.ilegal ? bruto : bruto * (0.5 + z.trust / 100) * (g.trasfondo?.donMult ?? 1));
+  return Math.round(m.ilegal ? bruto : bruto * (0.5 + z.trust / 100) * (g.trasfondo?.donMult ?? 1) * personaje.recaudacionMult(g));
 }
 
 // ---------- Favores: lo que se debe a quien te dio plata sin recibo ----------

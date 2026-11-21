@@ -1,5 +1,6 @@
 // Escalafón: requisitos visibles para ascender, puestos disponibles en cada nivel y ascenso del jugador. Sin DOM.
 import * as linea from './linea.js';
+import * as personaje from './personaje.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const E = g => g.cfg.escalafon;
@@ -43,6 +44,7 @@ export function ascender(g) {
   }
   g.plantel.avisoAscenso = null;
   linea.alAscender(g);
+  personaje.alAscender(g);
   g.note(`¡Ascendiste a ${g.rankName}!`, 'promo');
   g.emit('promotion');
   return null;

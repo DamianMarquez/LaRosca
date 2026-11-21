@@ -10,28 +10,44 @@
 </head>
 <body>
   <header class="hud">
-    <div class="brand"><span class="brand-mark">LR</span> LA ROSCA</div>
-    <div class="clock" id="clock">
-      <span id="date">—</span>
-      <button data-speed="0" title="Pausa (espacio)">⏸</button>
-      <button data-speed="1" title="x1">▶</button>
-      <button data-speed="2" title="x2">▶▶</button>
-      <button data-speed="4" title="x4">▶▶▶</button>
+    <div class="brand"><span class="brand-mark">LR</span><span class="brand-txt"> LA ROSCA</span></div>
+    <div class="clock" id="clock" role="group" aria-label="Tiempo">
+      <span id="date" aria-live="off">—</span>
+      <button data-speed="0" aria-label="Pausa" data-tip-texto="Pausa (Espacio o 0)">⏸</button>
+      <button data-speed="1" aria-label="Velocidad normal" data-tip-texto="Velocidad normal (1)">▶</button>
+      <button data-speed="2" aria-label="Velocidad doble" data-tip-texto="Doble velocidad (2)">▶▶</button>
+      <button data-speed="4" aria-label="Velocidad cuádruple" data-tip-texto="Cuádruple velocidad (3)">▶▶▶</button>
     </div>
-    <div class="stats" id="stats"></div>
-    <div class="file-actions">
-      <button id="btn-export" title="Descargar la partida como archivo JSON">⬇ Exportar</button>
-      <button id="btn-import" title="Cargar una partida desde un archivo JSON">⬆ Importar</button>
-      <button id="btn-new" title="Borrar la partida guardada y empezar de nuevo">↺ Nueva</button>
+    <div class="modo" role="group" aria-label="Nivel de detalle">
+      <button data-modo-btn="rapido" aria-pressed="true" data-tip-texto="Lo esencial, sin ruido. Atajo: M">Rápido</button>
+      <button data-modo-btn="detallado" aria-pressed="false" data-tip-texto="Todos los números y explicaciones. Atajo: M">Detallado</button>
+    </div>
+    <div class="stats" id="stats" aria-label="Estado del partido"></div>
+    <div class="hud-tools">
+      <button id="btn-ayuda" aria-label="Ayuda y glosario" data-tip-texto="Glosario y atajos de teclado (?)">?</button>
+      <details class="menu-partida" id="menu-partida">
+        <summary aria-label="Menú de la partida">Partida</summary>
+        <div class="menu">
+          <button id="btn-export" title="Descargar la partida como archivo JSON">Exportar partida</button>
+          <button id="btn-import" title="Cargar una partida desde un archivo JSON">Importar partida</button>
+          <button id="btn-new" title="Borrar la partida guardada y empezar de nuevo">Empezar de nuevo</button>
+        </div>
+      </details>
     </div>
   </header>
   <main class="stage">
-    <svg id="map" aria-label="Mapa de Argentina"></svg>
+    <div class="mapa-wrap">
+      <svg id="map" aria-label="Mapa de Argentina"></svg>
+      <div class="leyenda" id="leyenda" aria-hidden="true"><span>Control</span><i class="grad"></i><span>0 → 100%</span><span class="rm"><i></i> rival actuando</span></div>
+      <div class="maphover" id="maphover" role="status" hidden></div>
+    </div>
     <div id="resizer" class="resizer" role="separator" aria-orientation="vertical" aria-label="Ajustar el ancho del panel" tabindex="0" title="Arrastrá para cambiar el ancho (doble clic: restablecer)"></div>
     <aside class="panel" id="panel"></aside>
   </main>
   <footer class="log" id="log"></footer>
   <div id="modal-root"></div>
+  <div id="ayuda-root"></div>
+  <div id="onboarding-root"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <input id="import-file" type="file" accept="application/json,.json" hidden>
   <script type="module" src="src/main.js"></script>

@@ -1,0 +1,24 @@
+{
+  "nota": "Habilidades del jugador. Se entrenan haciendo misiones afines (hasta el nivel 3 solo con la práctica) y se mejoran con puntos al ascender (hasta el nivel 5). xpNivel: experiencia acumulada para llegar a cada nivel natural.",
+  "xpNivel": [0, 30, 90, 200],
+  "entrenamiento": {"exito": 10, "fallo": 4},
+  "puntosPorAscenso": 2,
+  "maximo": 5,
+  "ramas": [
+    {"id": "oratoria", "nombre": "Oratoria", "texto": "Hablar en público y convencer.", "entrena": ["volantes", "pintadas", "reunion"],
+     "porNivel": "+1,5 puntos de éxito en volantes, pintadas y reuniones",
+     "ventajas": {"3": "Voz de barrio: las reuniones abiertas duran 15% menos.", "5": "Carisma: las misiones de oratoria llegan a un 10% más de gente."}},
+    {"id": "organizacion", "nombre": "Organización", "texto": "Ordenar gente y trabajo.", "entrena": ["reunion", "comunidad"],
+     "porNivel": "+4% de afiliación y −1 punto de penalización al delegar",
+     "ventajas": {"3": "Estructura: tus cuadros se van un 15% menos.", "5": "Mano derecha: tenés un lugar más para delegar desde el principio."}},
+    {"id": "calle", "nombre": "Calle", "texto": "Conocer el barrio y escuchar.", "entrena": ["visitas", "comunidad", "volantes"],
+     "porNivel": "+1,5 puntos de éxito en visitas y misiones comunitarias",
+     "ventajas": {"3": "Confianza ganada: lo que ganás en confianza con visitas y ayuda comunitaria sube 25%.", "5": "Raíces: los rivales te quitan un 30% menos de control."}},
+    {"id": "negociacion", "nombre": "Negociación", "texto": "Pactar y convencer a otros dirigentes.", "entrena": [],
+     "porNivel": "+4% de aceptación en pactos y −5% de costo",
+     "ventajas": {"3": "Buen oído: podés volver a proponerle un pacto a un rival 5 días antes.", "5": "Palabra firme: tus aliados te traicionan la mitad de las veces."}},
+    {"id": "finanzas", "nombre": "Finanzas", "texto": "Cuidar la plata del partido.", "entrena": ["colecta", "rifa", "aporte_comerciante", "cena", "merchandising"],
+     "porNivel": "+5% en lo que recaudás y +1 punto de éxito al recaudar",
+     "ventajas": {"3": "Austeridad: los gastos fijos del partido bajan 10%.", "5": "Manos limpias: lo que hacés en negro deja 20% menos de exposición."}}
+  ]
+}

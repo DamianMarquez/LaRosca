@@ -1,4 +1,6 @@
 // Motor de eventos: sorteo diario, condiciones y aplicación de efectos. Sin DOM.
+import * as personaje from './personaje.js';
+
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // Probabilidad diaria de escándalo según la exposición por dinero opaco (0..100)
@@ -13,7 +15,7 @@ export function sortear(g, rnd = Math.random) {
   const esc = E.eventos.find(e => e.tipo === 'escandalo');
   if (esc && g.exposure > 0 && rnd() < probEscandalo(g.exposure, E.base.probEscandaloMax)) return esc;
   if (g.day - g.ultimoEvento < E.base.enfriamientoDias || rnd() >= E.base.probDiaria) return null;
-  const elegibles = E.eventos.filter(e => e.tipo !== 'escandalo' && g.day >= (e.minDia ?? 0) && g.player.rank >= (e.minRango ?? 0));
+  const elegibles = E.eventos.filter(e => e.tipo !== 'escandalo' && e.tipo !== 'vida' && g.day >= (e.minDia ?? 0) && g.player.rank >= (e.minRango ?? 0));
   const total = elegibles.reduce((s, e) => s + (e.peso ?? 1), 0);
   let r = rnd() * total;
   for (const e of elegibles) { r -= e.peso ?? 1; if (r <= 0) return e; }
@@ -23,13 +25,14 @@ export function sortear(g, rnd = Math.random) {
 // ¿Puede el jugador pagar la opción? Devuelve el motivo si no.
 export function noPuede(g, op) {
   const c = op.costo ?? {};
-  if ((c.money ?? 0) > g.player.money) return 'Falta dinero blanco';
-  if ((c.black ?? 0) > g.player.black) return 'Falta dinero negro';
+  if ((c.money ?? 0) > 0 && c.money > g.player.money) return 'Falta dinero blanco';   // sin costo siempre se puede, incluso en rojos
+  if ((c.black ?? 0) > 0 && c.black > g.player.black) return 'Falta dinero negro';
   return null;
 }
 
 export function aplicar(g, ef = {}, evento = null) {
   const p = g.player;
+  personaje.aplicar(g, ef);                              // desgaste, descanso, familia y trabajo
   if (ef.money) p.money += ef.money;                    // puede quedar en rojos: la deuda no se perdona sola
   if (ef.black) p.black = Math.max(0, p.black + ef.black);
   if (ef.xp) p.xp += ef.xp;
@@ -37,7 +40,7 @@ export function aplicar(g, ef = {}, evento = null) {
   if (ef.exposureSet !== undefined) g.exposure = clamp(ef.exposureSet, 0, 100);
   if (ef.trustAll) {
     // Un trasfondo como el de abogado amortigua lo que un escándalo le cuesta a tu reputación
-    const v = ef.trustAll < 0 && evento?.tipo === 'escandalo' ? ef.trustAll * (g.trasfondo?.escandaloMult ?? 1) : ef.trustAll;
+    const v = ef.trustAll < 0 && evento?.tipo === 'escandalo' ? ef.trustAll * (g.trasfondo?.escandaloMult ?? 1) * personaje.vulnerabilidad(g) : ef.trustAll;
     for (const z of Object.values(g.zonas)) z.trust = clamp(z.trust + v, 0, 100);
   }
   if (ef.delay) for (const j of g.jobs) j.end += ef.delay;

@@ -8,6 +8,7 @@ import * as eco from './economia.js';
 import * as plantel from './plantel.js';
 import * as escalafon from './escalafon.js';
 import * as pactos from './pactos.js';
+import * as personaje from './personaje.js';
 import { SCHEMA } from './save.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -23,6 +24,7 @@ export class Game {
       trasfondo: eco.trasfondoDe(cfg, partido?.trasfondo) ? partido.trasfondo : eco.trasfondoPorDefecto(cfg) };
     this.city = city ?? generateCity(provId, cap.ciudad, cap.pop);
     this.zonas = Object.fromEntries(this.city.zonas.map(z => [z.id, { ...z, control: 0, trust: cfg.start.trust, efectos: [] }]));
+    this.jugador = personaje.iniciar(this, partido);   // habilidades, familia, trabajo y desgaste del personaje
     this.player = { rank: 0, xp: 0, money: this.trasfondo?.dineroInicial ?? cfg.start.money, black: cfg.start.black ?? 0 };
     this.economia = eco.estadoInicial();   // historial de cierres mensuales y números rojos
     this.favores = [];                     // deudas con quienes te dieron plata sin recibo
@@ -58,9 +60,9 @@ export class Game {
   // Capacidad de acción: el jugador es una sola persona (1 acción personal a la vez).
   // Al subir de rango se suma "equipo" para delegar, que es un contador aparte.
   get slots() { return this.cfg.personalSlots[this.player.rank]; }
-  get equipo() { return this.cfg.equipoSlots[this.player.rank]; }
+  get equipo() { return this.cfg.equipoSlots[this.player.rank] + personaje.equipoExtra(this); }
   usados(modo) { return this.jobs.filter(j => (j.modo ?? 'personal') === modo).length; }
-  get freeSlots() { return this.slots - this.usados('personal'); }
+  get freeSlots() { return this.slots - this.usados('personal') - (this.jugador.descanso ? 1 : 0); }   // descansar también ocupa tu acción
   get freeEquipo() { return this.equipo - this.usados('delegada'); }
   get rankName() { return this.cfg.ranks[this.player.rank]; }
   get nextXp() { return this.cfg.promotionXp[this.player.rank + 1] ?? null; }
@@ -72,7 +74,7 @@ export class Game {
   umbral(n) { return Math.max(2, Math.round(n * this.escala)); }
   get trasfondo() { return eco.trasfondoDe(this.cfg, this.partido.trasfondo); }
   // Afiliados formales: una parte de los seguidores se afilia (pagan cuota y cuentan para el escalafón)
-  get afiliados() { return Math.round(this.followers * this.cfg.economia.tasaAfiliacion * (1 + this.cfg.plantel.bonos.interna * plantel.bono(this, 'interna'))); }
+  get afiliados() { return Math.round(this.followers * this.cfg.economia.tasaAfiliacion * (1 + this.cfg.plantel.bonos.interna * plantel.bono(this, 'interna')) * personaje.afiliacionMult(this)); }
   get etapa() { return plantel.etapa(this); }
   // Experiencia ganada en una misión: el cargo de Formación la potencia
   ganarXp(n) { this.player.xp += Math.round((n ?? 0) * (1 + this.cfg.plantel.bonos.formacion * plantel.bono(this, 'formacion'))); }
@@ -85,7 +87,7 @@ export class Game {
   ofertaPacto(rid, tipo) { return pactos.oferta(this, rid, tipo); }
   proponerPacto(rid, tipo, opts) { return pactos.proponer(this, rid, tipo, opts); }
   // Duración efectiva de una misión: el trasfondo da más o menos tiempo libre
-  dias(m) { return Math.max(1, Math.round(m.dias * (this.trasfondo?.duracionMult ?? 1))); }
+  dias(m) { return Math.max(1, Math.round(m.dias * personaje.tiempoMult(this, m))); }
   // Proyección del mes (ingresos − gastos) y dinero esperado de una recaudación
   get flujo() { return eco.proyeccion(this); }
   ingresoEsperado(m, z) { return eco.ingresoMision(this, m, z); }
@@ -112,7 +114,8 @@ export class Game {
       if (c) { chance += c; nombres.push(p.nombre); }
       expoMult *= x.expoMult ?? 1; negroConfianzaMult *= x.negroConfianzaMult ?? 1; alcanceMult *= x.alcanceMult ?? 1;
     }
-    return { chance, expoMult, negroConfianzaMult, alcanceMult, nombres };
+    // las habilidades del jugador (Oratoria 5, Finanzas 5) se suman a lo que dan los principios
+    return { chance, expoMult: expoMult * personaje.expoIlegalMult(this), negroConfianzaMult, alcanceMult: alcanceMult * personaje.alcanceMult(this, m), nombres };
   }
 
   // Efecto de la densidad (hab/km²) de la zona sobre una misión.
@@ -150,6 +153,7 @@ export class Game {
     const ref = plantel.referenteDe(this, z.id);
     if (ref && m.categoria !== 'finanzas') factors.push([`Referente del barrio (${ref.nombre})`, Math.round(this.cfg.plantel.referente.chancePorCap * ref.capacidad / 100)]);
     for (const a of pactos.apoyosZona(this, z.id, rid => presencia(this, z.id)[rid])) factors.push([`Apoyo de ${this.rival(a.rival).nombre} (pacto)`, a.puntos]);
+    factors.push(...personaje.factores(this, m, modo));
     const tc = this.trasfondo?.chance?.[m.id];
     if (tc) factors.push([`Trasfondo (${this.trasfondo.nombre})`, tc]);
     const [desde, hasta] = ventana ?? [this.day, this.day + this.dias(m)];
@@ -158,7 +162,7 @@ export class Game {
     }
     const fl = linea.factorLider(this);
     if (fl) factors.push(fl);
-    const c = clamp(factors.reduce((s, f) => s + f[1], 0), 5, 95);
+    const c = clamp(Math.round(factors.reduce((s, f) => s + f[1], 0)), 5, 95);
     return { c, factors };
   }
 
@@ -175,6 +179,7 @@ export class Game {
 
   canStart(m, zoneId, pago = 'blanco', modo = 'personal') {
     if (this.pending) return 'Resolvé el evento pendiente';
+    if (modo !== 'delegada' && this.jugador.descanso) return 'Estás descansando';
     if (this.player.rank < m.minRank) return 'Requiere rango: ' + this.cfg.ranks[m.minRank];
     if (modo === 'delegada') {
       if (!m.delegable) return 'No se puede delegar';
@@ -208,6 +213,7 @@ export class Game {
   // Avanza un día simulado
   advanceDay() {
     this.day++;
+    this._ocupadoHoy = this.jobs.some(j => (j.modo ?? 'personal') === 'personal');   // el día cuenta como trabajado si empezó con una acción en curso
     for (const j of this.jobs.filter(j => j.end <= this.day)) this.resolve(j);
     this.jobs = this.jobs.filter(j => j.end > this.day);
     // Con el tiempo, la confianza se enfría lentamente hacia 20 si no hay actividad
@@ -219,6 +225,7 @@ export class Game {
     plantel.tick(this);
     escalafon.tick(this);
     pactos.tick(this);
+    personaje.tick(this);
     const ev = sortear(this);
     if (ev) {
       this.pending = ev;
@@ -230,6 +237,11 @@ export class Game {
 
   // Aceptar o rechazar la directiva que baja el partido / tu líder
   responderDirectiva(aceptar) { return linea.responder(this, aceptar); }
+
+  // El personaje: gastar un punto de habilidad, cambiar de trabajo y descansar
+  invertirHabilidad(id) { return personaje.invertir(this, id); }
+  cambiarTrabajo(estado) { return personaje.cambiarTrabajo(this, estado); }
+  descansar() { return personaje.descansar(this); }
 
   // El jugador elige una opción del evento pendiente
   choose(idx) {
@@ -248,11 +260,12 @@ export class Game {
     const m = this.mission(j.mission), z = this.zonas[j.zone], pr = this.modsPrincipios(m);
     const ok = Math.random() * 100 < this.chance(m, z, j.pago, j.modo ?? 'personal', [j.start, j.end]).c;
     linea.alResolver(this, j, ok);
+    personaje.alResolver(this, m, ok);
     if (m.categoria === 'finanzas') { this.resolverFinanzas(m, z, pr, ok); this.checkPromotion(); return; }
     if (ok) {
       const al = this.alcance(m, z);
       z.control = clamp(z.control + al.control, 0, 1);
-      z.trust = clamp(z.trust + m.gana.trust * (j.pago === 'negro' ? pr.negroConfianzaMult : 1), 0, 100);
+      z.trust = clamp(z.trust + m.gana.trust * (j.pago === 'negro' ? pr.negroConfianzaMult : 1) * personaje.confianzaMult(this, m), 0, 100);
       this.ganarXp(m.gana.xp);
       this.note(`«${m.nombre}» salió bien en ${z.nombre}: llegaste a unas ${al.personas.toLocaleString('es-AR')} personas.`, 'ok');
     } else {
@@ -301,7 +314,7 @@ export class Game {
     return {
       schemaVersion: SCHEMA, prov: this.prov, partido: this.partido, day: this.day, exposure: this.exposure, ultimoEvento: this.ultimoEvento,
       player: this.player, jobs: this.jobs, log: this.log, pending: this.pending?.id ?? null,
-      bots: this.bots, historialRivales: this.historialRivales, linea: this.linea, economia: this.economia, favores: this.favores, plantel: this.plantel, rivalesPlantel: this.rivalesPlantel, alianzas: this.alianzas,
+      bots: this.bots, historialRivales: this.historialRivales, linea: this.linea, economia: this.economia, favores: this.favores, jugador: this.jugador, plantel: this.plantel, rivalesPlantel: this.rivalesPlantel, alianzas: this.alianzas,
       zonas: Object.fromEntries(Object.entries(this.zonas).map(([id, z]) => [id, { control: +z.control.toFixed(5), trust: +z.trust.toFixed(3), efectos: z.efectos, rivalPres: z.rivalPres }])),
     };
   }
@@ -334,6 +347,7 @@ export class Game {
     g.plantel = plantel.sanear(g, d.plantel);
     g.rivalesPlantel = plantel.sanearRivales(g, d.rivalesPlantel, rivales(g));
     g.alianzas = pactos.sanear(g, d.alianzas);
+    g.jugador = personaje.sanear(g, d.jugador, d.partido);
     return g;
   }
 }

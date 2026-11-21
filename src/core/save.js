@@ -10,7 +10,7 @@ const isNum = v => typeof v === 'number' && Number.isFinite(v);
 export const limpiarNombre = s => String(s ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, NOMBRE_MAX);
 
 // Valida la fundación (nombre + principios). Devuelve null si es válida o un mensaje en español.
-export function validarFundacion(nombre, principios, cfg, trasfondo) {
+export function validarFundacion(nombre, principios, cfg, trasfondo, familia) {
   const n = limpiarNombre(nombre);
   if (n.length < NOMBRE_MIN) return `El nombre del partido necesita al menos ${NOMBRE_MIN} letras.`;
   const rival = cfg.partidos?.partidos.find(p => p.nombre.toLowerCase() === n.toLowerCase());
@@ -21,6 +21,7 @@ export function validarFundacion(nombre, principios, cfg, trasfondo) {
   if (!principios.every(id => cat.some(p => p.id === id))) return 'Principio desconocido.';
   const ts = cfg.trasfondos?.trasfondos;
   if (ts && trasfondo !== undefined && !ts.some(x => x.id === trasfondo)) return 'Elegí un trasfondo.';
+  if (cfg.vida && familia !== undefined && !cfg.vida.familia.some(x => x.id === familia)) return 'Elegí tu situación familiar.';
   return null;
 }
 
@@ -43,6 +44,7 @@ export function validate(d, cfg) {
   }
   // Campos opcionales (partidas anteriores no los traen): si están, deben tener la forma esperada; el contenido se sanea al cargar
   const obj = v => v && typeof v === 'object' && !Array.isArray(v);
+  if (d.jugador !== undefined && !obj(d.jugador)) return 'Datos del personaje inválidos.';
   if (d.alianzas !== undefined && !obj(d.alianzas)) return 'Datos de los pactos inválidos.';
   if (d.plantel !== undefined && !obj(d.plantel)) return 'Datos del plantel inválidos.';
   if (d.rivalesPlantel !== undefined && !obj(d.rivalesPlantel)) return 'Datos de los cuadros rivales inválidos.';

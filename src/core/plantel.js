@@ -1,6 +1,7 @@
 // Plantel del partido: personas con nombre en cargos y como referentes de barrio, vacantes y reemplazos,
 // deserciones (se bajan o se pasan a un rival) y los cuadros de los partidos rivales. Sin DOM.
 import { rng } from './city.js';
+import * as personaje from './personaje.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const fin = Number.isFinite;
@@ -81,7 +82,7 @@ export const nombreVacante = (g, v) => (v.cargo ? cargoDef(g, v.cargo).nombre : 
 export function designar(g, vid, cid) {
   const v = g.plantel.vacantes.find(x => x.id === vid), c = v?.candidatos.find(x => x.id === cid);
   if (!v || !c) return 'Esa vacante ya no existe.';
-  if (c.costo > g.player.money) return 'Falta dinero para incorporarlo.';
+  if (c.costo > 0 && c.costo > g.player.money) return 'Falta dinero para incorporarlo.';
   g.player.money -= c.costo;
   let m = c.miembroId ? g.plantel.miembros.find(x => x.id === c.miembroId) : null;
   if (!m) { m = { id: c.id.replace(/^c_/, ''), nombre: c.nombre, capacidad: c.capacidad, lealtad: c.lealtad, ambicion: c.ambicion, principios: c.principios, origen: c.origen, desde: g.day, cargo: null }; g.plantel.miembros.push(m); }
@@ -160,7 +161,7 @@ export function tick(g, rnd = Math.random) {
   // 3) vacantes que vencen: queda un interino
   for (const v of [...S.vacantes]) if (g.day >= v.vence) interino(g, v);
   // 4) deserciones
-  const mult = 1 - 0.25 * bono(g, 'interna'), rojos = g.economia?.enRojos ? 1.5 : 1;
+  const mult = (1 - 0.25 * bono(g, 'interna')) * personaje.desercionMult(g), rojos = g.economia?.enRojos ? 1.5 : 1;
   for (const m of [...S.miembros]) {
     const h = P.desercion.base * (1 + (100 - m.lealtad) / 40) * (1 + m.ambicion / 150) * (1 + g.exposure / 80) * rojos * mult * (m.cargo ? 1 : 0.5);
     if (rnd() >= h) continue;

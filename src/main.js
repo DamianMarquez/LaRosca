@@ -3,23 +3,32 @@ import { Game } from './core/game.js';
 import { fitView } from './core/city.js';
 import { GameMap } from './map/map.js';
 import { validate, validarFundacion, limpiarNombre, resumen, SAVE_KEY, MAX_BYTES } from './core/save.js';
-import { renderPanel, renderStats, renderLog, renderEvento, renderFundacion, progresoMapa, marcasRivales } from './ui/ui.js';
+import { limpiarNombrePersona } from './core/personaje.js';
+import { renderPanel, renderStats, renderLog, renderEvento, renderFundacion, progresoMapa, marcasRivales, uiState } from './ui/ui.js';
+import { initTooltips } from './ui/tooltip.js';
+import { aplicarModo, setModo, toggleModo } from './ui/modo.js';
+import { iniciarOnboarding } from './ui/onboarding.js';
 
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const clock = new Clock();
-let game = null, map = null, selected = null, tab = 'zona';
+let game = null, map = null, selected = null, tab = 'zona', tooltips = null;
 let CFG = null, PROV = null;
 
 async function boot() {
   const load = u => fetch(u).then(r => r.json()).catch(() => null);
   [PROV, CFG] = await Promise.all([load('data/provincias.json'), load('data/game.json')]);
-  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos']]) CFG[k] = await load(`data/${f}.json`);
+  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida']]) CFG[k] = await load(`data/${f}.json`);
+  CFG.eventos.eventos.push(...(CFG.vida?.eventos ?? []));        // los eventos de vida los sortea el personaje, no el azar general
+  CFG.glosario = await load('data/glosario.json');
+  tooltips = initTooltips(CFG.glosario ?? {});
+  aplicarModo();
   setSpeed(0);
   showPicker();
   wireClock();
   wireSaveButtons();
   wirePanel();
+  wireUI();
   wireResizer();
   let last = performance.now();
   (function loop(now) {
@@ -116,6 +125,7 @@ function toast(msg) {
 // ---------- Pantalla 1: elegir provincia ----------
 function showPicker() {
   map = new GameMap($('#map'), PROV, {
+    onHover: hoverMapa,
     onSelect(id) {
       if (!id) return;
       map.select(id);
@@ -132,25 +142,30 @@ function showPicker() {
 }
 
 // ---------- Pantalla 2: fundación (nombre + principios) ----------
-function showFounding(provId, provName, st = { nombre: '', principios: [], trasfondo: CFG.trasfondos?.trasfondos.find(t => t.id === 'empleado_publico')?.id ?? CFG.trasfondos?.trasfondos[0]?.id, error: '' }) {
+function showFounding(provId, provName, st = { nombre: '', principios: [], trasfondo: CFG.trasfondos?.trasfondos.find(t => t.id === 'empleado_publico')?.id ?? CFG.trasfondos?.trasfondos[0]?.id, familia: 'soltero', jugadorNombre: '', error: '' }) {
   const panel = $('#panel');
   panel.innerHTML = renderFundacion(CFG, provName, st);
-  const name = $('#party-name');
+  const name = $('#party-name'), yo = $('#player-name');
+  yo.oninput = () => { st.jugadorNombre = yo.value; };
   name.oninput = () => { st.nombre = name.value; st.error = ''; $('#founding-error').textContent = ''; };
+  panel.querySelectorAll('[data-familia]').forEach(c => c.onchange = () => {
+    st.nombre = name.value; st.jugadorNombre = yo.value; st.error = ''; st.familia = c.dataset.familia;
+    showFounding(provId, provName, st);
+  });
   panel.querySelectorAll('[data-trasfondo]').forEach(c => c.onchange = () => {
-    st.nombre = name.value; st.error = ''; st.trasfondo = c.dataset.trasfondo;
+    st.nombre = name.value; st.jugadorNombre = yo.value; st.error = ''; st.trasfondo = c.dataset.trasfondo;
     showFounding(provId, provName, st);
   });
   panel.querySelectorAll('[data-principio]').forEach(c => c.onchange = () => {
-    st.nombre = name.value; st.error = '';
+    st.nombre = name.value; st.jugadorNombre = yo.value; st.error = '';
     const id = c.dataset.principio;
     st.principios = c.checked ? [...st.principios, id] : st.principios.filter(x => x !== id);
     showFounding(provId, provName, st);
   });
   $('#found-confirm').onclick = () => {
-    const err = validarFundacion(name.value, st.principios, CFG, st.trasfondo);
+    const err = validarFundacion(name.value, st.principios, CFG, st.trasfondo, st.familia);
     if (err) { st.error = err; $('#founding-error').textContent = err; return; }
-    startGame(provId, provName, null, { nombre: limpiarNombre(name.value), principios: st.principios, trasfondo: st.trasfondo });
+    startGame(provId, provName, null, { nombre: limpiarNombre(name.value), principios: st.principios, trasfondo: st.trasfondo, familia: st.familia, jugadorNombre: limpiarNombrePersona(yo.value) });
   };
   name.focus();
 }
@@ -170,10 +185,11 @@ async function startGame(provId, provName, saved = null, partido = null) {
   };
   const old = $('#map'), fresh = old.cloneNode(false);
   old.replaceWith(fresh);
-  map = new GameMap(fresh, game.city, { onSelect(id) { selected = id; if (id) tab = 'zona'; map.select(id); refreshAll(); } });
+  map = new GameMap(fresh, game.city, { onHover: hoverMapa, onSelect(id) { selected = id; if (id) tab = 'zona'; map.select(id); refreshAll(); } });
   selected = null; tab = 'zona';
   document.body.classList.add('playing');
   refreshAll();
+  iniciarOnboarding();
 }
 
 // Clicks del panel por delegación: pestañas y lanzamiento de misiones
@@ -182,6 +198,20 @@ function wirePanel() {
     if (!game) return;
     const t = e.target.closest('[data-tab]');
     if (t) { tab = t.dataset.tab; refreshAll(); return; }
+    const ir = e.target.closest('[data-ir]');                              // franja "Ahora": ir directo a donde hay que decidir
+    if (ir && !ir.disabled) { tab = ir.dataset.ir; if (ir.dataset.sub) uiState.datosSub = ir.dataset.sub; refreshAll(); return; }
+    const sub = e.target.closest('[data-sub]');
+    if (sub) { uiState.datosSub = sub.dataset.sub; refreshAll(); return; }
+    const hab = e.target.closest('[data-habilidad]');
+    if (hab && !hab.disabled) { const err = game.invertirHabilidad(hab.dataset.habilidad); if (err) toast(err); refreshAll(); return; }
+    const trb = e.target.closest('[data-trabajo]');
+    if (trb && !trb.disabled) {
+      if (trb.dataset.trabajo === 'sin' && !confirm('Dejar el trabajo corta tu ingreso propio y no se puede revertir por tu cuenta. ¿Seguro?')) return;
+      const err = game.cambiarTrabajo(trb.dataset.trabajo); if (err) toast(err); refreshAll(); return;
+    }
+    if (e.target.closest('[data-descansar]') && !e.target.closest('[data-descansar]').disabled) { const err = game.descansar(); if (err) toast(err); refreshAll(); return; }
+    const mas = e.target.closest('[data-mas]');                            // "…" de una misión (modo Rápido)
+    if (mas) { const id = mas.dataset.mas; uiState.abiertas.has(id) ? uiState.abiertas.delete(id) : uiState.abiertas.add(id); refreshAll(); return; }
     if (e.target.closest('[data-ascender]')) { const b = e.target.closest('[data-ascender]'); if (!b.disabled) { const err = game.ascender(); if (err) toast(err); else { setSpeed(0); refreshAll(); } } return; }
     const ds = e.target.closest('[data-designar]');
     if (ds && !ds.disabled) { const err = game.designar(ds.dataset.designar, ds.dataset.cand); if (err) toast(err); refreshAll(); return; }
@@ -208,8 +238,10 @@ function refreshAll() {
   map.setRivalMarks(marcasRivales(game));
   $('#stats').innerHTML = renderStats(game);
   panel.innerHTML = renderPanel(game, selected, clock.day, tab);
+  tooltips?.revisar();
   panel.scrollTop = top;                                   // no perder el lugar al refrescar
   $('#log').innerHTML = renderLog(game);
+  $('#leyenda').hidden = false;
   showEvent();
   autosave();
 }
@@ -241,10 +273,68 @@ function setSpeed(s) {
 }
 function wireClock() {
   document.querySelectorAll('[data-speed]').forEach(b => b.addEventListener('click', () => setSpeed(+b.dataset.speed)));
-  addEventListener('keydown', e => {
-    if (e.code === 'Space' && !/INPUT|TEXTAREA|BUTTON/.test(e.target.tagName)) { e.preventDefault(); setSpeed(clock.speed ? 0 : 1); }
-  });
   $('#date').textContent = Clock.format(0);
+}
+
+// ---------- Interfaz general: modo, ayuda, menú, registro, secciones, hover del mapa y atajos ----------
+function hoverMapa(id, x, y) {
+  const el = $('#maphover');
+  if (!id) { el.hidden = true; return; }
+  const wrap = $('.mapa-wrap').getBoundingClientRect();
+  let html;
+  if (game) {
+    const z = game.zonas[id]; if (!z) { el.hidden = true; return; }
+    html = `<b>${esc(z.nombre)}</b><br>Control ${Math.round(z.control * 100)}% · ${z.pop.toLocaleString('es-AR')} hab.`;
+    const rivales = Object.entries(game.bots).filter(([, b]) => b.accion?.zona === id).map(([rid, b]) => `${esc(game.rival(rid).nombre)}: ${esc((b.accion.tipo === 'propia' ? '' : b.accion.fase === 'planeada' ? 'prepara ' : '') + (b.accion.tipo === 'propia' ? game.cfg.rivales.propias : game.cfg.rivales.acciones).find(a => a.id === b.accion.accion).nombre.toLowerCase())}`);
+    if (rivales.length) html += `<br><small>${rivales.join('<br>')}</small>`;
+  } else {
+    const p = PROV?.provincias.find(q => q.id === id); if (!p) { el.hidden = true; return; }
+    html = `<b>${esc(p.nombre)}</b><br>Capital: ${esc(CFG.capitales[id]?.ciudad ?? '')}`;
+  }
+  el.innerHTML = html; el.hidden = false;
+  el.style.left = Math.min(x - wrap.left + 14, wrap.width - 200) + 'px'; el.style.top = Math.max(8, y - wrap.top - 10) + 'px';
+}
+
+function mostrarAyuda() {
+  const root = $('#ayuda-root'), g = CFG.glosario ?? {};
+  const atajos = [['Espacio', 'Pausa / seguir'], ['0 · 1 · 2 · 3', 'Pausa, x1, x2, x4'], ['Z · R · P · Y · D', 'Pestañas Zona, Rivales, Partido, Yo, Datos'], ['M', 'Cambiar Rápido / Detallado'], ['?', 'Esta ayuda'], ['Esc', 'Cerrar']];
+  root.innerHTML = `<div class="modal" data-cerrar-ayuda><div class="card ayuda" role="dialog" aria-modal="true" aria-label="Ayuda y glosario">
+    <div class="ayuda-head"><h2>Ayuda</h2><button id="cerrar-ayuda" aria-label="Cerrar ayuda">✕</button></div>
+    <p class="muted small-p">Modo <b>Rápido</b>: lo esencial. Modo <b>Detallado</b>: todos los números y explicaciones. Pasá el mouse (o enfocá con Tab) sobre cualquier dato subrayado para ver qué significa.</p>
+    <h3>Atajos de teclado</h3><div class="kv">${atajos.map(([k, d]) => `<span><kbd>${esc(k)}</kbd></span><b>${esc(d)}</b>`).join('')}</div>
+    <h3>Glosario</h3><dl class="glosario">${Object.values(g).map(x => `<dt>${esc(x.titulo)}</dt><dd>${esc(x.texto)}</dd>`).join('')}</dl></div></div>`;
+  const cerrar = () => { root.innerHTML = ''; };
+  root.querySelector('#cerrar-ayuda').onclick = cerrar;
+  root.querySelector('[data-cerrar-ayuda]').onclick = e => { if (e.target.hasAttribute('data-cerrar-ayuda')) cerrar(); };
+  root.querySelector('#cerrar-ayuda').focus();
+}
+
+function wireUI() {
+  document.querySelectorAll('[data-modo-btn]').forEach(b => b.addEventListener('click', () => setModo(b.dataset.modoBtn)));
+  $('#btn-ayuda').onclick = mostrarAyuda;
+  const menu = $('#menu-partida');                                  // el menú se cierra al elegir algo o al tocar afuera
+  menu.addEventListener('click', e => { if (e.target.closest('.menu button')) menu.open = false; });
+  document.addEventListener('click', e => { if (!menu.contains(e.target)) menu.open = false; });
+  // Registro: filtro y "ver más"
+  $('#log').addEventListener('click', e => {
+    const f = e.target.closest('[data-log-filtro]'), t = e.target.closest('[data-log-toggle]');
+    if (f) uiState.logFiltro = f.dataset.logFiltro; else if (t) uiState.logAbierto = !uiState.logAbierto; else return;
+    $('#log').innerHTML = renderLog(game);
+  });
+  // Secciones plegables de la zona: recordar cuáles dejó abiertas
+  $('#panel').addEventListener('toggle', e => { const sec = e.target.dataset?.sec; if (sec) uiState.secs[sec] = e.target.open; }, true);
+  // Atajos de teclado (no se activan mientras se escribe)
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    const k = e.key.toLowerCase();
+    if (k === 'escape') { $('#ayuda-root').innerHTML = ''; return; }
+    if (e.code === 'Space' && !/BUTTON|SUMMARY/.test(e.target.tagName)) { e.preventDefault(); setSpeed(clock.speed ? 0 : 1); return; }
+    if ({ 0: 0, 1: 1, 2: 2, 3: 4 }[k] !== undefined && game) { setSpeed({ 0: 0, 1: 1, 2: 2, 3: 4 }[k]); return; }
+    if (k === 'm') { toggleModo(); return; }
+    if (k === '?') { mostrarAyuda(); return; }
+    const pestaña = { z: 'zona', r: 'rivales', p: 'partido', y: 'yo', d: 'datos' }[k];
+    if (pestaña && game) { tab = pestaña; refreshAll(); }
+  });
 }
 
 boot();
