@@ -28,6 +28,7 @@
       <details class="menu-partida" id="menu-partida">
         <summary aria-label="Menú de la partida">Partida</summary>
         <div class="menu">
+          <button id="btn-pausa" role="menuitemcheckbox" aria-checked="true" title="Pausar el juego y mostrar el resultado cuando termina una acción">Pausar al terminar: sí</button>
           <button id="btn-export" title="Descargar la partida como archivo JSON">Exportar partida</button>
           <button id="btn-import" title="Cargar una partida desde un archivo JSON">Importar partida</button>
           <button id="btn-new" title="Borrar la partida guardada y empezar de nuevo">Empezar de nuevo</button>
@@ -35,6 +36,7 @@
       </details>
     </div>
   </header>
+  <nav class="vistas" id="vistas" role="tablist" aria-label="Secciones" hidden></nav>
   <main class="stage">
     <div class="mapa-wrap">
       <svg id="map" aria-label="Mapa de Argentina"></svg>
@@ -44,10 +46,12 @@
     <div id="resizer" class="resizer" role="separator" aria-orientation="vertical" aria-label="Ajustar el ancho del panel" tabindex="0" title="Arrastrá para cambiar el ancho (doble clic: restablecer)"></div>
     <aside class="panel" id="panel"></aside>
   </main>
+  <section class="vista" id="vista" aria-label="Vista general" hidden></section>
   <footer class="log" id="log"></footer>
   <div id="modal-root"></div>
   <div id="ayuda-root"></div>
   <div id="onboarding-root"></div>
+  <div id="informe-root"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <input id="import-file" type="file" accept="application/json,.json" hidden>
   <script type="module" src="src/main.js"></script>

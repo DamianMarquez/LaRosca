@@ -196,6 +196,14 @@ export function captarCuadro(g, rivalId, mid, con = 'blanco', rnd = Math.random)
   return null;
 }
 
+// Probabilidad diaria de que un miembro abandone (la usa el turno y la ficha de persona)
+export function riesgo(g, m) {
+  const P = C(g), mult = (1 - 0.25 * bono(g, 'interna')) * personaje.desercionMult(g), rojos = g.economia?.enRojos ? 1.5 : 1;
+  return P.desercion.base * (1 + (100 - m.lealtad) / 40) * (1 + m.ambicion / 150) * (1 + g.exposure / 80) * rojos * mult * (m.cargo ? 1 : 0.5);
+}
+export const riesgoMensual = (g, m) => 1 - Math.pow(1 - riesgo(g, m), 30);
+export const antiguedad = (g, m) => Math.max(0, g.day - (m.desde ?? 0));
+
 // ---------- Turno diario ----------
 export function tick(g, rnd = Math.random) {
   const S = g.plantel, P = C(g), afil = g.afiliados;
@@ -217,9 +225,8 @@ export function tick(g, rnd = Math.random) {
   // 3) vacantes que vencen: queda un interino
   for (const v of [...S.vacantes]) if (g.day >= v.vence) interino(g, v);
   // 4) deserciones
-  const mult = (1 - 0.25 * bono(g, 'interna')) * personaje.desercionMult(g), rojos = g.economia?.enRojos ? 1.5 : 1;
   for (const m of [...S.miembros]) {
-    const h = P.desercion.base * (1 + (100 - m.lealtad) / 40) * (1 + m.ambicion / 150) * (1 + g.exposure / 80) * rojos * mult * (m.cargo ? 1 : 0.5);
+    const h = riesgo(g, m);
     if (rnd() >= h) continue;
     if (g.exposure > 60 && rnd() < 0.5) baja(g, m, 'renunció por los escándalos del partido');
     else if (m.ambicion > 55 && rnd() < 0.6) {

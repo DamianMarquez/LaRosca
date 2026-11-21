@@ -190,7 +190,7 @@ export function tick(g, rnd = Math.random) {
   const ocupado = g._ocupadoHoy ?? g.jobs.some(j => (j.modo ?? 'personal') === 'personal');
   if (J.descanso) {
     J.desgaste = clamp(J.desgaste + D.descansoDia, 0, 100);
-    if (g.day >= J.descanso.hasta) { J.descanso = null; g.note('Terminaste de descansar.', 'ok'); }
+    if (g.day >= J.descanso.hasta) { J.descanso = null; g.note('Terminaste de descansar.', 'ok'); g.informar?.({ tipo: 'descanso', nombre: 'Descanso', zona: null, zonaNombre: '', ok: true, texto: 'Terminaste de descansar: volvés con más energía.', cambios: []}); }
   } else J.desgaste = clamp(J.desgaste + (ocupado ? D.diaOcupado * desgasteMult(g) : D.diaLibre) + (g.carga?.desgaste ?? 0), 0, 100);
   if (J.desgaste >= D.crisis && g.day - J.ultimaCrisis >= D.enfriamientoCrisis && !g.pending) {
     const ev = g.cfg.eventos?.eventos.find(e => e.id === 'crisis_agotamiento');

@@ -259,9 +259,24 @@ export class Game {
     return r;
   }
 
+  // Informe transitorio (no se guarda): lo que pasó al terminar una acción, para mostrarlo al jugador
+  informar(inf) { (this.informes ??= []).push({ dia: this.day, ...inf }); if (this.informes.length > 8) this.informes.shift(); }
+
   resolve(j) {
+    const m = this.mission(j.mission), z = this.zonas[j.zone];
+    const a = { Control: z.control * 100, Confianza: z.trust, Dinero: this.player.money, Negro: this.player.black, Exposición: this.exposure, XP: this.player.xp };
+    const tope = this.log[0];
+    this._resolver(j);
+    const nuevas = []; for (const e of this.log) { if (e === tope) break; nuevas.push(e); }
+    const d = { Control: z.control * 100, Confianza: z.trust, Dinero: this.player.money, Negro: this.player.black, Exposición: this.exposure, XP: this.player.xp };
+    const cambios = Object.keys(a).map(k => ({ k, d: d[k] - a[k] })).filter(c => Math.abs(c.d) >= (c.k === 'Dinero' || c.k === 'Negro' ? 1 : 0.5));
+    this.informar({ tipo: 'mision', nombre: m.nombre, zona: j.zone, zonaNombre: z.nombre, ok: this._ok !== false, modo: j.modo ?? 'personal', texto: nuevas.length ? nuevas[nuevas.length - 1].text : '', cambios });
+  }
+
+  _resolver(j) {
     const m = this.mission(j.mission), z = this.zonas[j.zone], pr = this.modsPrincipios(m);
     const ok = Math.random() * 100 < this.chance(m, z, j.pago, j.modo ?? 'personal', [j.start, j.end]).c;
+    this._ok = ok;
     linea.alResolver(this, j, ok);
     personaje.alResolver(this, m, ok);
     if (m.categoria === 'finanzas') { this.resolverFinanzas(m, z, pr, ok); this.checkPromotion(); return; }

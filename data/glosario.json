@@ -110,5 +110,9 @@
   "delegar": {
     "titulo": "Delegar",
     "texto": "Solo administrás lo que está por debajo de tu rango. Cada cargo lo manejás vos (según tus habilidades) o se lo das a un subordinado: rinde según su capacidad, pero depende de su lealtad."
+  },
+  "riesgo": {
+    "titulo": "Riesgo de irse",
+    "texto": "Probabilidad estimada de que esa persona abandone el partido en los próximos 30 días. Sube con baja lealtad, mucha ambición, exposición alta y números rojos; un buen Organigrama interno la baja."
   }
 }
