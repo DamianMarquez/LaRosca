@@ -1,0 +1,154 @@
+{
+  "nota": "Plantel del partido. Cada cargo bien ocupado da un bono proporcional a la capacidad (0-100) del titular. Los nombres son ficticios.",
+  "nombres": {
+    "nombre": [
+      "Ramiro",
+      "Elena",
+      "Gustavo",
+      "Marta",
+      "Esteban",
+      "Norma",
+      "Julián",
+      "Silvia",
+      "Aníbal",
+      "Lorena",
+      "Mateo",
+      "Irene",
+      "Facundo",
+      "Graciela",
+      "Lucas",
+      "Beatriz",
+      "Tomás",
+      "Rosario",
+      "Hernán",
+      "Paula",
+      "Ciro",
+      "Delia",
+      "Bruno",
+      "Ofelia"
+    ],
+    "apellido": [
+      "Quiroga",
+      "Bermúdez",
+      "Ledesma",
+      "Salvatierra",
+      "Ocampo",
+      "Arrieta",
+      "Valdivia",
+      "Sandoval",
+      "Echeverría",
+      "Montoya",
+      "Ferreyra",
+      "Cabrera",
+      "Herrera",
+      "Lucero",
+      "Paz",
+      "Bustos",
+      "Medina",
+      "Carrizo",
+      "Sosa",
+      "Villalba",
+      "Rojas",
+      "Aguirre",
+      "Toledo",
+      "Barrionuevo"
+    ]
+  },
+  "etapas": [
+    {
+      "id": "incipiente",
+      "nombre": "Incipiente",
+      "desde": 0
+    },
+    {
+      "id": "local",
+      "nombre": "Presencia local",
+      "desde": 40
+    },
+    {
+      "id": "multizona",
+      "nombre": "Organización multizona",
+      "desde": 200
+    },
+    {
+      "id": "red",
+      "nombre": "Red provincial",
+      "desde": 1000
+    }
+  ],
+  "cargos": [
+    {
+      "id": "territorial",
+      "nombre": "Organización territorial",
+      "desdeAfiliados": 30,
+      "efecto": "Tus misiones llegan a más gente (hasta +20% de alcance)"
+    },
+    {
+      "id": "interna",
+      "nombre": "Organización interna",
+      "desdeAfiliados": 30,
+      "efecto": "Se afilia más gente y hay menos deserciones (hasta +25% afiliación, −25% bajas)"
+    },
+    {
+      "id": "comunicacion",
+      "nombre": "Comunicación",
+      "desdeAfiliados": 80,
+      "efecto": "Volantes y pintadas rinden más (hasta +6 puntos de éxito)"
+    },
+    {
+      "id": "finanzas",
+      "nombre": "Administración y finanzas",
+      "desdeAfiliados": 80,
+      "efecto": "Más cuotas y menos gastos (hasta +30% cuotas, −15% gastos)"
+    },
+    {
+      "id": "formacion",
+      "nombre": "Formación y programa",
+      "desdeAfiliados": 200,
+      "efecto": "Ganás más experiencia (hasta +30% XP)"
+    },
+    {
+      "id": "campana",
+      "nombre": "Campaña y alianzas",
+      "desdeAfiliados": 200,
+      "efecto": "Mejores reuniones (hasta +5 puntos) y mejores pactos con otros partidos"
+    }
+  ],
+  "bonos": {
+    "territorial": 0.2,
+    "interna": 0.25,
+    "comunicacion": 6,
+    "finanzas": {
+      "cuotas": 0.3,
+      "gastos": 0.15
+    },
+    "formacion": 0.3,
+    "campana": 5
+  },
+  "referente": {
+    "control": 0.1,
+    "porAfiliados": 25,
+    "chancePorCap": 5
+  },
+  "vacante": {
+    "dias": 30,
+    "candidatos": 3,
+    "costoPorCap": 12
+  },
+  "desercion": {
+    "base": 0.0004
+  },
+  "interino": {
+    "capacidad": [
+      18,
+      32
+    ],
+    "lealtad": 40
+  },
+  "captar": {
+    "costoBlanco": 2500,
+    "costoNegro": 2000,
+    "exposicionNegro": 4
+  },
+  "fundadores": 3
+}

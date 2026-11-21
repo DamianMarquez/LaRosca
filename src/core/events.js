@@ -28,14 +28,18 @@ export function noPuede(g, op) {
   return null;
 }
 
-export function aplicar(g, ef = {}) {
+export function aplicar(g, ef = {}, evento = null) {
   const p = g.player;
-  if (ef.money) p.money = Math.max(0, p.money + ef.money);
+  if (ef.money) p.money += ef.money;                    // puede quedar en rojos: la deuda no se perdona sola
   if (ef.black) p.black = Math.max(0, p.black + ef.black);
   if (ef.xp) p.xp += ef.xp;
   if (ef.exposure) g.exposure = clamp(g.exposure + ef.exposure, 0, 100);
   if (ef.exposureSet !== undefined) g.exposure = clamp(ef.exposureSet, 0, 100);
-  if (ef.trustAll) for (const z of Object.values(g.zonas)) z.trust = clamp(z.trust + ef.trustAll, 0, 100);
+  if (ef.trustAll) {
+    // Un trasfondo como el de abogado amortigua lo que un escándalo le cuesta a tu reputación
+    const v = ef.trustAll < 0 && evento?.tipo === 'escandalo' ? ef.trustAll * (g.trasfondo?.escandaloMult ?? 1) : ef.trustAll;
+    for (const z of Object.values(g.zonas)) z.trust = clamp(z.trust + v, 0, 100);
+  }
   if (ef.delay) for (const j of g.jobs) j.end += ef.delay;
 }
 
@@ -51,8 +55,8 @@ export function resolver(g, evento, idx, rnd = Math.random) {
     ok = rnd() < op.azar.p;
     const r = ok ? op.azar.ok : op.azar.fail;
     texto = r.texto;
-    aplicar(g, r.efectos);
+    aplicar(g, r.efectos, evento);
   }
-  aplicar(g, op.efectos);
+  aplicar(g, op.efectos, evento);
   return { texto, ok };
 }

@@ -2,8 +2,12 @@
 import { generateCity } from './city.js';
 import { perfil, intencionVoto } from './electoral.js';
 import { sortear, resolver } from './events.js';
-import { tick as tickRivales, efectosActivos, nuevosBots, choques, sanearBots, sanearHistorial, sanearPres } from './rivals.js';
+import { tick as tickRivales, efectosActivos, nuevosBots, choques, sanearBots, sanearHistorial, sanearPres, rivales, presencia } from './rivals.js';
 import * as linea from './linea.js';
+import * as eco from './economia.js';
+import * as plantel from './plantel.js';
+import * as escalafon from './escalafon.js';
+import * as pactos from './pactos.js';
 import { SCHEMA } from './save.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -15,16 +19,22 @@ export class Game {
     this.cfg = cfg;
     const cap = cfg.capitales[provId];
     this.prov = { id: provId, nombre: provName };
-    this.partido = { nombre: partido?.nombre ?? 'Tu partido', principios: partido?.principios ?? [] };
+    this.partido = { nombre: partido?.nombre ?? 'Tu partido', principios: partido?.principios ?? [],
+      trasfondo: eco.trasfondoDe(cfg, partido?.trasfondo) ? partido.trasfondo : eco.trasfondoPorDefecto(cfg) };
     this.city = city ?? generateCity(provId, cap.ciudad, cap.pop);
     this.zonas = Object.fromEntries(this.city.zonas.map(z => [z.id, { ...z, control: 0, trust: cfg.start.trust, efectos: [] }]));
-    this.player = { rank: 0, xp: 0, money: cfg.start.money, black: cfg.start.black ?? 0 };
+    this.player = { rank: 0, xp: 0, money: this.trasfondo?.dineroInicial ?? cfg.start.money, black: cfg.start.black ?? 0 };
+    this.economia = eco.estadoInicial();   // historial de cierres mensuales y números rojos
+    this.favores = [];                     // deudas con quienes te dieron plata sin recibo
     this.exposure = 0;    // 0..100: riesgo de escándalo por uso de dinero opaco
     this.pending = null;  // evento esperando decisión del jugador
     this.ultimoEvento = 0;
     this.bots = nuevosBots(this);      // acción actual de cada rival (una a la vez)
     this.historialRivales = [];        // acciones rivales ya hechas, para el feed y los choques
     this.linea = linea.iniciar(this);  // líder superior y directivas
+    this.plantel = plantel.iniciar(this);                          // cuadros con nombre, cargos y vacantes
+    this.rivalesPlantel = plantel.iniciarRivales(this, rivales(this)); // líder y cuadros de cada rival
+    this.alianzas = pactos.iniciar(this);                          // relación con cada rival y pactos vigentes
     this.jobs = [];       // {mission, zone, start, end, pago, modo}
     this.log = [];        // {day, text, kind}
     this.day = 0;
@@ -54,6 +64,32 @@ export class Game {
   get freeEquipo() { return this.equipo - this.usados('delegada'); }
   get rankName() { return this.cfg.ranks[this.player.rank]; }
   get nextXp() { return this.cfg.promotionXp[this.player.rank + 1] ?? null; }
+  // Escala de la ciudad: los umbrales de afiliados se achican en ciudades chicas (Rawson no es Córdoba)
+  get escala() {
+    this._escala ??= clamp(Math.pow(Object.values(this.zonas).reduce((s, z) => s + z.pop, 0) / 1.2e6, 0.65), 0.12, 1.5);
+    return this._escala;
+  }
+  umbral(n) { return Math.max(2, Math.round(n * this.escala)); }
+  get trasfondo() { return eco.trasfondoDe(this.cfg, this.partido.trasfondo); }
+  // Afiliados formales: una parte de los seguidores se afilia (pagan cuota y cuentan para el escalafón)
+  get afiliados() { return Math.round(this.followers * this.cfg.economia.tasaAfiliacion * (1 + this.cfg.plantel.bonos.interna * plantel.bono(this, 'interna'))); }
+  get etapa() { return plantel.etapa(this); }
+  // Experiencia ganada en una misión: el cargo de Formación la potencia
+  ganarXp(n) { this.player.xp += Math.round((n ?? 0) * (1 + this.cfg.plantel.bonos.formacion * plantel.bono(this, 'formacion'))); }
+  // Escalafón: checklist para el próximo rango, pedir el ascenso, designar vacantes y captar cuadros rivales
+  get requisitos() { return escalafon.requisitos(this); }
+  ascender() { return escalafon.ascender(this); }
+  designar(vid, cid) { return plantel.designar(this, vid, cid); }
+  captarCuadro(rivalId, mid, con) { return plantel.captarCuadro(this, rivalId, mid, con); }
+  // Pactos: oferta (costo y probabilidad) y propuesta a un rival
+  ofertaPacto(rid, tipo) { return pactos.oferta(this, rid, tipo); }
+  proponerPacto(rid, tipo, opts) { return pactos.proponer(this, rid, tipo, opts); }
+  // Duración efectiva de una misión: el trasfondo da más o menos tiempo libre
+  dias(m) { return Math.max(1, Math.round(m.dias * (this.trasfondo?.duracionMult ?? 1))); }
+  // Proyección del mes (ingresos − gastos) y dinero esperado de una recaudación
+  get flujo() { return eco.proyeccion(this); }
+  ingresoEsperado(m, z) { return eco.ingresoMision(this, m, z); }
+  pagarFavor(id, con) { return eco.pagarFavor(this, id, con); }
   get followers() { return Math.round(Object.values(this.zonas).reduce((s, z) => s + z.pop * z.control * 0.02, 0)); }
 
   note(text, kind = 'info') { this.log.unshift({ day: this.day, text, kind }); this.log.length = Math.min(this.log.length, 60); }
@@ -91,7 +127,8 @@ export class Game {
 
   // Personas alcanzadas por la misión y cuánto sube el control del barrio (0..1)
   alcance(m, z) {
-    const personas = Math.round(m.alcance * this.densidadEfecto(m, z).mult * this.modsPrincipios(m).alcanceMult);
+    if (!m.alcance) return { personas: 0, control: 0 };   // recaudación: no mueve control
+    const personas = Math.round(m.alcance * this.densidadEfecto(m, z).mult * this.modsPrincipios(m).alcanceMult * (1 + this.cfg.plantel.bonos.territorial * plantel.bono(this, 'territorial')));
     const control = Math.min(this.cfg.densidad.maxControlPorMision, personas / Math.max(z.pop, 100));
     return { personas, control };
   }
@@ -108,7 +145,14 @@ export class Game {
     if (modo === 'delegada') factors.push(['Equipo con menos experiencia', -this.cfg.delegacion.penal]);
     const pr = this.modsPrincipios(m);
     if (pr.chance) factors.push([`Principios (${pr.nombres.join(', ')})`, pr.chance]);
-    const [desde, hasta] = ventana ?? [this.day, this.day + m.dias];
+    if (['volantes', 'pintadas'].includes(m.id)) { const t = plantel.titular(this, 'comunicacion'); if (t) factors.push([`Comunicación (${t.nombre})`, Math.round(this.cfg.plantel.bonos.comunicacion * t.capacidad / 100)]); }
+    if (m.id === 'reunion') { const t = plantel.titular(this, 'campana'); if (t) factors.push([`Campaña y alianzas (${t.nombre})`, Math.round(this.cfg.plantel.bonos.campana * t.capacidad / 100)]); }
+    const ref = plantel.referenteDe(this, z.id);
+    if (ref && m.categoria !== 'finanzas') factors.push([`Referente del barrio (${ref.nombre})`, Math.round(this.cfg.plantel.referente.chancePorCap * ref.capacidad / 100)]);
+    for (const a of pactos.apoyosZona(this, z.id, rid => presencia(this, z.id)[rid])) factors.push([`Apoyo de ${this.rival(a.rival).nombre} (pacto)`, a.puntos]);
+    const tc = this.trasfondo?.chance?.[m.id];
+    if (tc) factors.push([`Trasfondo (${this.trasfondo.nombre})`, tc]);
+    const [desde, hasta] = ventana ?? [this.day, this.day + this.dias(m)];
     for (const c of choques(this, m, z.id, desde, hasta)) {
       factors.push([`Choque con ${this.rival(c.rival).nombre}: ${c.accion.nombre.toLowerCase()}${c.enCurso ? '' : ` (en ${c.enDias} d)`}`, c.chance]);
     }
@@ -142,7 +186,8 @@ export class Game {
     if (pago === 'negro') {
       if (!m.negro) return 'No admite dinero negro';
       if (this.player.black < m.costo) return 'Falta dinero negro';
-    } else if (this.player.money < m.costo) return 'Falta dinero';
+    } else if (m.costo > 0 && this.player.money < 0) return 'Números rojos';
+    else if (m.costo > 0 && this.player.money < m.costo) return 'Falta dinero';
     if (this.jobs.some(j => j.zone === zoneId && j.mission === m.id)) return 'Ya en curso aquí';
     return null;
   }
@@ -155,7 +200,7 @@ export class Game {
       this.exposure = clamp(this.exposure + Math.round(m.negro.expo * this.modsPrincipios(m).expoMult), 0, 100);
       linea.alUsarNegro(this);
     } else this.player.money -= m.costo;
-    this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + m.dias, pago, modo });
+    this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + this.dias(m), pago, modo });
     this.note(`${modo === 'delegada' ? 'Delegaste' : 'Empezaste'} «${m.nombre}» en ${this.zonas[zoneId].nombre}${pago === 'negro' ? ' con dinero negro' : ''}.`);
     return true;
   }
@@ -170,6 +215,10 @@ export class Game {
     this.exposure = Math.max(0, this.exposure - 0.15);        // el olvido enfría los rumores
     tickRivales(this);
     linea.tick(this);
+    eco.tick(this);
+    plantel.tick(this);
+    escalafon.tick(this);
+    pactos.tick(this);
     const ev = sortear(this);
     if (ev) {
       this.pending = ev;
@@ -199,11 +248,12 @@ export class Game {
     const m = this.mission(j.mission), z = this.zonas[j.zone], pr = this.modsPrincipios(m);
     const ok = Math.random() * 100 < this.chance(m, z, j.pago, j.modo ?? 'personal', [j.start, j.end]).c;
     linea.alResolver(this, j, ok);
+    if (m.categoria === 'finanzas') { this.resolverFinanzas(m, z, pr, ok); this.checkPromotion(); return; }
     if (ok) {
       const al = this.alcance(m, z);
       z.control = clamp(z.control + al.control, 0, 1);
       z.trust = clamp(z.trust + m.gana.trust * (j.pago === 'negro' ? pr.negroConfianzaMult : 1), 0, 100);
-      this.player.xp += m.gana.xp;
+      this.ganarXp(m.gana.xp);
       this.note(`«${m.nombre}» salió bien en ${z.nombre}: llegaste a unas ${al.personas.toLocaleString('es-AR')} personas.`, 'ok');
     } else {
       z.trust = clamp(z.trust + m.falla.trust, 0, 100);
@@ -213,22 +263,45 @@ export class Game {
     this.checkPromotion();
   }
 
-  checkPromotion() {
-    const p = this.player;
-    while (p.rank < this.cfg.ranks.length - 1 && p.xp >= this.cfg.promotionXp[p.rank + 1]) {
-      p.rank++;
-      linea.alAscender(this);
-      this.note(`¡Ascendiste a ${this.rankName}!`, 'promo');
-      this.emit('promotion');
+  // Recaudación: legal (plata blanca) o ilegal (plata negra con exposición y deuda de favor)
+  resolverFinanzas(m, z, pr, ok) {
+    const f = n => '$' + Math.round(n).toLocaleString('es-AR');
+    if (ok) {
+      const monto = this.ingresoEsperado(m, z);
+      z.trust = clamp(z.trust + (m.gana.trust ?? 0), 0, 100);
+      this.ganarXp(m.gana.xp ?? 0);
+      if (m.ilegal) {
+        this.player.black += monto;
+        this.exposure = clamp(this.exposure + Math.round(m.expo * pr.expoMult), 0, 100);
+        const fav = eco.registrarFavor(this, monto);
+        this.note(`«${m.nombre}» en ${z.nombre}: conseguiste ${f(monto)} en negro. Quedaste en deuda con ${fav.nombre} (${f(fav.valor)}).`, 'info');
+      } else {
+        this.player.money += monto;
+        this.note(`«${m.nombre}» en ${z.nombre}: recaudaste ${f(monto)}.`, 'ok');
+      }
+    } else {
+      z.trust = clamp(z.trust + m.falla.trust, 0, 100);
+      if (m.ilegal) {
+        this.exposure = clamp(this.exposure + Math.round(m.expo * 1.5 * pr.expoMult), 0, 100);
+        this.note(`«${m.nombre}» salió mal en ${z.nombre}: no cobraste y creció la sospecha.`, 'bad');
+        if (m.id === 'desvio' && !this.pending) {
+          const esc = this.cfg.eventos?.eventos.find(e => e.tipo === 'escandalo');
+          if (esc) { this.pending = esc; this.ultimoEvento = this.day; this.emit('event'); }
+        }
+      } else this.note(`«${m.nombre}» en ${z.nombre}: casi no se juntó nada.`, 'bad');
     }
   }
+
+  // El ascenso ya no es automático: se pide desde Partido cuando se cumplen todos los requisitos.
+  // Acá solo se avisa una vez cuando el jugador queda en condiciones.
+  checkPromotion() { escalafon.revisarAviso(this); }
 
   // Estado serializable. Las zonas guardan solo lo que cambia: el resto sale de data/ciudades.
   toJSON() {
     return {
       schemaVersion: SCHEMA, prov: this.prov, partido: this.partido, day: this.day, exposure: this.exposure, ultimoEvento: this.ultimoEvento,
       player: this.player, jobs: this.jobs, log: this.log, pending: this.pending?.id ?? null,
-      bots: this.bots, historialRivales: this.historialRivales, linea: this.linea,
+      bots: this.bots, historialRivales: this.historialRivales, linea: this.linea, economia: this.economia, favores: this.favores, plantel: this.plantel, rivalesPlantel: this.rivalesPlantel, alianzas: this.alianzas,
       zonas: Object.fromEntries(Object.entries(this.zonas).map(([id, z]) => [id, { control: +z.control.toFixed(5), trust: +z.trust.toFixed(3), efectos: z.efectos, rivalPres: z.rivalPres }])),
     };
   }
@@ -244,7 +317,7 @@ export class Game {
         .map(e => ({ rival: e.rival, accion: e.accion, hasta: e.hasta }));
     }
     const p = d.player;
-    g.player = { rank: clamp(Math.floor(p.rank), 0, cfg.ranks.length - 1), xp: Math.max(0, p.xp), money: Math.max(0, p.money), black: Math.max(0, p.black) };
+    g.player = { rank: clamp(Math.floor(p.rank), 0, cfg.ranks.length - 1), xp: Math.max(0, p.xp), money: clamp(p.money, -1e9, 1e12), black: Math.max(0, p.black) };
     g.day = Math.floor(d.day);
     g.exposure = clamp(d.exposure, 0, 100);
     g.ultimoEvento = isFinite(d.ultimoEvento) ? d.ultimoEvento : g.day;
@@ -256,6 +329,11 @@ export class Game {
     g.bots = sanearBots(g, d.bots);
     g.historialRivales = sanearHistorial(g, d.historialRivales);
     g.linea = linea.sanear(g, d.linea);
+    g.economia = eco.sanear(g, d.economia);
+    g.favores = eco.sanearFavores(g, d.favores);
+    g.plantel = plantel.sanear(g, d.plantel);
+    g.rivalesPlantel = plantel.sanearRivales(g, d.rivalesPlantel, rivales(g));
+    g.alianzas = pactos.sanear(g, d.alianzas);
     return g;
   }
 }

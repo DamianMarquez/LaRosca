@@ -1,0 +1,50 @@
+{
+  "nota": "Pactos con otros partidos. requiere: relación mínima con ese rival. costo en dinero (blanco o negro). Un buen titular de Campaña y alianzas mejora la aceptación y abarata el pacto.",
+  "relacion": {
+    "base": 30,
+    "porPrincipio": 12,
+    "deriva": 0.05
+  },
+  "max": 3,
+  "enfriamiento": 10,
+  "traicion": {
+    "base": 0.0015,
+    "porAmenaza": 3
+  },
+  "tipos": [
+    {
+      "id": "no_agresion",
+      "nombre": "No agresión",
+      "dias": 45,
+      "requiere": 35,
+      "costoMoney": 1500,
+      "texto": "El rival no ejecuta golpes contra vos mientras dure."
+    },
+    {
+      "id": "apoyo_barrio",
+      "nombre": "Apoyo en un barrio",
+      "dias": 60,
+      "requiere": 50,
+      "costoMoney": 2500,
+      "zona": true,
+      "texto": "En ese barrio el rival no compite y te da un empujón (más cuanto más presencia tenga ahí)."
+    },
+    {
+      "id": "favores",
+      "nombre": "Intercambio de favores",
+      "dias": 30,
+      "requiere": 55,
+      "costoMoney": 0,
+      "recibe": 3000,
+      "texto": "Te da plata ahora, pero le quedás debiendo un favor."
+    }
+  ],
+  "campana": {
+    "aceptacion": 0.15,
+    "descuento": 0.2
+  },
+  "lider": {
+    "desaprueba": -4,
+    "aprueba": 2
+  }
+}

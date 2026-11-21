@@ -1,0 +1,11 @@
+{
+  "nota": "Trasfondo del jugador: de qué vive. ingresoMensual: aporte propio al partido. dineroInicial: ahorros con los que fundás. duracionMult: tiempo libre (>1 = tus acciones tardan más; <1 = más rápidas). donMult: multiplica lo que recaudás legalmente. gastoMult: multiplica los gastos fijos del partido. escandaloMult: multiplica la pérdida de confianza en un escándalo. chance: puntos de éxito por misión.",
+  "trasfondos": [
+    {"id": "docente", "nombre": "Docente", "texto": "Conocés a las familias del barrio. Ganás poco y das clases a la tarde.", "ingresoMensual": 900, "dineroInicial": 2500, "duracionMult": 1.1, "chance": {"visitas": 4, "comunidad": 3}},
+    {"id": "comerciante", "nombre": "Comerciante", "texto": "Tenés un local y contactos con otros comerciantes. El negocio te quita tiempo.", "ingresoMensual": 1500, "dineroInicial": 3500, "duracionMult": 1.15, "donMult": 1.25},
+    {"id": "abogado", "nombre": "Abogado", "texto": "Buenos ingresos y sabés manejar un problema legal. Los escándalos te pegan menos.", "ingresoMensual": 2000, "dineroInicial": 3000, "duracionMult": 1.1, "escandaloMult": 0.6},
+    {"id": "empleado_publico", "nombre": "Empleado público", "texto": "Sueldo estable, contactos en la administración y gastos más acotados.", "ingresoMensual": 1300, "dineroInicial": 2500, "duracionMult": 1.05, "gastoMult": 0.9},
+    {"id": "oficio", "nombre": "Trabajador de oficio", "texto": "Con las manos hacés de todo: afiches, pintadas y logística. Cobrás poco.", "ingresoMensual": 900, "dineroInicial": 2000, "duracionMult": 1.1, "chance": {"volantes": 4, "pintadas": 4}},
+    {"id": "jubilado", "nombre": "Jubilado activo", "texto": "Ingresos modestos pero todo el tiempo del mundo: tus acciones rinden más rápido.", "ingresoMensual": 700, "dineroInicial": 4000, "duracionMult": 0.85}
+  ]
+}

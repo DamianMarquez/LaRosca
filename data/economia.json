@@ -1,0 +1,44 @@
+{
+  "nota": "Economía del partido. Cada 'ciclo' días se liquidan ingresos y gastos fijos.",
+  "ciclo": 30,
+  "tasaAfiliacion": 0.35,
+  "cuota": {
+    "mensual": 25,
+    "tasaPago": 0.6
+  },
+  "gastos": {
+    "materiales": {
+      "base": 250,
+      "porAfiliado": 6
+    },
+    "sede": {
+      "desdeAfiliados": 60,
+      "costo": 1500
+    },
+    "equipo": {
+      "porMiembro": 600
+    },
+    "plantel": {
+      "porCargo": 200,
+      "porReferente": 80
+    }
+  },
+  "rojos": {
+    "confianza": -2
+  },
+  "favor": {
+    "vence": 45,
+    "extension": 15,
+    "pagoMult": 0.6
+  },
+  "benefactores": [
+    "Don Aníbal (constructor)",
+    "La Cámara de Comercio local",
+    "Un empresario del transporte",
+    "Un contratista de obras",
+    "Una desarrolladora inmobiliaria",
+    "Un dueño de supermercados"
+  ],
+  "historial": 6,
+  "rangoCosto": 0.08
+}

@@ -14,7 +14,7 @@ let CFG = null, PROV = null;
 async function boot() {
   const load = u => fetch(u).then(r => r.json()).catch(() => null);
   [PROV, CFG] = await Promise.all([load('data/provincias.json'), load('data/game.json')]);
-  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea']]) CFG[k] = await load(`data/${f}.json`);
+  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos']]) CFG[k] = await load(`data/${f}.json`);
   setSpeed(0);
   showPicker();
   wireClock();
@@ -132,11 +132,15 @@ function showPicker() {
 }
 
 // ---------- Pantalla 2: fundación (nombre + principios) ----------
-function showFounding(provId, provName, st = { nombre: '', principios: [], error: '' }) {
+function showFounding(provId, provName, st = { nombre: '', principios: [], trasfondo: CFG.trasfondos?.trasfondos.find(t => t.id === 'empleado_publico')?.id ?? CFG.trasfondos?.trasfondos[0]?.id, error: '' }) {
   const panel = $('#panel');
   panel.innerHTML = renderFundacion(CFG, provName, st);
   const name = $('#party-name');
   name.oninput = () => { st.nombre = name.value; st.error = ''; $('#founding-error').textContent = ''; };
+  panel.querySelectorAll('[data-trasfondo]').forEach(c => c.onchange = () => {
+    st.nombre = name.value; st.error = ''; st.trasfondo = c.dataset.trasfondo;
+    showFounding(provId, provName, st);
+  });
   panel.querySelectorAll('[data-principio]').forEach(c => c.onchange = () => {
     st.nombre = name.value; st.error = '';
     const id = c.dataset.principio;
@@ -144,9 +148,9 @@ function showFounding(provId, provName, st = { nombre: '', principios: [], error
     showFounding(provId, provName, st);
   });
   $('#found-confirm').onclick = () => {
-    const err = validarFundacion(name.value, st.principios, CFG);
+    const err = validarFundacion(name.value, st.principios, CFG, st.trasfondo);
     if (err) { st.error = err; $('#founding-error').textContent = err; return; }
-    startGame(provId, provName, null, { nombre: limpiarNombre(name.value), principios: st.principios });
+    startGame(provId, provName, null, { nombre: limpiarNombre(name.value), principios: st.principios, trasfondo: st.trasfondo });
   };
   name.focus();
 }
@@ -178,6 +182,15 @@ function wirePanel() {
     if (!game) return;
     const t = e.target.closest('[data-tab]');
     if (t) { tab = t.dataset.tab; refreshAll(); return; }
+    if (e.target.closest('[data-ascender]')) { const b = e.target.closest('[data-ascender]'); if (!b.disabled) { const err = game.ascender(); if (err) toast(err); else { setSpeed(0); refreshAll(); } } return; }
+    const ds = e.target.closest('[data-designar]');
+    if (ds && !ds.disabled) { const err = game.designar(ds.dataset.designar, ds.dataset.cand); if (err) toast(err); refreshAll(); return; }
+    const cp = e.target.closest('[data-captar]');
+    if (cp && !cp.disabled) { const err = game.captarCuadro(cp.dataset.captar, cp.dataset.mid, cp.dataset.con); if (err) toast(err); refreshAll(); return; }
+    const pt = e.target.closest('[data-pacto]');
+    if (pt && !pt.disabled) { const r = game.proponerPacto(pt.dataset.pacto, pt.dataset.tipo, { zona: selected, con: pt.dataset.con }); toast(r.error ?? r.texto); refreshAll(); return; }
+    const fv = e.target.closest('[data-favor]');
+    if (fv && !fv.disabled) { if (game.pagarFavor(fv.dataset.favor, fv.dataset.con)) refreshAll(); return; }
     const ln = e.target.closest('[data-linea]');
     if (ln) { if (game.responderDirectiva(ln.dataset.linea === 'aceptar')) refreshAll(); return; }
     const b = e.target.closest('[data-start]');

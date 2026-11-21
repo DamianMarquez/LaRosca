@@ -1,6 +1,8 @@
 // Vistas HTML (cadenas). Sin estado propio.
 import { amenaza, presencia, efectosActivos, choques, agenda, certeza, presenciaCiudad, defAccion } from '../core/rivals.js';
 import { progreso as progresoDirectiva, etiqueta as etiquetaRelacion } from '../core/linea.js';
+import { nombreVacante, cargoDef, titular, probCaptar } from '../core/plantel.js';
+import { relacion as relacionRival, pactoCon, tipoDef, etiquetaRelacion as etiquetaRel } from '../core/pactos.js';
 import { NOMBRE_MAX } from '../core/save.js';
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -9,15 +11,16 @@ const pct = v => Math.round(v * 100) + '%';
 const approx5 = v => '~' + Math.round(v * 20) * 5 + '%';          // estimaciones: nunca exactas
 const jobFrac = (j, day, acc = 0) => Math.min(1, Math.max(0, (day - j.start + acc) / (j.end - j.start)));
 
-export const TABS = [['zona', 'Zona'], ['rivales', 'Rivales'], ['partido', 'Partido'], ['provincia', 'Provincia']];
+export const TABS = [['zona', 'Zona'], ['rivales', 'Rivales'], ['partido', 'Partido'], ['finanzas', 'Finanzas'], ['provincia', 'Provincia']];
 
 // ---------- Barra superior ----------
 export function renderStats(g) {
   const p = g.player, next = g.nextXp;
   return `<span title="Tu rango en el partido">🎖 ${esc(g.rankName)}${next ? ` <small>(${p.xp}/${next} XP)</small>` : ''}</span>
-    <span title="Dinero blanco del partido">💵 ${money(p.money)}</span>
+    <span class="${p.money < 0 ? 'rojo' : ''}" title="Dinero blanco del partido. Entre paréntesis, el resultado proyectado del mes (ingresos − gastos fijos)">💵 ${money(p.money)} <small class="${g.flujo.neto < 0 ? 'neg' : 'pos'}">(${g.flujo.neto >= 0 ? '+' : '−'}${money(Math.abs(g.flujo.neto))}/mes)</small></span>
     <span title="Dinero negro: fondos opacos, más eficaces pero aumentan la exposición">🕶 ${money(p.black)}</span>
     <span class="expo ${g.exposure >= 60 ? 'hi' : g.exposure >= 30 ? 'mid' : ''}" title="Exposición: riesgo diario de escándalo por uso de dinero opaco">⚠ ${Math.round(g.exposure)}%</span>
+    <span title="Afiliados formales (pagan cuota) · etapa del partido: ${esc(g.etapa.nombre)}">🪪 ${g.afiliados.toLocaleString('es-AR')}</span>
     <span title="Seguidores estimados">👥 ${g.followers.toLocaleString('es-AR')}</span>
     <span title="Intención de voto de tu partido en la ciudad">🗳 ${(g.intencionVoto * 100).toFixed(g.intencionVoto < 0.01 ? 3 : 1)}%</span>`;
 }
@@ -36,12 +39,28 @@ export function renderFundacion(cfg, provincia, estado) {
   return `<div class="city">Fundación · ${esc(provincia)}</div><h2>Fundá tu partido</h2>
     <label class="field">Nombre del partido
       <input id="party-name" type="text" maxlength="${NOMBRE_MAX}" value="${esc(estado.nombre)}" placeholder="Ej.: Vecinos en Acción" autocomplete="off"></label>
+    <h3>Tu trasfondo: de qué vivís</h3>
+    <div class="principles">${(cfg.trasfondos?.trasfondos ?? []).map(t => `<label class="principle ${estado.trasfondo === t.id ? 'on' : ''}">
+      <input type="radio" name="trasfondo" data-trasfondo="${esc(t.id)}" ${estado.trasfondo === t.id ? 'checked' : ''}>
+      <span><b>${esc(t.nombre)}</b><br><small>${esc(t.texto)}</small><br><small class="muted">${esc(trasfondoTexto(t, cfg))}</small></span></label>`).join('')}</div>
     <h3>Tus principios (elegí ${k}) · ${estado.principios.length}/${k}</h3>
     <div class="principles">${cards}</div>
     <p class="muted small">Son la identidad de tu partido: marcan cómo trabajás y qué te cuesta. Más adelante serán la base de tus habilidades.</p>
     <h3>Otros partidos y lo que defienden</h3>${rivales}
     <p id="founding-error" class="error" role="alert">${esc(estado.error ?? '')}</p>
     <button id="found-confirm" class="primary">Fundar el partido</button>`;
+}
+
+// Resumen legible de un trasfondo: qué da y qué cuesta
+export function trasfondoTexto(t, cfg) {
+  const out = [`Aporte ${money(t.ingresoMensual)}/mes`, `ahorros ${money(t.dineroInicial)}`];
+  if (t.duracionMult > 1) out.push(`tus acciones duran +${Math.round((t.duracionMult - 1) * 100)}%`);
+  if (t.duracionMult < 1) out.push(`tus acciones duran −${Math.round((1 - t.duracionMult) * 100)}%`);
+  if (t.donMult > 1) out.push(`recaudás +${Math.round((t.donMult - 1) * 100)}%`);
+  if (t.gastoMult < 1) out.push(`gastos fijos −${Math.round((1 - t.gastoMult) * 100)}%`);
+  if (t.escandaloMult < 1) out.push(`los escándalos te pegan ${Math.round((1 - t.escandaloMult) * 100)}% menos`);
+  for (const [id, v] of Object.entries(t.chance ?? {})) out.push(`${cfg.missions.find(m => m.id === id)?.nombre ?? id} ${v > 0 ? '+' : ''}${v}% éxito`);
+  return out.join(' · ');
 }
 
 // Resumen legible de los efectos de un principio
@@ -88,8 +107,8 @@ export function renderAcciones(g, day) {
 
 // ---------- Pestañas ----------
 export function renderPanel(g, zoneId, day, tab = 'zona') {
-  const tabs = `<nav class="tabs" role="tablist">${TABS.map(([id, label]) => `<button role="tab" data-tab="${id}" class="${id === tab ? 'on' : ''}" aria-selected="${id === tab}">${label}${id === 'partido' && g.linea?.directiva?.estado === 'propuesta' ? ' <span class="ping" title="Hay una bajada de línea esperando respuesta">●</span>' : ''}</button>`).join('')}</nav>`;
-  const body = tab === 'partido' ? renderPartido(g) : tab === 'provincia' ? renderProvincia(g) : tab === 'rivales' ? renderTabRivales(g) : renderZona(g, zoneId);
+  const tabs = `<nav class="tabs" role="tablist">${TABS.map(([id, label]) => `<button role="tab" data-tab="${id}" class="${id === tab ? 'on' : ''}" aria-selected="${id === tab}">${label}${id === 'partido' && (g.linea?.directiva?.estado === 'propuesta' || g.plantel.vacantes.length || g.requisitos?.todos) ? ' <span class="ping" title="Hay algo esperando tu decisión: directiva, vacante o ascenso">●</span>' : ''}</button>`).join('')}</nav>`;
+  const body = tab === 'partido' ? renderPartido(g) : tab === 'provincia' ? renderProvincia(g) : tab === 'rivales' ? renderTabRivales(g, zoneId) : tab === 'finanzas' ? renderFinanzas(g) : renderZona(g, zoneId);
   return `<div class="city">${esc(g.partido.nombre)} · ${esc(g.city.ciudad)}, ${esc(g.prov.nombre)}</div>${renderAcciones(g, day)}${tabs}<div class="tab-body">${body}</div>`;
 }
 
@@ -106,27 +125,37 @@ function avisoChoque(g, c) {
   return `<div class="clash ${c.certeza}"><span class="dot" style="background:${r.color}"></span><span>⚠ <b>${esc(r.nombre)}</b> ${esc(que)} · <em>${certTxt(c.certeza)}</em> → ${esc(efecto)}</span></div>`;
 }
 
-function renderZona(g, zoneId) {
-  if (!zoneId) return '<p class="muted">Elegí un barrio en el mapa para ver sus datos, a los rivales que hay y lanzar misiones.</p>';
-  const z = g.zonas[zoneId], cfg = g.cfg;
-  const ms = cfg.missions.map(m => {
-    const lock = g.canStart(m, zoneId), ch = g.chance(m, z), al = g.alcance(m, z);
-    const why = ch.factors.map(f => `<li class="${f[1] < 0 ? 'neg' : 'pos'}"><span>${esc(f[0])}</span><b>${f[1] >= 0 ? '+' : ''}${f[1]}</b></li>`).join('');
-    const delLock = g.canStart(m, zoneId, 'blanco', 'delegada');
-    const avisos = choques(g, m, zoneId, g.day, g.day + m.dias).map(c => avisoChoque(g, c)).join('');
-    return `<div class="mission ${lock ? 'locked' : ''}">
-      <div><b>${esc(m.nombre)}</b><br><small class="muted">${esc(m.desc)}</small></div>
-      <div class="meta"><span>⏱ ${m.dias} d</span><span>💵 ${money(m.costo)}</span><span>🎯 éxito ${ch.c}%</span><span>👥 ~${al.personas.toLocaleString('es-AR')} pers. (+${(al.control * 100).toFixed(1)}% control)</span></div>
+function misionCard(g, m, z, zoneId) {
+  const lock = g.canStart(m, zoneId), ch = g.chance(m, z), al = g.alcance(m, z), fin = m.categoria === 'finanzas';
+  const why = ch.factors.map(f => `<li class="${f[1] < 0 ? 'neg' : 'pos'}"><span>${esc(f[0])}</span><b>${f[1] >= 0 ? '+' : ''}${f[1]}</b></li>`).join('');
+  const delLock = g.canStart(m, zoneId, 'blanco', 'delegada');
+  const avisos = choques(g, m, zoneId, g.day, g.day + g.dias(m)).map(c => avisoChoque(g, c)).join('');
+  const resultado = fin
+    ? `<span>${m.ilegal ? '🕶 ~' : '💰 ~'}${money(g.ingresoEsperado(m, z))}${m.ilegal ? ` en negro · exposición +${Math.round(m.expo * g.modsPrincipios(m).expoMult)}` : ''}</span>`
+    : `<span>👥 ~${al.personas.toLocaleString('es-AR')} pers. (+${(al.control * 100).toFixed(1)}% control)</span>`;
+  return `<div class="mission ${lock ? 'locked' : ''} ${m.ilegal ? 'ilegal' : ''}">
+      <div><b>${esc(m.nombre)}</b>${m.ilegal ? ' <span class="tag">ilegal</span>' : ''}<br><small class="muted">${esc(m.desc)}</small></div>
+      <div class="meta"><span>⏱ ${g.dias(m)} d</span>${m.costo ? `<span>💵 ${money(m.costo)}</span>` : '<span>💵 sin costo</span>'}<span>🎯 éxito ${ch.c}%</span>${resultado}</div>
       ${avisos}
       <details><summary>Por qué ${ch.c}%</summary><ul class="factors">${why}</ul></details>
       <div class="btns"><button data-start="${m.id}" ${lock ? 'disabled' : ''}>${btnLabel(lock, 'Lanzar yo')}</button>
         ${m.negro ? negroBtn(g, m, z, zoneId) : ''}
-        <button data-start="${m.id}" data-modo="delegada" ${delLock ? 'disabled' : ''} title="${delLock ? esc(delLock) : 'Un equipo la hace por vos, con menos éxito'}">🤝 Delegar${delLock ? ' 🔒' : ''}</button></div></div>`;
-  }).join('');
+        ${m.delegable ? `<button data-start="${m.id}" data-modo="delegada" ${delLock ? 'disabled' : ''} title="${delLock ? esc(delLock) : 'Un equipo la hace por vos, con menos éxito'}">🤝 Delegar${delLock ? ' 🔒' : ''}</button>` : ''}</div></div>`;
+}
+
+function renderZona(g, zoneId) {
+  if (!zoneId) return '<p class="muted">Elegí un barrio en el mapa para ver sus datos, a los rivales que hay y lanzar misiones.</p>';
+  const z = g.zonas[zoneId], ms = g.cfg.missions;
+  const terr = ms.filter(m => m.categoria !== 'finanzas').map(m => misionCard(g, m, z, zoneId)).join('');
+  const legal = ms.filter(m => m.categoria === 'finanzas' && !m.ilegal).map(m => misionCard(g, m, z, zoneId)).join('');
+  const ilegal = ms.filter(m => m.ilegal).map(m => misionCard(g, m, z, zoneId)).join('');
   return `<h2>${esc(z.nombre)}</h2>
     <p class="muted">${z.pop.toLocaleString('es-AR')} hab.${z.popFuente ? '' : ' (est.)'}${z.densidad ? ' · ' + z.densidad.toLocaleString('es-AR') + ' hab/km²' : ''}${g.electores(z) !== null ? ' · ~' + g.electores(z).toLocaleString('es-AR') + ' electores' : ''}<br>
     Control ${pct(z.control)} · Confianza ${Math.round(z.trust)}</p>
-    <h3>Misiones</h3>${ms}${renderRivales(g, z)}`;
+    <h3>Misiones</h3>${terr}
+    <h3>Recaudación</h3><p class="muted small-p">Plata para sostener el partido. Hacerlo ocupa tu única acción personal.</p>${legal}
+    <h3>Dinero ilegal</h3><p class="muted small-p">Mucha plata rápido, en negro. Sube la exposición y te deja deudas de favor.</p>${ilegal}
+    ${renderRivales(g, z)}`;
 }
 
 function negroBtn(g, m, z, zoneId) {
@@ -158,7 +187,7 @@ function renderRivales(g, z) {
 }
 
 // Pestaña Rivales: qué está haciendo cada partido ahora y qué hizo hace poco
-function renderTabRivales(g) {
+function renderTabRivales(g, zoneId) {
   const cat = g.cfg.principios.principios, ag = Object.fromEntries(agenda(g).map(a => [a.rival, a]));
   const rs = g.cfg.partidos.partidos.filter(r => r.id !== 'otros').sort((a, b) => presenciaCiudad(g, b.id) - presenciaCiudad(g, a.id));
   const cards = rs.map(r => {
@@ -171,8 +200,29 @@ function renderTabRivales(g) {
       estado = `<div class="r-act ${a.tipo === 'hostil' ? 'hostil' : ''}"><b>${esc(txt)}</b><br><small>${esc(z.nombre)} · ${a.fase === 'planeada' ? 'empieza ' + diasTxt(a.inicio - g.day) : `faltan ${Math.max(0, a.fin - g.day)} d`} · <em>${certTxt(cert)}</em></small>
         <div class="bar thin"><i style="width:${(frac * 100).toFixed(0)}%;background:${r.color}"></i></div></div>`;
     } else estado = `<div class="r-act idle"><small class="muted">${g.day < g.cfg.rivales.base.arranque ? 'Todavía se está organizando.' : bot && g.day >= bot.libreDesde ? 'Evaluando su próximo paso…' : 'En pausa.'}</small></div>`;
+    const K = g.cfg.plantel.captar;
+    // Pactos: relación con este partido, pacto vigente o propuestas posibles
+    const rel = Math.round(relacionRival(g, r.id)), pc = pactoCon(g, r.id), PC = g.cfg.pactos, cd = (g.alianzas.enfriamiento[r.id] ?? 0) - g.day;
+    const zsel = zoneId ? g.zonas[zoneId] : null;
+    const tiposHtml = PC.tipos.map(t => {
+      const o = g.ofertaPacto(r.id, t.id);
+      const motivo = pc ? 'Ya hay un pacto' : g.alianzas.pactos.length >= PC.max ? `Máximo ${PC.max} pactos` : cd > 0 ? `Esperá ${cd} d` : rel < t.requiere ? `Relación mínima ${t.requiere}` : t.zona && !zsel ? 'Elegí un barrio en el mapa' : null;
+      const costoTxt = o.costo ? money(o.costo) : (t.recibe ? `recibís ${money(t.recibe)}` : 'sin costo');
+      return `<div class="tipo-pacto"><b>${esc(t.nombre)}</b> <small class="muted">· ${t.dias} d · ${esc(costoTxt)} · acepta ${motivo === `Relación mínima ${t.requiere}` ? '—' : approx5(o.p)}</small><br><small>${esc(t.texto)}${t.zona && zsel ? ` (barrio: ${esc(zsel.nombre)})` : ''}</small>
+        <div class="btns"><button data-pacto="${esc(r.id)}" data-tipo="${esc(t.id)}" data-con="blanco" ${motivo ? 'disabled' : ''}>${motivo ? esc(motivo) : 'Proponer'}</button>${o.costo && !motivo ? `<button class="negro" data-pacto="${esc(r.id)}" data-tipo="${esc(t.id)}" data-con="negro" ${g.player.black < o.costo ? 'disabled' : ''} title="Pagar en negro: exposición +6">🕶 negro</button>` : ''}</div></div>`;
+    }).join('');
+    const pactoHtml = pc
+      ? `<div class="pacto activo">🤝 <b>${esc(tipoDef(g, pc.tipo).nombre)}</b>${pc.zona ? ' en ' + esc(g.zonas[pc.zona]?.nombre ?? '') : ''} · quedan ${Math.max(0, pc.hasta - g.day)} d</div>`
+      : `<details class="pactos"><summary>Proponer un pacto</summary>${tiposHtml}<small class="muted">Un rival aliado te puede traicionar si crecés demasiado. Tu superior opina sobre con quién te aliás.</small></details>`;
+    const cuadros = (g.rivalesPlantel[r.id] ?? []).map(m => {
+      const aprox = v => Math.round(v / 10) * 10, lider = m.rol === 'Líder';
+      return `<div class="cuadro"><span><b>${esc(m.nombre)}</b> <small class="muted">${lider ? 'Líder' : 'Cuadro'} · capacidad ~${aprox(m.capacidad)} · lealtad ~${aprox(m.lealtad)}</small></span>
+        ${lider ? '' : `<span class="btns"><button data-captar="${esc(r.id)}" data-mid="${esc(m.id)}" data-con="blanco" ${g.player.money < K.costoBlanco ? 'disabled' : ''} title="Probabilidad estimada ${approx5(probCaptar(m))}">Captar ${money(K.costoBlanco)}</button><button class="negro" data-captar="${esc(r.id)}" data-mid="${esc(m.id)}" data-con="negro" ${g.player.black < K.costoNegro ? 'disabled' : ''} title="Con dinero negro: exposición +${K.exposicionNegro}">🕶 ${money(K.costoNegro)}</button></span>`}</div>`;
+    }).join('');
     return `<div class="rcard"><div class="rival-top"><span class="dot" style="background:${r.color}"></span><span class="rn">${esc(r.nombre)}</span><span class="rp" title="Presencia media en la ciudad (estimada)">${approx5(presenciaCiudad(g, r.id))}</span></div>
-      <small class="muted">${esc(r.espacio)} · ${esc(r.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small>${estado}</div>`;
+      <small class="muted">${esc(r.espacio)} · ${esc(r.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small>
+      <div class="rel-line"><small class="muted">Relación contigo: <b>${esc(etiquetaRel(rel))}</b> (${rel})</small><span class="meter ${rel < 30 ? 'bad' : ''}"><i style="width:${rel}%"></i></span></div>${pactoHtml}${estado}
+      <details class="cuadros"><summary>Sus cuadros</summary>${cuadros}<small class="muted">Captar a alguien lo suma a tu plantel, pero el rival se entera del intento si falla.</small></details></div>`;
   }).join('');
   const feed = g.historialRivales.slice(0, 8).map(h => {
     const r = g.rival(h.rival), z = g.zonas[h.zona], def = defAccion(g, h);
@@ -184,7 +234,7 @@ function renderTabRivales(g) {
 // Línea partidaria: tu líder superior y las bajadas de línea
 function renderLinea(g) {
   const L = g.linea, cat = g.cfg.principios.principios;
-  if (!L?.lider) return '<h3>Línea partidaria</h3><p class="muted small-p">Sos la máxima conducción: no tenés superior.</p>';
+  if (!L?.lider) return `<h3>Línea partidaria</h3><p class="muted small-p">${g.player.rank + 1 >= g.cfg.ranks.length ? 'Sos la máxima conducción: no tenés superior.' : 'Tu superior dejó el cargo: el puesto está vacante y se cubrirá en unos días. Es una oportunidad para ascender.'}</p>`;
   const l = L.lider, rel = Math.round(l.relacion), et = etiquetaRelacion(g, rel);
   const ps = l.principios.map(id => cat.find(c => c.id === id)?.nombre).filter(Boolean).map(n => `<span class="chip ${g.partido.principios.includes(cat.find(c => c.nombre === n)?.id) ? 'common' : ''}">${esc(n)}</span>`).join('');
   let dir;
@@ -205,6 +255,57 @@ function renderLinea(g) {
     ${dir}${hist ? `<h3>Directivas anteriores</h3>${hist}` : ''}`;
 }
 
+// Finanzas: flujo mensual proyectado, historial de cierres y deudas de favor
+function renderFinanzas(g) {
+  const P = g.flujo, h = g.economia.historial, favs = g.favores;
+  const lineas = o => Object.entries(o).map(([k, v]) => `<span>${esc(k)}</span><b>${money(v)}</b>`).join('');
+  const diasCierre = g.cfg.economia.ciclo - (g.day % g.cfg.economia.ciclo);
+  const hist = h.map(x => `<div class="kv2"><span>Día ${x.dia}</span><span>+${money(x.ingresos)} / −${money(x.gastos)}</span><b class="${x.neto < 0 ? 'neg' : 'pos'}">${x.neto >= 0 ? '+' : '−'}${money(Math.abs(x.neto))}</b></div>`).join('') || '<p class="muted small-p">Todavía no hubo un cierre de mes.</p>';
+  const favores = favs.map(f => `<div class="favor ${f.hasta - g.day <= 7 ? 'urgente' : ''}"><div><b>${esc(f.nombre)}</b><br><small class="muted">Te pide ${money(f.valor)} · vence en ${Math.max(0, f.hasta - g.day)} d${f.extendido ? ' · ya te dieron una prórroga' : ''}</small></div>
+      <div class="btns"><button data-favor="${esc(f.id)}" data-con="blanco" ${g.player.money < f.valor ? 'disabled' : ''}>Pagar (blanco)</button><button class="negro" data-favor="${esc(f.id)}" data-con="negro" ${g.player.black < f.valor ? 'disabled' : ''}>🕶 Pagar (negro)</button></div></div>`).join('')
+    || '<p class="muted small-p">No le debés favores a nadie.</p>';
+  return `<h2>Finanzas</h2>
+    <div class="kv"><span>Dinero blanco</span><b class="${g.player.money < 0 ? 'neg' : ''}">${money(g.player.money)}</b><span>Dinero negro</span><b>${money(g.player.black)}</b><span>Afiliados</span><b>${g.afiliados.toLocaleString('es-AR')}</b><span>Próximo cierre</span><b>en ${diasCierre} d</b></div>
+    ${g.player.money < 0 ? '<p class="error">Estás en números rojos: no podés gastar plata hasta recuperarte. Recaudá (colecta, aporte de comerciantes).</p>' : ''}
+    <h3>Cada mes entra</h3><div class="kv">${lineas(P.ingresos)}<span><b>Total</b></span><b class="pos">${money(P.totalIngresos)}</b></div>
+    <h3>Cada mes sale</h3><div class="kv">${lineas(P.gastos)}<span><b>Total</b></span><b class="neg">${money(P.totalGastos)}</b></div>
+    <p class="${P.neto < 0 ? 'error' : 'muted'} small-p">Resultado proyectado: <b>${P.neto >= 0 ? '+' : '−'}${money(Math.abs(P.neto))}</b> por mes. ${P.neto < 0 ? 'Con este ritmo perdés plata: hay que recaudar más o crecer.' : ''}</p>
+    <h3>Deudas de favor</h3>${favores}
+    <h3>Últimos cierres</h3>${hist}`;
+}
+
+// Checklist del próximo ascenso
+function renderEscalafon(g) {
+  const q = g.requisitos;
+  if (!q) return '<h3>Tu próximo ascenso</h3><p class="muted small-p">Llegaste a la cima del escalafón.</p>';
+  const lineas = q.items.map(i => `<div class="req ${i.ok ? 'ok' : 'no'}"><span>${i.ok ? '✔' : '✖'}</span><span>${esc(i.texto)}${i.ayuda ? `<br><small class="muted">${esc(i.ayuda)}</small>` : ''}</span><b>${esc(i.actual)}${i.meta != null ? ' / ' + esc(i.meta) : ''}</b></div>`).join('');
+  return `<h3>Tu próximo ascenso: ${esc(q.rango)}</h3>${lineas}
+    <button class="primary full" data-ascender ${q.todos ? '' : 'disabled'}>${q.todos ? `Pedir el ascenso a ${esc(q.rango)}` : 'Todavía no cumplís los requisitos'}</button>
+    <p class="muted small-p">Etapa del partido: <b>${esc(g.etapa.nombre)}</b> · ${g.afiliados.toLocaleString('es-AR')} afiliados.</p>`;
+}
+
+const meter = (v, cls = '') => `<span class="meter ${cls}"><i style="width:${v}%"></i></span>`;
+const origenTxt = { fundador: 'fundador', interno: 'ascenso interno', externo: 'incorporado', captado: 'captado de un rival', interino: 'interino', rival: 'rival' };
+const miembroCard = (m, extra = '') => `<div class="miembro"><div class="m-head"><b>${esc(m.nombre)}</b><small class="muted">${esc(origenTxt[m.origen] ?? '')}</small></div>
+  <div class="m-stats"><span title="Capacidad: qué tan bien hace el trabajo">Cap. ${m.capacidad}${meter(m.capacidad)}</span><span title="Lealtad: qué tan difícil es que se vaya">Leal. ${m.lealtad}${meter(m.lealtad, m.lealtad < 40 ? 'bad' : '')}</span><span title="Ambición: qué tan probable es que busque algo mejor, incluso en otro partido">Amb. ${m.ambicion}${meter(m.ambicion, m.ambicion > 70 ? 'warn' : '')}</span></div>${extra}</div>`;
+
+// Plantel: cargos, referentes de barrio, vacantes con candidatos
+function renderPlantel(g) {
+  const P = g.cfg.plantel, S = g.plantel;
+  const cargos = P.cargos.map(c => {
+    const t = titular(g, c.id), v = S.vacantes.find(x => x.cargo === c.id);
+    if (g.afiliados < c.desdeAfiliados) return `<div class="cargo cerrado"><b>${esc(c.nombre)}</b><small class="muted">Se crea con ${g.umbral(c.desdeAfiliados)} afiliados.</small></div>`;
+    if (t) return `<div class="cargo"><div class="c-title"><b>${esc(c.nombre)}</b></div><small class="muted">${esc(c.efecto)}</small>${miembroCard(t)}</div>`;
+    return `<div class="cargo vacante"><div class="c-title"><b>${esc(c.nombre)}</b> <span class="tag warn">vacante${v ? ` · ${Math.max(0, v.vence - g.day)} d` : ''}</span></div><small class="muted">${esc(c.efecto)}</small></div>`;
+  }).join('');
+  const refs = S.miembros.filter(m => m.cargo?.startsWith('ref:')).map(m => miembroCard(m, `<small class="muted">Referente de ${esc(g.zonas[m.cargo.slice(4)]?.nombre ?? 'un barrio')}</small>`)).join('');
+  const libres = S.miembros.filter(m => !m.cargo).map(m => miembroCard(m, '<small class="muted">Sin cargo: podés designarlo en una vacante.</small>')).join('');
+  const vacs = S.vacantes.map(v => `<div class="vacancia"><div class="c-title"><b>Vacante: ${esc(nombreVacante(g, v))}</b><small class="muted">Quedan ${Math.max(0, v.vence - g.day)} d; después asume un interino</small></div>
+    ${v.candidatos.map(c => `<div class="candidato">${miembroCard(c)}<button data-designar="${esc(v.id)}" data-cand="${esc(c.id)}" ${c.costo > g.player.money ? 'disabled' : ''}>Designar${c.costo ? ' · ' + money(c.costo) : ' · sin costo'}</button></div>`).join('')}</div>`).join('');
+  return `<h3>Plantel</h3>${vacs ? `<div class="vacantes"><p class="small-p"><b>Hay vacantes por cubrir.</b> Elegí a quien tenga más capacidad y lealtad.</p>${vacs}</div>` : ''}
+    ${cargos}${refs ? `<h3>Referentes de barrio</h3>${refs}` : ''}${libres ? `<h3>Militantes sin cargo</h3>${libres}` : ''}`;
+}
+
 function renderPartido(g) {
   const cat = g.cfg.principios.principios, p = g.player;
   const mine = g.principios.map(x => `<div class="principle on static"><span><b>${esc(x.nombre)}</b><br><small>${esc(x.texto)}</small><br><small class="muted">${esc(modsTexto(x, g.cfg))}</small></span></div>`).join('');
@@ -212,8 +313,10 @@ function renderPartido(g) {
     `<div class="rival-line"><span class="dot" style="background:${r.color}"></span><span><b>${esc(r.nombre)}</b> <small class="muted">· ${esc(r.espacio)}</small><br><small>${esc(r.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small></span></div>`).join('');
   const next = g.nextXp;
   return `<h2>${esc(g.partido.nombre)}</h2>
-    <p class="muted">${esc(g.rankName)}${next ? ` · ${p.xp}/${next} XP para el próximo rango` : ''}</p>
+    <p class="muted">${esc(g.rankName)}${g.trasfondo ? ` · ${esc(g.trasfondo.nombre)}` : ''}${next ? ` · ${p.xp}/${next} XP para el próximo rango` : ''}</p>
     <div class="bar"><i style="width:${next ? Math.min(100, (p.xp / next) * 100) : 100}%"></i></div>
+    ${renderEscalafon(g)}
+    ${renderPlantel(g)}
     ${renderLinea(g)}
     <h3>Nuestros principios</h3>${mine}
     <h3>Recursos</h3>

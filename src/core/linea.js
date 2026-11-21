@@ -7,10 +7,10 @@ const between = (a, b, rnd = Math.random) => a + Math.floor(rnd() * (b - a + 1))
 const L_ = g => g.cfg.linea;
 
 // Líder del rango siguiente (null si ya estás en la cima). Determinista por provincia, partido y rango.
-export function nuevoLider(g) {
+export function nuevoLider(g, salt = '') {
   const rank = g.player.rank, ranks = g.cfg.ranks;
   if (rank + 1 >= ranks.length) return null;
-  const C = L_(g), r = rng(`${g.prov.id}:${g.partido.nombre}:${rank}`);
+  const C = L_(g), r = rng(`${g.prov.id}:${g.partido.nombre}:${rank}:${salt}`);
   const cat = (g.cfg.principios?.principios ?? []).map(p => p.id);
   const mios = new Set(g.partido.principios), suyos = [];
   while (suyos.length < 2 && cat.length >= 2) { const id = cat[Math.floor(r() * cat.length)]; if (!suyos.includes(id)) suyos.push(id); }
@@ -59,7 +59,7 @@ function proponer(g, rnd) {
     const z = cand[Math.floor(rnd() * cand.length)]; if (!z) return;
     d.zona = z.id; d.meta = +clamp(z.control + t.sumar, 0.1, 0.6).toFixed(2);
   } else if (t.tipo === 'hacer_mision') {
-    const ms = g.cfg.missions.filter(m => m.minRank <= g.player.rank);
+    const ms = g.cfg.missions.filter(m => m.minRank <= g.player.rank && m.categoria !== 'finanzas');
     d.mision = ms[Math.floor(rnd() * ms.length)].id; d.n = t.n; d.hecho = 0;
   }
   d.texto = textoDirectiva(g, d);
@@ -115,6 +115,7 @@ export function sanear(g, raw) {
   if (!raw || typeof raw !== 'object') return base;
   const out = { ...base, historial: [] };
   const l = raw.lider;
+  if (raw.lider === null) out.lider = null;   // puesto vacante: lo repone el escalafón
   if (base.lider && l && typeof l.nombre === 'string' && l.nombre.trim()) {
     out.lider = {
       ...base.lider,
@@ -123,13 +124,14 @@ export function sanear(g, raw) {
       relacion: Number.isFinite(l.relacion) ? clamp(l.relacion, 0, 100) : base.lider.relacion,
       ambicion: Number.isFinite(l.ambicion) ? clamp(l.ambicion, 0, 100) : base.lider.ambicion,
     };
+    out.lider.comunes = out.lider.principios.filter(id => g.partido.principios.includes(id)).length;   // se recalcula, no se confía
   }
   if (Number.isFinite(raw.proxima)) out.proxima = raw.proxima;
   if (Number.isFinite(raw.n)) out.n = Math.max(0, Math.floor(raw.n));
   const d = raw.directiva;
   if (out.lider && d && C.directivas.some(t => t.tipo === d.tipo) && ['propuesta', 'aceptada'].includes(d.estado) && [d.dias, d.desde].every(Number.isFinite)) {
     const nd = { tipo: d.tipo, dias: d.dias, estado: d.estado, desde: d.desde, fuente: d.fuente === 'lider' ? 'lider' : 'partido', venceRespuesta: Number.isFinite(d.venceRespuesta) ? d.venceRespuesta : d.desde + C.base.respuesta };
-    if (d.estado === 'aceptada') { nd.aceptada = Number.isFinite(d.aceptada) ? d.aceptada : d.desde; nd.hasta = Number.isFinite(d.hasta) ? d.hasta : nd.aceptada + d.dias; nd.violada = !!d.violada; }
+    if (d.estado === 'aceptada') { nd.aceptada = Number.isFinite(d.aceptada) ? d.aceptada : d.desde; nd.hasta = Number.isFinite(d.hasta) ? d.hasta : nd.aceptada + d.dias; if (d.violada) nd.violada = true; }
     let ok = true;
     if (d.tipo === 'controlar_zona') { ok = !!g.zonas[d.zona] && Number.isFinite(d.meta); nd.zona = d.zona; nd.meta = clamp(d.meta, 0.01, 1); }
     if (d.tipo === 'hacer_mision') { ok = !!g.cfg.missions.find(m => m.id === d.mision) && Number.isFinite(d.n) && d.n > 0; nd.mision = d.mision; nd.n = Math.floor(d.n); nd.hecho = Number.isFinite(d.hecho) ? Math.max(0, Math.floor(d.hecho)) : 0; }

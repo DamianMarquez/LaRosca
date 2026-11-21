@@ -1,6 +1,8 @@
 // Partidos rivales (bots): presencia por zona, campañas propias, golpes contra el jugador,
 // avisos de choque y estimaciones para la interfaz. Sin DOM.
 import { rng } from './city.js';
+import { captacionRival } from './plantel.js';
+import { noAgresion, apoyoEn } from './pactos.js';
 
 export const rivales = g => (g.cfg.partidos?.partidos ?? []).filter(p => p.id !== 'otros');
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -140,11 +142,11 @@ export function tick(g, rnd = Math.random) {
 
 // El rival queda libre y decide su próxima acción: campaña propia o golpe contra el jugador
 function elegir(g, r, bot, rnd) {
-  const R = g.cfg.rivales, B = R.base, zonas = Object.values(g.zonas);
+  const R = g.cfg.rivales, B = R.base, zonas = Object.values(g.zonas).filter(z => !apoyoEn(g, r.id, z.id));   // en un barrio pactado no compite
   const conControl = zonas.filter(z => z.control >= B.controlMin && presencia(g, z.id)[r.id] >= B.presenciaMin);
   const pop = zonas.reduce((s, z) => s + z.pop, 0) || 1;
   const amenazaGlobal = zonas.reduce((s, z) => s + z.pop * z.control, 0) / pop;
-  const pHostil = conControl.length ? clamp(B.hostilBase + B.hostilPorAmenaza * amenazaGlobal, 0, B.hostilMax) : 0;
+  const pHostil = conControl.length && !noAgresion(g, r.id) ? clamp(B.hostilBase + B.hostilPorAmenaza * amenazaGlobal, 0, B.hostilMax) : 0;
   if (rnd() < pHostil) {
     const z = pick(conControl, z => Math.pow(z.pop, 0.7) * (0.3 + presencia(g, z.id)[r.id]) * (1 + 4 * z.control), rnd);
     const def = z && pick(accionesPosibles(g, z, r), a => a.peso[r.id], rnd);
@@ -167,6 +169,7 @@ function iniciarHostil(g, r, a) {
   a.fase = 'en_curso';
   if (def.trustAhora) z.trust = clamp(z.trust + def.trustAhora, 0, 100);
   if (def.dias > 0) z.efectos.push({ rival: r.id, accion: def.id, hasta: a.fin });
+  if (def.captacion) { captacionRival(g, r.id); return; }   // el resultado (éxito o rechazo) lo cuenta el plantel
   g.note(`${r.nombre} ${def.texto} en ${z.nombre}.`, 'rival');
 }
 

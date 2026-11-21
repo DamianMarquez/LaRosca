@@ -297,10 +297,192 @@
         "expo": 8
       },
       "delegable": true
+    },
+    {
+      "id": "colecta",
+      "nombre": "Colecta barrial",
+      "desc": "Pasar la gorra entre vecinos y simpatizantes.",
+      "dias": 2,
+      "costo": 0,
+      "base": 70,
+      "minRank": 0,
+      "ingreso": {
+        "base": 150,
+        "porMilHab": 8
+      },
+      "gana": {
+        "trust": 0,
+        "xp": 0
+      },
+      "falla": {
+        "trust": -1
+      },
+      "categoria": "finanzas",
+      "delegable": true
+    },
+    {
+      "id": "rifa",
+      "nombre": "Rifa o peña solidaria",
+      "desc": "Una rifa o una peña para juntar fondos.",
+      "dias": 4,
+      "costo": 400,
+      "base": 62,
+      "minRank": 0,
+      "ingreso": {
+        "base": 900,
+        "porMilHab": 20
+      },
+      "gana": {
+        "trust": 2,
+        "xp": 1
+      },
+      "falla": {
+        "trust": -2
+      },
+      "categoria": "finanzas",
+      "delegable": true
+    },
+    {
+      "id": "aporte_comerciante",
+      "nombre": "Pedir aporte a comerciantes",
+      "desc": "Recorrer los comercios pidiendo una colaboración.",
+      "dias": 3,
+      "costo": 0,
+      "base": 55,
+      "minRank": 0,
+      "ingreso": {
+        "base": 700,
+        "porMilHab": 12
+      },
+      "gana": {
+        "trust": 0,
+        "xp": 1
+      },
+      "falla": {
+        "trust": -4
+      },
+      "categoria": "finanzas",
+      "delegable": true
+    },
+    {
+      "id": "cena",
+      "nombre": "Cena de recaudación",
+      "desc": "Una cena con entrada para militantes y simpatizantes.",
+      "dias": 5,
+      "costo": 1200,
+      "base": 58,
+      "minRank": 1,
+      "ingreso": {
+        "base": 2500,
+        "porMilHab": 40
+      },
+      "gana": {
+        "trust": 2,
+        "xp": 1
+      },
+      "falla": {
+        "trust": -3
+      },
+      "categoria": "finanzas",
+      "delegable": true
+    },
+    {
+      "id": "merchandising",
+      "nombre": "Merchandising partidario",
+      "desc": "Remeras, gorras y banderas con el nombre del partido.",
+      "dias": 6,
+      "costo": 800,
+      "base": 60,
+      "minRank": 2,
+      "ingreso": {
+        "base": 2000,
+        "porMilHab": 30
+      },
+      "gana": {
+        "trust": 1,
+        "xp": 1
+      },
+      "falla": {
+        "trust": -2
+      },
+      "categoria": "finanzas",
+      "delegable": true
+    },
+    {
+      "id": "coima",
+      "nombre": "Aceptar un aporte sin recibo",
+      "desc": "Un empresario ofrece efectivo sin recibo. Después te va a pedir algo.",
+      "dias": 2,
+      "costo": 0,
+      "base": 72,
+      "minRank": 0,
+      "ilegal": true,
+      "expo": 12,
+      "ingresoNegro": {
+        "base": 2000,
+        "porMilHab": 25
+      },
+      "gana": {
+        "trust": 0,
+        "xp": 0
+      },
+      "falla": {
+        "trust": -3
+      },
+      "categoria": "finanzas",
+      "delegable": false
+    },
+    {
+      "id": "comision_obra",
+      "nombre": "Comisión por una obra",
+      "desc": "Una constructora te deja un porcentaje por adjudicarle una obra del barrio.",
+      "dias": 5,
+      "costo": 0,
+      "base": 65,
+      "minRank": 4,
+      "ilegal": true,
+      "expo": 25,
+      "ingresoNegro": {
+        "base": 12000,
+        "porMilHab": 120
+      },
+      "gana": {
+        "trust": 0,
+        "xp": 0
+      },
+      "falla": {
+        "trust": -6
+      },
+      "categoria": "finanzas",
+      "delegable": false
+    },
+    {
+      "id": "desvio",
+      "nombre": "Desviar fondos",
+      "desc": "Mover plata pública hacia las cuentas del partido. Muy rentable y muy peligroso.",
+      "dias": 4,
+      "costo": 0,
+      "base": 60,
+      "minRank": 5,
+      "ilegal": true,
+      "expo": 40,
+      "ingresoNegro": {
+        "base": 30000,
+        "porMilHab": 250
+      },
+      "gana": {
+        "trust": 0,
+        "xp": 0
+      },
+      "falla": {
+        "trust": -10
+      },
+      "categoria": "finanzas",
+      "delegable": false
     }
   ],
   "start": {
-    "money": 5000,
+    "money": 3000,
     "trust": 20,
     "black": 0
   },
