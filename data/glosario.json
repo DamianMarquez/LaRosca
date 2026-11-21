@@ -1,28 +1,114 @@
 {
-  "dinero": {"titulo": "Dinero blanco", "texto": "Fondos declarados del partido. Se gastan en casi todas las misiones. Entre paréntesis ves cuánto ganás o perdés por mes (ingresos menos gastos fijos)."},
-  "negro": {"titulo": "Dinero negro", "texto": "Fondos sin declarar. Hacen más eficaces algunas misiones, pero cada uso sube la exposición y deja deudas de favor."},
-  "exposicion": {"titulo": "Exposición", "texto": "Qué tan cerca estás de un escándalo por usar dinero opaco. Baja de a poco con el tiempo. Cuanto más alta, mayor la probabilidad diaria de que se filtre algo."},
-  "afiliados": {"titulo": "Afiliados", "texto": "Miembros formales del partido: pagan cuota y cuentan para ascender. Salen de tus seguidores y suben con la confianza y un buen cargo de Organización interna."},
-  "seguidores": {"titulo": "Seguidores", "texto": "Personas que apoyan al partido de forma intensa. Aumentan cuando ganás control en los barrios."},
-  "voto": {"titulo": "Intención de voto", "texto": "Qué parte de los electores de tu ciudad te votaría hoy, según el control que tenés en cada barrio."},
-  "rango": {"titulo": "Rango", "texto": "Tu lugar en el escalafón del partido. Para ascender hay que cumplir varios requisitos a la vez: se piden desde la pestaña Partido."},
-  "xp": {"titulo": "Experiencia", "texto": "Se gana con misiones exitosas. Es uno de los requisitos para ascender, pero no el único."},
-  "control": {"titulo": "Control", "texto": "Qué parte del barrio responde a tu partido. Lo sube cada misión exitosa; los rivales pueden quitártelo."},
-  "confianza": {"titulo": "Confianza", "texto": "Cuánto te cree la gente del barrio. Sube la probabilidad de éxito de tus misiones; se cae con fracasos, rumores y escándalos."},
-  "exito": {"titulo": "Probabilidad de éxito", "texto": "Suma de la dificultad base y de todos los factores del barrio, tus habilidades, tu plantel y los rivales. Abrí «Por qué» para ver el desglose."},
-  "alcance": {"titulo": "Alcance", "texto": "Personas a las que llega la misión. En barrios densos llega a más gente; el control ganado depende de cuántos habitantes tiene el barrio."},
-  "accion": {"titulo": "Acción personal", "texto": "Sos una sola persona: hacés una acción a la vez. Con más rango sumás un equipo al que delegar."},
-  "equipo": {"titulo": "Equipo", "texto": "Gente a la que delegás misiones. Rinden menos que si las hacés vos, pero no ocupan tu acción personal."},
-  "flujo": {"titulo": "Resultado mensual", "texto": "Ingresos menos gastos fijos proyectados para el mes. Si es negativo, perdés plata aunque no gastes en misiones."},
-  "relacion": {"titulo": "Relación", "texto": "Qué tan bien te lleva con esa persona o partido (0 a 100). Se gana cumpliendo y pactando; se pierde fallando, rechazando o traicionando."},
-  "capacidad": {"titulo": "Capacidad", "texto": "Qué tan bien hace su trabajo esa persona. Define cuánto aporta el bono de su cargo."},
-  "lealtad": {"titulo": "Lealtad", "texto": "Qué difícil es que se vaya. Con lealtad baja, un rival puede captarlo o se baja del partido."},
-  "ambicion": {"titulo": "Ambición", "texto": "Qué tan probable es que busque algo mejor, incluso pasándose a otro partido."},
-  "certeza": {"titulo": "Confirmado o rumor", "texto": "Si tenés presencia o confianza en el barrio, lo que ves de los rivales es información confirmada. Si no, es solo un rumor: puede ser real, pero no lo sabés."},
-  "vacante": {"titulo": "Vacante", "texto": "Un cargo o puesto sin titular. Mientras esté vacío perdés su bono; si no decidís a tiempo, entra un interino de baja capacidad."},
-  "escalafon": {"titulo": "Escalafón", "texto": "La escalera de rangos del partido. Cada paso pide experiencia, afiliados, barrios con control, buena relación con tu líder y un puesto libre."},
-  "favor": {"titulo": "Deuda de favor", "texto": "Plata sin recibo que alguien te dio a cambio de algo. Si no la devolvés a tiempo, lo hará público."},
-  "etapa": {"titulo": "Etapa del partido", "texto": "Qué tan grande es la organización: incipiente, presencia local, multizona o red provincial. Crece con los afiliados."},
-  "desgaste": {"titulo": "Desgaste", "texto": "Tu cansancio. Sube con cada día ocupado y baja con el descanso. Alto, resta probabilidad de éxito; muy alto, te lleva a una crisis."},
-  "habilidad": {"titulo": "Habilidades", "texto": "Se entrenan haciendo misiones afines y mejoran con los puntos que ganás al ascender. Cada nivel da un bono."}
+  "dinero": {
+    "titulo": "Dinero blanco",
+    "texto": "Fondos declarados del partido. Se gastan en casi todas las misiones. Entre paréntesis ves cuánto ganás o perdés por mes (ingresos menos gastos fijos)."
+  },
+  "negro": {
+    "titulo": "Dinero negro",
+    "texto": "Fondos sin declarar. Hacen más eficaces algunas misiones, pero cada uso sube la exposición y deja deudas de favor."
+  },
+  "exposicion": {
+    "titulo": "Exposición",
+    "texto": "Qué tan cerca estás de un escándalo por usar dinero opaco. Baja de a poco con el tiempo. Cuanto más alta, mayor la probabilidad diaria de que se filtre algo."
+  },
+  "afiliados": {
+    "titulo": "Afiliados",
+    "texto": "Miembros formales del partido: pagan cuota y cuentan para ascender. Salen de tus seguidores y suben con la confianza y un buen cargo de Organización interna."
+  },
+  "seguidores": {
+    "titulo": "Seguidores",
+    "texto": "Personas que apoyan al partido de forma intensa. Aumentan cuando ganás control en los barrios."
+  },
+  "voto": {
+    "titulo": "Intención de voto",
+    "texto": "Qué parte de los electores de tu ciudad te votaría hoy, según el control que tenés en cada barrio."
+  },
+  "rango": {
+    "titulo": "Rango",
+    "texto": "Tu lugar en el escalafón del partido. Para ascender hay que cumplir varios requisitos a la vez: se piden desde la pestaña Partido."
+  },
+  "xp": {
+    "titulo": "Experiencia",
+    "texto": "Se gana con misiones exitosas. Es uno de los requisitos para ascender, pero no el único."
+  },
+  "control": {
+    "titulo": "Control",
+    "texto": "Qué parte del barrio responde a tu partido. Lo sube cada misión exitosa; los rivales pueden quitártelo."
+  },
+  "confianza": {
+    "titulo": "Confianza",
+    "texto": "Cuánto te cree la gente del barrio. Sube la probabilidad de éxito de tus misiones; se cae con fracasos, rumores y escándalos."
+  },
+  "exito": {
+    "titulo": "Probabilidad de éxito",
+    "texto": "Suma de la dificultad base y de todos los factores del barrio, tus habilidades, tu plantel y los rivales. Abrí «Por qué» para ver el desglose."
+  },
+  "alcance": {
+    "titulo": "Alcance",
+    "texto": "Personas a las que llega la misión. En barrios densos llega a más gente; el control ganado depende de cuántos habitantes tiene el barrio."
+  },
+  "accion": {
+    "titulo": "Acción personal",
+    "texto": "Sos una sola persona: hacés una acción a la vez. Con más rango sumás un equipo al que delegar."
+  },
+  "equipo": {
+    "titulo": "Equipo",
+    "texto": "Gente a la que delegás misiones. Rinden menos que si las hacés vos, pero no ocupan tu acción personal."
+  },
+  "flujo": {
+    "titulo": "Resultado mensual",
+    "texto": "Ingresos menos gastos fijos proyectados para el mes. Si es negativo, perdés plata aunque no gastes en misiones."
+  },
+  "relacion": {
+    "titulo": "Relación",
+    "texto": "Qué tan bien te lleva con esa persona o partido (0 a 100). Se gana cumpliendo y pactando; se pierde fallando, rechazando o traicionando."
+  },
+  "capacidad": {
+    "titulo": "Capacidad",
+    "texto": "Qué tan bien hace su trabajo esa persona. Define cuánto aporta el bono de su cargo."
+  },
+  "lealtad": {
+    "titulo": "Lealtad",
+    "texto": "Qué difícil es que se vaya. Con lealtad baja, un rival puede captarlo o se baja del partido."
+  },
+  "ambicion": {
+    "titulo": "Ambición",
+    "texto": "Qué tan probable es que busque algo mejor, incluso pasándose a otro partido."
+  },
+  "certeza": {
+    "titulo": "Confirmado o rumor",
+    "texto": "Si tenés presencia o confianza en el barrio, lo que ves de los rivales es información confirmada. Si no, es solo un rumor: puede ser real, pero no lo sabés."
+  },
+  "vacante": {
+    "titulo": "Vacante",
+    "texto": "Un cargo o puesto sin titular. Mientras esté vacío perdés su bono; si no decidís a tiempo, entra un interino de baja capacidad."
+  },
+  "escalafon": {
+    "titulo": "Escalafón",
+    "texto": "La escalera de rangos del partido. Cada paso pide experiencia, afiliados, barrios con control, buena relación con tu líder y un puesto libre."
+  },
+  "favor": {
+    "titulo": "Deuda de favor",
+    "texto": "Plata sin recibo que alguien te dio a cambio de algo. Si no la devolvés a tiempo, lo hará público."
+  },
+  "etapa": {
+    "titulo": "Etapa del partido",
+    "texto": "Qué tan grande es la organización: incipiente, presencia local, multizona o red provincial. Crece con los afiliados."
+  },
+  "desgaste": {
+    "titulo": "Desgaste",
+    "texto": "Tu cansancio. Sube con cada día ocupado y baja con el descanso. Alto, resta probabilidad de éxito; muy alto, te lleva a una crisis."
+  },
+  "habilidad": {
+    "titulo": "Habilidades",
+    "texto": "Se entrenan haciendo misiones afines y mejoran con los puntos que ganás al ascender. Cada nivel da un bono."
+  },
+  "carga": {
+    "titulo": "Carga propia",
+    "texto": "Cada cargo del partido que manejás vos mismo te quita tiempo (tus acciones tardan más) y suma desgaste. Delegarlo en alguien capaz libera esa carga."
+  },
+  "delegar": {
+    "titulo": "Delegar",
+    "texto": "Solo administrás lo que está por debajo de tu rango. Cada cargo lo manejás vos (según tus habilidades) o se lo das a un subordinado: rinde según su capacidad, pero depende de su lealtad."
+  }
 }

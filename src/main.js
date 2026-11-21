@@ -215,6 +215,10 @@ function wirePanel() {
     if (e.target.closest('[data-ascender]')) { const b = e.target.closest('[data-ascender]'); if (!b.disabled) { const err = game.ascender(); if (err) toast(err); else { setSpeed(0); refreshAll(); } } return; }
     const ds = e.target.closest('[data-designar]');
     if (ds && !ds.disabled) { const err = game.designar(ds.dataset.designar, ds.dataset.cand); if (err) toast(err); refreshAll(); return; }
+    const dl = e.target.closest('[data-delegar]');
+    if (dl && !dl.disabled) { const err = game.delegar(dl.dataset.delegar); if (err) toast(err); refreshAll(); return; }
+    const rt = e.target.closest('[data-retomar]');
+    if (rt && !rt.disabled) { const err = game.retomar(rt.dataset.retomar); if (err) toast(err); refreshAll(); return; }
     const cp = e.target.closest('[data-captar]');
     if (cp && !cp.disabled) { const err = game.captarCuadro(cp.dataset.captar, cp.dataset.mid, cp.dataset.con); if (err) toast(err); refreshAll(); return; }
     const pt = e.target.closest('[data-pacto]');

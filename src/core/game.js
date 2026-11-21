@@ -81,6 +81,9 @@ export class Game {
   // Escalafón: checklist para el próximo rango, pedir el ascenso, designar vacantes y captar cuadros rivales
   get requisitos() { return escalafon.requisitos(this); }
   ascender() { return escalafon.ascender(this); }
+  get carga() { return plantel.carga(this); }
+  delegar(cargo) { return plantel.delegar(this, cargo); }
+  retomar(cargo) { return plantel.retomar(this, cargo); }
   designar(vid, cid) { return plantel.designar(this, vid, cid); }
   captarCuadro(rivalId, mid, con) { return plantel.captarCuadro(this, rivalId, mid, con); }
   // Pactos: oferta (costo y probabilidad) y propuesta a un rival
@@ -148,8 +151,8 @@ export class Game {
     if (modo === 'delegada') factors.push(['Equipo con menos experiencia', -this.cfg.delegacion.penal]);
     const pr = this.modsPrincipios(m);
     if (pr.chance) factors.push([`Principios (${pr.nombres.join(', ')})`, pr.chance]);
-    if (['volantes', 'pintadas'].includes(m.id)) { const t = plantel.titular(this, 'comunicacion'); if (t) factors.push([`Comunicación (${t.nombre})`, Math.round(this.cfg.plantel.bonos.comunicacion * t.capacidad / 100)]); }
-    if (m.id === 'reunion') { const t = plantel.titular(this, 'campana'); if (t) factors.push([`Campaña y alianzas (${t.nombre})`, Math.round(this.cfg.plantel.bonos.campana * t.capacidad / 100)]); }
+    if (['volantes', 'pintadas'].includes(m.id)) { const t = plantel.aporte(this, 'comunicacion'); if (t.cap) factors.push([`Comunicación (${t.quien})`, Math.round(this.cfg.plantel.bonos.comunicacion * t.cap / 100)]); }
+    if (m.id === 'reunion') { const t = plantel.aporte(this, 'campana'); if (t.cap) factors.push([`Campaña y alianzas (${t.quien})`, Math.round(this.cfg.plantel.bonos.campana * t.cap / 100)]); }
     const ref = plantel.referenteDe(this, z.id);
     if (ref && m.categoria !== 'finanzas') factors.push([`Referente del barrio (${ref.nombre})`, Math.round(this.cfg.plantel.referente.chancePorCap * ref.capacidad / 100)]);
     for (const a of pactos.apoyosZona(this, z.id, rid => presencia(this, z.id)[rid])) factors.push([`Apoyo de ${this.rival(a.rival).nombre} (pacto)`, a.puntos]);

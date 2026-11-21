@@ -1,6 +1,7 @@
 // Vistas HTML (cadenas). Sin estado propio.
 import { amenaza, presencia, efectosActivos, choques, agenda, certeza, presenciaCiudad, defAccion } from '../core/rivals.js';
 import { progreso as progresoDirectiva, etiqueta as etiquetaRelacion } from '../core/linea.js';
+import * as plantel from '../core/plantel.js';
 import { nombreVacante, cargoDef, titular, probCaptar } from '../core/plantel.js';
 import { relacion as relacionRival, pactoCon, tipoDef, etiquetaRelacion as etiquetaRel } from '../core/pactos.js';
 import { NOMBRE_MAX } from '../core/save.js';
@@ -344,21 +345,40 @@ const origenTxt = { fundador: 'fundador', interno: 'ascenso interno', externo: '
 const miembroCard = (m, extra = '') => `<div class="miembro"><div class="m-head"><b>${esc(m.nombre)}</b><small class="muted">${esc(origenTxt[m.origen] ?? '')}</small></div>
   <div class="m-stats"><span tabindex="0" data-tip="capacidad">Cap. ${m.capacidad}${meter(m.capacidad)}</span><span tabindex="0" data-tip="lealtad">Leal. ${m.lealtad}${meter(m.lealtad, m.lealtad < 40 ? 'bad' : '')}</span><span tabindex="0" data-tip="ambicion">Amb. ${m.ambicion}${meter(m.ambicion, m.ambicion > 70 ? 'warn' : '')}</span></div>${extra}</div>`;
 
-// Plantel: cargos, referentes de barrio, vacantes con candidatos
+// Plantel como jerarquía: conducción (arriba, solo lectura) → vos → cargos bajo tu mando (propio o delegado) → referentes → militantes
 function renderPlantel(g) {
-  const P = g.cfg.plantel, S = g.plantel;
-  const cargos = P.cargos.map(c => {
-    const t = titular(g, c.id), v = S.vacantes.find(x => x.cargo === c.id);
-    if (g.afiliados < c.desdeAfiliados) return `<div class="cargo cerrado"><b>${esc(c.nombre)}</b><small class="muted">Se crea con ${g.umbral(c.desdeAfiliados)} afiliados.</small></div>`;
-    if (t) return `<div class="cargo"><div class="c-title"><b>${esc(c.nombre)}</b></div><small class="muted">${esc(c.efecto)}</small>${miembroCard(t)}</div>`;
-    return `<div class="cargo vacante"><div class="c-title"><b>${esc(c.nombre)}</b> <span class="tag warn">vacante${v ? ` · ${Math.max(0, v.vence - g.day)} d` : ''}</span></div><small class="muted">${esc(c.efecto)}</small></div>`;
-  }).join('');
-  const refs = S.miembros.filter(m => m.cargo?.startsWith('ref:')).map(m => miembroCard(m, `<small class="muted">Referente de ${esc(g.zonas[m.cargo.slice(4)]?.nombre ?? 'un barrio')}</small>`)).join('');
-  const libres = S.miembros.filter(m => !m.cargo).map(m => miembroCard(m, '<small class="muted">Sin cargo: podés designarlo en una vacante.</small>')).join('');
-  const vacs = S.vacantes.map(v => `<div class="vacancia"><div class="c-title"><b>Vacante: ${esc(nombreVacante(g, v))}</b><small class="muted">Quedan ${Math.max(0, v.vence - g.day)} d; después asume un interino</small></div>
+  const P = g.cfg.plantel, S = g.plantel, rank = g.player.rank, K = P.propio, car = g.carga;
+  const arriba = P.cargos.filter(c => rank <= c.rango);
+  const mios = P.cargos.filter(c => rank > c.rango);
+  const cardCargo = c => {
+    const abierto = g.afiliados >= g.umbral(c.desdeAfiliados), m = plantel.modo(g, c.id), t = titular(g, c.id), v = S.vacantes.find(x => x.cargo === c.id);
+    const hab = g.cfg.habilidades.ramas.find(r => r.id === c.habilidad)?.nombre ?? '';
+    if (!abierto) return `<div class="cargo cerrado"><b>${esc(c.nombre)}</b><small class="muted">Se puede organizar con ${g.umbral(c.desdeAfiliados)} afiliados.</small></div>`;
+    if (m === 'propio') {
+      const cap = plantel.capPropia(g, c);
+      return `<div class="cargo"><div class="c-title"><b>${esc(c.nombre)}</b> <span class="tag">lo manejás vos</span></div><small class="muted">${esc(c.efecto)}</small>
+        <div class="kv"><span tabindex="0" data-tip-texto="Tu habilidad (${esc(hab)}) define cuánto rinde. Delegando en alguien capaz, puede rendir más.">Rinde</span><b>${cap}% de lo posible</b><span class="detalle">Cuesta</span><b class="detalle">tiempo y desgaste</b></div>
+        <div class="btns"><button data-delegar="${esc(c.id)}" data-tip-texto="Elegís a alguien que lo maneje: ganás tiempo, pero dependés de su capacidad y su lealtad.">Delegar</button></div></div>`;
+    }
+    const body = t ? miembroCard(t) : `<small class="muted">Vacante${v ? ` · quedan ${Math.max(0, v.vence - g.day)} d` : ''}: elegí a alguien más abajo.</small>`;
+    return `<div class="cargo ${t ? '' : 'vacante'}"><div class="c-title"><b>${esc(c.nombre)}</b> <span class="tag ${t ? '' : 'warn'}">delegado</span></div><small class="muted">${esc(c.efecto)}</small>${body}
+      <div class="btns"><button data-retomar="${esc(c.id)}" data-tip-texto="Volvés a manejarlo vos. El titular queda sin cargo y le cae la lealtad.">Retomar</button></div></div>`;
+  };
+  const vacs = S.vacantes.filter(v => !v.zona || rank > P.referente.rango).map(v => `<div class="vacancia"><div class="c-title"><b>Vacante: ${esc(nombreVacante(g, v))}</b><small class="muted">Quedan ${Math.max(0, v.vence - g.day)} d; después asume un interino</small></div>
     ${v.candidatos.map(c => `<div class="candidato">${miembroCard(c)}<button data-designar="${esc(v.id)}" data-cand="${esc(c.id)}" ${c.costo > 0 && c.costo > g.player.money ? 'disabled' : ''}>Designar${c.costo ? ' · ' + money(c.costo) : ' · sin costo'}</button></div>`).join('')}</div>`).join('');
-  return `<h3>Plantel</h3>${vacs ? `<div class="vacantes"><p class="small-p"><b>Hay vacantes por cubrir.</b> Elegí a quien tenga más capacidad y lealtad.</p>${vacs}</div>` : ''}
-    ${cargos}${refs ? `<h3>Referentes de barrio</h3>${refs}` : ''}${libres ? `<h3>Militantes sin cargo</h3>${libres}` : ''}`;
+  const refsL = S.miembros.filter(m => m.cargo?.startsWith('ref:'));
+  const coord = plantel.modo(g, 'territorial') === 'delegado' && titular(g, 'territorial');
+  const refsHtml = rank <= P.referente.rango ? '' : coord
+    ? `<h3>Referentes de barrio</h3><p class="small-p">${esc(coord.nombre)} los designa por vos: ${refsL.length} referente${refsL.length === 1 ? '' : 's'}${refsL.length ? `, capacidad media ${Math.round(refsL.reduce((a, m) => a + m.capacidad, 0) / refsL.length)}` : ''}.</p>`
+    : refsL.length ? `<h3>Referentes de barrio</h3>${refsL.map(m => miembroCard(m, `<small class="muted">Referente de ${esc(g.zonas[m.cargo.slice(4)]?.nombre ?? 'un barrio')}</small>`)).join('')}` : '';
+  const libres = S.miembros.filter(m => !m.cargo).map(m => miembroCard(m, '<small class="muted">Sin cargo: podés designarlo en una vacante.</small>')).join('');
+  const sig = P.cargos.filter(c => rank <= c.rango).sort((a, b) => a.rango - b.rango)[0];
+  return `<h3>Mi estructura</h3>
+    <p class="small-p muted">Solo administrás lo que está por debajo de tu rango. Cada cargo lo manejás vos o lo delegás.</p>
+    ${arriba.length ? `<div class="cargo cerrado" tabindex="0" data-tip-texto="Esos cargos los maneja la conducción hasta que subas de rango."><b>Conducción</b><small class="muted">${esc(g.rankName)}${g.linea?.lider ? ` · tu superior: ${esc(g.linea.lider.nombre)}` : ''}. Por encima tuyo: ${arriba.map(c => esc(c.nombre)).join(', ')} (rango ${esc(g.cfg.ranks[Math.min(...arriba.map(c => c.rango)) + 1] ?? '')}).</small></div>` : ''}
+    ${mios.length ? `<div class="kv"><span tabindex="0" data-tip-texto="Cada cargo que manejás vos te resta tiempo (acciones más lentas) y suma desgaste. Delegar libera esa carga.">Carga propia</span><b>${car.n ? `${car.n} cargo${car.n > 1 ? 's' : ''} · +${Math.round(car.tiempo * 100)}% tiempo` : 'ninguna'}</b></div>` : `<p class="small-p">Todavía no tenés cargos bajo tu mando: hacés todo vos. ${sig ? `Con rango «${esc(g.cfg.ranks[P.referente.rango + 1])}» vas a poder organizar referentes y delegar.` : ''}</p>`}
+    ${vacs ? `<div class="vacantes"><p class="small-p"><b>Hay vacantes por cubrir.</b> Elegí a quien tenga más capacidad y lealtad.</p>${vacs}</div>` : ''}
+    ${mios.map(cardCargo).join('')}${refsHtml}${libres ? `<h3>Militantes sin cargo</h3>${libres}` : ''}`;
 }
 
 // Pestaña Yo: quién sos, qué sabés hacer, cómo estás y de qué vivís

@@ -20,6 +20,7 @@ export function consejos(g) {
     add('golpe', 'alerta', `${r.nombre} ${golpe.fase === 'planeada' ? 'prepara' : 'ejecuta'} «${golpe.def.nombre.toLowerCase()}» en ${z.nombre}.`, 'rivales');
   }
   if (g.plantel.vacantes.length) add('vacante', 'oportunidad', `Hay ${g.plantel.vacantes.length} vacante${g.plantel.vacantes.length > 1 ? 's' : ''} por cubrir en tu plantel.`, 'partido');
+  if (g.carga.n >= 2 && g.jugador.desgaste >= 40) add('delegar', 'info', `Manejás ${g.carga.n} cargos vos mismo: delegá alguno para ganar tiempo y bajar el desgaste.`, 'partido');
   const q = g.requisitos;
   if (q?.todos) add('ascenso', 'oportunidad', `Ya cumplís los requisitos: podés pedir el ascenso a ${q.rango}.`, 'partido');
   if (g.linea?.directiva?.estado === 'propuesta') add('directiva', 'oportunidad', 'Hay una bajada de línea esperando tu respuesta.', 'partido');

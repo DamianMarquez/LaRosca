@@ -1,5 +1,5 @@
 {
-  "nota": "Plantel del partido. Cada cargo bien ocupado da un bono proporcional a la capacidad (0-100) del titular. Los nombres son ficticios.",
+  "nota": "Plantel del partido. Cada cargo bien ocupado da un bono proporcional a la capacidad (0-100) del titular. Los nombres son ficticios. Jerarquía: solo administrás los cargos con rango menor al tuyo; cada uno se maneja en modo propio (según tu habilidad, con carga de tiempo y desgaste) o delegado (según la capacidad del titular).",
   "nombres": {
     "nombre": [
       "Ramiro",
@@ -81,37 +81,49 @@
       "id": "territorial",
       "nombre": "Organización territorial",
       "desdeAfiliados": 30,
-      "efecto": "Tus misiones llegan a más gente (hasta +20% de alcance)"
+      "efecto": "Tus misiones llegan a más gente (hasta +20% de alcance)",
+      "rango": 3,
+      "habilidad": "calle"
     },
     {
       "id": "interna",
       "nombre": "Organización interna",
       "desdeAfiliados": 30,
-      "efecto": "Se afilia más gente y hay menos deserciones (hasta +25% afiliación, −25% bajas)"
+      "efecto": "Se afilia más gente y hay menos deserciones (hasta +25% afiliación, −25% bajas)",
+      "rango": 3,
+      "habilidad": "organizacion"
     },
     {
       "id": "comunicacion",
       "nombre": "Comunicación",
       "desdeAfiliados": 80,
-      "efecto": "Volantes y pintadas rinden más (hasta +6 puntos de éxito)"
+      "efecto": "Volantes y pintadas rinden más (hasta +6 puntos de éxito)",
+      "rango": 4,
+      "habilidad": "oratoria"
     },
     {
       "id": "finanzas",
       "nombre": "Administración y finanzas",
       "desdeAfiliados": 80,
-      "efecto": "Más cuotas y menos gastos (hasta +30% cuotas, −15% gastos)"
+      "efecto": "Más cuotas y menos gastos (hasta +30% cuotas, −15% gastos)",
+      "rango": 4,
+      "habilidad": "finanzas"
     },
     {
       "id": "formacion",
       "nombre": "Formación y programa",
       "desdeAfiliados": 200,
-      "efecto": "Ganás más experiencia (hasta +30% XP)"
+      "efecto": "Ganás más experiencia (hasta +30% XP)",
+      "rango": 4,
+      "habilidad": "organizacion"
     },
     {
       "id": "campana",
       "nombre": "Campaña y alianzas",
       "desdeAfiliados": 200,
-      "efecto": "Mejores reuniones (hasta +5 puntos) y mejores pactos con otros partidos"
+      "efecto": "Mejores reuniones (hasta +5 puntos) y mejores pactos con otros partidos",
+      "rango": 4,
+      "habilidad": "negociacion"
     }
   ],
   "bonos": {
@@ -128,7 +140,9 @@
   "referente": {
     "control": 0.1,
     "porAfiliados": 25,
-    "chancePorCap": 5
+    "chancePorCap": 5,
+    "rango": 2,
+    "habilidad": "calle"
   },
   "vacante": {
     "dias": 30,
@@ -150,5 +164,12 @@
     "costoNegro": 2000,
     "exposicionNegro": 4
   },
-  "fundadores": 3
+  "fundadores": 3,
+  "propio": {
+    "tope": 60,
+    "porNivel": 12,
+    "cargaDesgaste": 0.12,
+    "cargaTiempo": 0.03,
+    "cargaMax": 4
+  }
 }

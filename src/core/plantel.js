@@ -23,7 +23,7 @@ function persona(g, r, { cap = [25, 90], lealtad = [35, 90], ambicion = [10, 90]
 
 export function iniciar(g) {
   const E = g.cfg.escalafon, ocupados = Object.fromEntries(Object.keys(E.requisitos).map(k => [k, 1]));
-  const st = { miembros: [], vacantes: [], ocupados, refill: [], sig: 1, avisoAscenso: null };
+  const st = { miembros: [], vacantes: [], ocupados, refill: [], sig: 1, avisoAscenso: null, modos: {} };
   g.plantel = st;                                  // persona() usa el contador de ids
   const r = rng(`${g.prov.id}:${g.partido.nombre}:plantel`);
   for (let i = 0; i < C(g).fundadores; i++) st.miembros.push({ ...persona(g, r, { cap: [35, 70], lealtad: [60, 90], origen: 'fundador' }), cargo: null, desde: 0 });
@@ -51,8 +51,49 @@ export const cargoDef = (g, id) => C(g).cargos.find(c => c.id === id);
 export const titular = (g, cargo) => g.plantel.miembros.find(m => m.cargo === cargo) ?? null;
 export const referenteDe = (g, zonaId) => g.plantel.miembros.find(m => m.cargo === `ref:${zonaId}`) ?? null;
 export const vacanteDe = (g, key) => g.plantel.vacantes.find(v => (v.cargo ?? `ref:${v.zona}`) === key) ?? null;
-// 0..1: qué tanto aporta el cargo (0 si está vacante)
-export const bono = (g, cargo) => (titular(g, cargo)?.capacidad ?? 0) / 100;
+// ---------- Jerarquía: solo administrás lo que está por debajo de tu rango ----------
+// Afiliados sin el bono de Organización interna (evita la circularidad con g.afiliados)
+const afilBase = g => g.followers * g.cfg.economia.tasaAfiliacion * personaje.afiliacionMult(g);
+export const puedoAdministrar = (g, cargo) => { const c = cargoDef(g, cargo); return !!c && g.player.rank > c.rango && afilBase(g) >= g.umbral(c.desdeAfiliados); };
+export const rangoDe = (g, c) => g.cfg.ranks[c.rango + 1] ?? '';   // rango mínimo del jugador para mandar sobre el cargo
+export const modo = (g, cargo) => (g.plantel.modos?.[cargo] === 'delegado' ? 'delegado' : 'propio');
+// Habilidad personal aplicada al cargo cuando lo manejás vos (0..1 de capacidad)
+export function capPropia(g, c) { const K = C(g).propio; return Math.min(K.tope, personaje.nivel(g, c.habilidad) * K.porNivel); }
+// Cargos que hoy manejás vos (cuestan tiempo y desgaste)
+export const cargosPropios = g => C(g).cargos.filter(c => puedoAdministrar(g, c.id) && modo(g, c.id) === 'propio');
+export function carga(g) { const K = C(g).propio, n = Math.min(K.cargaMax, cargosPropios(g).length); return { n, desgaste: n * K.cargaDesgaste, tiempo: n * K.cargaTiempo }; }
+// Quién aporta y con cuánta capacidad (0..100): vos, el titular o nadie
+export function aporte(g, cargo) {
+  const c = cargoDef(g, cargo);
+  if (!c || !puedoAdministrar(g, cargo)) return { cap: 0, quien: null, modo: null };
+  if (modo(g, cargo) === 'delegado') { const t = titular(g, cargo); return { cap: t?.capacidad ?? 0, quien: t?.nombre ?? null, modo: 'delegado' }; }
+  return { cap: capPropia(g, c), quien: g.jugador?.nombre ?? 'vos', modo: 'propio' };
+}
+// 0..1: qué tanto aporta el cargo (0 si no es tuyo o está vacante)
+export const bono = (g, cargo) => aporte(g, cargo).cap / 100;
+
+// Delegar un cargo: abre la vacante. Retomarlo: volvés a manejarlo y el titular queda sin cargo.
+export function delegar(g, cargo) {
+  const c = cargoDef(g, cargo);
+  if (!c) return 'Ese cargo no existe.';
+  if (g.player.rank <= c.rango) return `Ese cargo lo maneja la conducción: necesitás ser ${rangoDe(g, c)}.`;
+  if (g.afiliados < g.umbral(c.desdeAfiliados)) return `Todavía no hay estructura: hacen falta ${g.umbral(c.desdeAfiliados)} afiliados.`;
+  if (modo(g, cargo) === 'delegado') return 'Ya está delegado.';
+  g.plantel.modos[cargo] = 'delegado';
+  abrirVacante(g, { cargo });
+  g.note(`Vas a delegar ${c.nombre.toLowerCase()}: elegí a alguien en Partido → Plantel.`, 'linea');
+  return null;
+}
+export function retomar(g, cargo) {
+  const c = cargoDef(g, cargo);
+  if (!c || modo(g, cargo) !== 'delegado') return 'Ese cargo ya lo manejás vos.';
+  g.plantel.modos[cargo] = 'propio';
+  g.plantel.vacantes = g.plantel.vacantes.filter(v => v.cargo !== cargo);
+  const t = titular(g, cargo);
+  if (t) { t.cargo = null; t.lealtad = clamp(t.lealtad - 8, 0, 100); }
+  g.note(`Retomaste ${c.nombre.toLowerCase()}${t ? `; ${t.nombre} quedó sin cargo` : ''}. Ahora lo manejás vos.`, 'info');
+  return null;
+}
 
 // ---------- Vacantes ----------
 function candidatos(g, key) {
@@ -90,6 +131,15 @@ export function designar(g, vid, cid) {
   g.plantel.vacantes = g.plantel.vacantes.filter(x => x !== v);
   g.note(`Designaste a ${m.nombre} como ${nombreVacante(g, v).toLowerCase()} (capacidad ${m.capacidad}).`, 'ok');
   return null;
+}
+
+// El coordinador territorial cubre solo un referente de barrio, con calidad parecida a la suya
+function autocubrir(g, v, coord) {
+  const r = rng(`${g.prov.id}:${g.day}:auto:${v.id}`);
+  const m = { ...persona(g, r, { cap: [clamp(coord.capacidad - 20, 15, 95), clamp(coord.capacidad + 5, 20, 100)], lealtad: [45, 85], origen: 'interno' }), cargo: `ref:${v.zona}`, desde: g.day };
+  g.plantel.miembros.push(m);
+  g.plantel.vacantes = g.plantel.vacantes.filter(x => x !== v);
+  g.note(`${coord.nombre} designó a ${m.nombre} como referente de ${g.zonas[v.zona]?.nombre ?? 'un barrio'}.`, 'info');
 }
 
 function interino(g, v) {
@@ -149,15 +199,21 @@ export function captarCuadro(g, rivalId, mid, con = 'blanco', rnd = Math.random)
 // ---------- Turno diario ----------
 export function tick(g, rnd = Math.random) {
   const S = g.plantel, P = C(g), afil = g.afiliados;
-  // 1) cargos que se crean al crecer el partido
-  for (const c of P.cargos) if (afil >= g.umbral(c.desdeAfiliados) && !titular(g, c.id)) abrirVacante(g, { cargo: c.id });
-  // 2) referentes en barrios donde ya tenés presencia
+  // 0) lo que quedó fuera de tu mando (guardados viejos, retrocesos) vuelve a la conducción
+  for (const c of P.cargos) if (!puedoAdministrar(g, c.id)) { const t = titular(g, c.id); if (t) t.cargo = null; S.vacantes = S.vacantes.filter(v => v.cargo !== c.id); }
+  const rangoRef = g.player.rank > P.referente.rango;
+  if (!rangoRef) S.vacantes = S.vacantes.filter(v => !v.zona);
+  // 1) solo se cubren los cargos que decidiste delegar
+  for (const c of P.cargos) if (puedoAdministrar(g, c.id) && modo(g, c.id) === 'delegado' && !titular(g, c.id)) abrirVacante(g, { cargo: c.id });
+  // 2) referentes de barrio: si delegaste el Territorial los cubre el coordinador; si no, los cubrís vos
+  const coord = modo(g, 'territorial') === 'delegado' ? titular(g, 'territorial') : null;
   const cupo = Math.floor(afil / g.umbral(P.referente.porAfiliados)) + 1;
   const refs = S.miembros.filter(m => m.cargo?.startsWith('ref:')).length + S.vacantes.filter(v => v.zona).length;
-  if (refs < cupo && afil >= g.umbral(P.cargos[0].desdeAfiliados)) {
+  if (rangoRef && refs < cupo && afil >= g.umbral(P.cargos[0].desdeAfiliados)) {
     const z = Object.values(g.zonas).filter(z => z.control >= P.referente.control && !referenteDe(g, z.id) && !vacanteDe(g, `ref:${z.id}`)).sort((a, b) => b.control * b.pop - a.control * a.pop)[0];
     if (z) abrirVacante(g, { zona: z.id });
   }
+  if (coord) for (const v of S.vacantes.filter(v => v.zona)) autocubrir(g, v, coord);
   // 3) vacantes que vencen: queda un interino
   for (const v of [...S.vacantes]) if (g.day >= v.vence) interino(g, v);
   // 4) deserciones
@@ -184,7 +240,7 @@ export function sanear(g, raw) {
   const cargoOk = c => c === null || cargosOk.has(c) || (typeof c === 'string' && c.startsWith('ref:') && !!g.zonas[c.slice(4)]);
   const limpiaP = x => ({ id: String(x.id).replace(/[^\w:-]/g, '').slice(0, 40), nombre: limpia(x.nombre) || 'Sin nombre', capacidad: clamp(Math.round(x.capacidad), 0, 100), lealtad: clamp(Math.round(x.lealtad), 0, 100), ambicion: clamp(Math.round(x.ambicion), 0, 100), principios: (Array.isArray(x.principios) ? [...new Set(x.principios)] : []).filter(id => cat.includes(id)).slice(0, 2), origen: ['fundador', 'interno', 'externo', 'captado', 'interino', 'rival'].includes(x.origen) ? x.origen : 'externo' });
   const okP = x => x && typeof x.id === 'string' && [x.capacidad, x.lealtad, x.ambicion].every(fin);
-  const out = { miembros: [], vacantes: [], ocupados: { ...base.ocupados }, refill: [], sig: fin(raw.sig) ? Math.max(1, Math.floor(raw.sig)) : base.sig, avisoAscenso: fin(raw.avisoAscenso) ? raw.avisoAscenso : null };
+  const out = { miembros: [], vacantes: [], ocupados: { ...base.ocupados }, refill: [], sig: fin(raw.sig) ? Math.max(1, Math.floor(raw.sig)) : base.sig, avisoAscenso: fin(raw.avisoAscenso) ? raw.avisoAscenso : null, modos: {} };
   if (Array.isArray(raw.miembros)) {
     const usados = new Set();
     for (const m of raw.miembros.filter(okP).slice(0, 60)) {
@@ -200,6 +256,7 @@ export function sanear(g, raw) {
       candidatos: v.candidatos.filter(okP).slice(0, 5).map(c => ({ ...limpiaP(c), miembroId: typeof c.miembroId === 'string' ? c.miembroId.slice(0, 40) : undefined, costo: clamp(Math.round(Number(c.costo) || 0), 0, 1e6) })),
     })).filter(v => v.candidatos.length);
   }
+  for (const c of C(g).cargos) out.modos[c.id] = raw.modos && typeof raw.modos === 'object' ? (raw.modos[c.id] === 'delegado' ? 'delegado' : 'propio') : (out.miembros.some(m => m.cargo === c.id) ? 'delegado' : 'propio');
   if (raw.ocupados && typeof raw.ocupados === 'object') for (const k of Object.keys(out.ocupados)) if (fin(raw.ocupados[k])) out.ocupados[k] = clamp(Math.floor(raw.ocupados[k]), 0, 99);
   if (Array.isArray(raw.refill)) out.refill = raw.refill.filter(r => r && fin(r.dia) && out.ocupados[String(r.nivel)] !== undefined).slice(0, 20).map(r => ({ nivel: Number(r.nivel), dia: r.dia }));
   return out;

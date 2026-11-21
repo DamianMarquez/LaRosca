@@ -111,7 +111,7 @@ export const trabajoNombre = e => ({ completo: 'Jornada completa', reducido: 'Me
 export function tiempoMult(g, m) {
   const base = g.trasfondo?.duracionMult ?? 1, e = g.jugador.trabajo.estado, E = V(g).efectosFamilia;
   const trab = e === 'completo' ? base : e === 'reducido' ? 1 + (base - 1) / 2 : Math.min(base, V(g).trabajo.sinDuracion);
-  let mult = trab * (1 + (FAM(g).pareja ? E.tiempoPareja : 0) + FAM(g).hijos * E.tiempoHijo);
+  let mult = trab * (1 + (FAM(g).pareja ? E.tiempoPareja : 0) + FAM(g).hijos * E.tiempoHijo + (g.carga?.tiempo ?? 0));
   if (m?.id === 'reunion' && nivel(g, 'oratoria') >= 3) mult *= 0.85;
   return mult;
 }
@@ -191,7 +191,7 @@ export function tick(g, rnd = Math.random) {
   if (J.descanso) {
     J.desgaste = clamp(J.desgaste + D.descansoDia, 0, 100);
     if (g.day >= J.descanso.hasta) { J.descanso = null; g.note('Terminaste de descansar.', 'ok'); }
-  } else J.desgaste = clamp(J.desgaste + (ocupado ? D.diaOcupado * desgasteMult(g) : D.diaLibre), 0, 100);
+  } else J.desgaste = clamp(J.desgaste + (ocupado ? D.diaOcupado * desgasteMult(g) : D.diaLibre) + (g.carga?.desgaste ?? 0), 0, 100);
   if (J.desgaste >= D.crisis && g.day - J.ultimaCrisis >= D.enfriamientoCrisis && !g.pending) {
     const ev = g.cfg.eventos?.eventos.find(e => e.id === 'crisis_agotamiento');
     if (ev) { J.ultimaCrisis = g.day; g.pending = ev; g.ultimoEvento = g.day; g.note(`Evento: ${ev.titulo}.`, 'bad'); g.emit('event'); return; }
