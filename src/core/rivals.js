@@ -147,7 +147,7 @@ function elegir(g, r, bot, rnd) {
   const conControl = zonas.filter(z => z.control >= B.controlMin && presencia(g, z.id)[r.id] >= B.presenciaMin);
   const pop = zonas.reduce((s, z) => s + z.pop, 0) || 1;
   const amenazaGlobal = zonas.reduce((s, z) => s + z.pop * z.control, 0) / pop;
-  const pHostil = conControl.length && !noAgresion(g, r.id) ? clamp(B.hostilBase + B.hostilPorAmenaza * amenazaGlobal, 0, B.hostilMax) : 0;
+  const pHostil = conControl.length && !noAgresion(g, r.id) && !(!!g.guia?.progresivo && !g.guia.revelado.includes('tab.rivales')) ? clamp(B.hostilBase + B.hostilPorAmenaza * amenazaGlobal, 0, B.hostilMax) : 0;   // al empezar los rivales solo hacen campaña propia: los golpes llegan cuando se abre Rivales
   if (rnd() < pHostil) {
     const z = pick(conControl, z => Math.pow(z.pop, 0.7) * (0.3 + presencia(g, z.id)[r.id]) * (1 + 4 * z.control), rnd);
     const def = z && pick(accionesPosibles(g, z, r), a => a.peso[r.id], rnd);

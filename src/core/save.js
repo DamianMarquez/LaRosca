@@ -59,6 +59,7 @@ export function validate(d, cfg) {
   }
   // Campos opcionales (partidas anteriores no los traen): si están, deben tener la forma esperada; el contenido se sanea al cargar
   const obj = v => v && typeof v === 'object' && !Array.isArray(v);
+  if (d.guia !== undefined && !obj(d.guia)) return 'Datos de la guía inválidos.';
   if (d.org !== undefined && !obj(d.org)) return 'Datos de la organización inválidos.';
   if (d.jugador !== undefined && !obj(d.jugador)) return 'Datos del personaje inválidos.';
   if (d.alianzas !== undefined && !obj(d.alianzas)) return 'Datos de los pactos inválidos.';

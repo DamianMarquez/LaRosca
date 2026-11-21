@@ -11,6 +11,7 @@ import * as pactos from './pactos.js';
 import * as personaje from './personaje.js';
 import * as elecciones from './elecciones.js';
 import * as organizacion from './organizacion.js';
+import * as revelado from './revelado.js';
 import { Clock } from './clock.js';
 import { SCHEMA } from './save.js';
 
@@ -50,6 +51,7 @@ export class Game {
     this.day = 0;
     this.listeners = [];
     this.note(this.modo === 'fundador' ? `Fundaste «${this.partido.nombre}» en ${cap.ciudad}. No hay nadie por encima tuyo: el partido es solo una idea y todo está por construirse.` : `Te sumaste a «${this.partido.nombre}» en ${cap.ciudad}. Empezás como afiliado, sin poder interno.`, 'info');
+    revelado.iniciar(this, partido?.progresivo);                   // qué se ve al empezar (con el modo progresivo, casi nada)
   }
 
   // Datos reales de la provincia (INDEC 2022 / padrón 2025), si están cargados
@@ -114,6 +116,11 @@ export class Game {
   abrirComite(zona) { return organizacion.abrirComite(this, zona); }
   cerrarComite(zona) { return organizacion.cerrarComite(this, zona); }
   aparecer(tipo) { return organizacion.aparecer(this, tipo); }
+  // Revelado progresivo
+  ve(id) { return revelado.ve(this, id); }
+  marcarVisto(donde) { revelado.marcarVisto(this, donde); }
+  setProgresivo(v) { revelado.setProgresivo(this, v); }
+  vio(clave) { revelado.vio(this, clave); }
   designar(vid, cid) { return plantel.designar(this, vid, cid); }
   captarCuadro(rivalId, mid, con) { return plantel.captarCuadro(this, rivalId, mid, con); }
   // Pactos: oferta (costo y probabilidad) y propuesta a un rival
@@ -266,6 +273,7 @@ export class Game {
     personaje.tick(this);
     organizacion.tick(this);
     elecciones.tick(this);
+    revelado.tick(this);
     const ev = sortear(this);
     if (ev) {
       this.pending = ev;
@@ -314,6 +322,8 @@ export class Game {
     const m = this.mission(j.mission), z = this.zonas[j.zone], pr = this.modsPrincipios(m);
     const ok = Math.random() * 100 < this.chance(m, z, j.pago, j.modo ?? 'personal', [j.start, j.end]).c;
     this._ok = ok;
+    revelado.hecho(this, 'misiones');
+    if (m.categoria === 'finanzas' && ok && !m.ilegal) revelado.hecho(this, 'recaudo');
     linea.alResolver(this, j, ok);
     elecciones.alResolver(this, j, ok);
     personaje.alResolver(this, m, ok);
@@ -370,7 +380,7 @@ export class Game {
     return {
       schemaVersion: SCHEMA, prov: this.prov, partido: this.partido, day: this.day, exposure: this.exposure, ultimoEvento: this.ultimoEvento,
       player: this.player, jobs: this.jobs, log: this.log, pending: this.pending?.id ?? null,
-      bots: this.bots, historialRivales: this.historialRivales, linea: this.linea, economia: this.economia, favores: this.favores, jugador: this.jugador, elecciones: this.elecciones, org: this.org ?? undefined, plantel: this.plantel, rivalesPlantel: this.rivalesPlantel, alianzas: this.alianzas,
+      bots: this.bots, historialRivales: this.historialRivales, linea: this.linea, economia: this.economia, favores: this.favores, jugador: this.jugador, guia: this.guia, elecciones: this.elecciones, org: this.org ?? undefined, plantel: this.plantel, rivalesPlantel: this.rivalesPlantel, alianzas: this.alianzas,
       zonas: Object.fromEntries(Object.entries(this.zonas).map(([id, z]) => [id, { control: +z.control.toFixed(5), trust: +z.trust.toFixed(3), efectos: z.efectos, rivalPres: z.rivalPres }])),
     };
   }
@@ -405,6 +415,7 @@ export class Game {
     g.alianzas = pactos.sanear(g, d.alianzas);
     g.elecciones = elecciones.sanear(g, d.elecciones);
     g.org = organizacion.sanear(g, d.org);
+    g.guia = revelado.sanear(g, d.guia);
     g.jugador = personaje.sanear(g, d.jugador, d.partido);
     return g;
   }

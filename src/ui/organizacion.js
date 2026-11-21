@@ -1,5 +1,6 @@
 // Vista Organización (solo quien fundó el partido): estado legal, autoridades, afiliaciones y comités. Cadenas HTML.
 import * as org from '../core/organizacion.js';
+import { ve, nuevoSub } from '../core/revelado.js';
 import * as el from '../core/elecciones.js';
 import { rivales } from '../core/rivals.js';
 import { relacion } from '../core/pactos.js';
@@ -116,8 +117,9 @@ function notoriedad(g) {
 
 export function renderOrganizacion(g) {
   if (!g.org) return '<h2 class="vista-h">Organización</h2><p class="muted">Esta sección es para quien funda un partido.</p>';
-  const sub = SUBS.some(([id]) => id === uiState.osub) ? uiState.osub : 'estado';
-  const nav = `<nav class="subtabs" role="tablist">${SUBS.map(([id, l]) => `<button role="tab" data-osub="${id}" class="${id === sub ? 'on' : ''}" aria-selected="${id === sub}">${l}</button>`).join('')}</nav>`;
+  const subs = SUBS.filter(([id]) => id === 'estado' || ve(g, `org.${id}`));
+  const sub = subs.some(([id]) => id === uiState.osub) ? uiState.osub : 'estado';
+  const nav = `<nav class="subtabs" role="tablist">${subs.map(([id, l]) => `<button role="tab" data-osub="${id}" class="${id === sub ? 'on' : ''}" aria-selected="${id === sub}">${l}${nuevoSub(g, 'organizacion', id) ? ' <span class="nuevo">Nuevo</span>' : ''}</button>`).join('')}</nav>`;
   const cuerpo = sub === 'acuerdos' ? acuerdos(g) : sub === 'finanzas' ? finanzas(g) : sub === 'notoriedad' ? notoriedad(g) : sub === 'autoridades' ? autoridades(g) : sub === 'afiliaciones' ? afiliaciones(g) : sub === 'comites' ? comites(g) : estado(g);
   return `<h2 class="vista-h">Organización de ${esc(g.partido.nombre)}</h2>${nav}<div class="psub-body">${cuerpo}</div>`;
 }

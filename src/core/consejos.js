@@ -2,6 +2,7 @@
 import { agenda, certeza } from './rivals.js';
 import { contiendaDef, puedePresentar } from './elecciones.js';
 import { requisitos as organizacionReq } from './organizacion.js';
+import { proximos } from './revelado.js';
 const alcanceOk = (g, id) => { const c = contiendaDef(g, id); return !!c && puedePresentar(g, c); };
 
 const ORDEN = { urgente: 0, alerta: 1, oportunidad: 2, info: 3 };
@@ -31,6 +32,10 @@ export function consejos(g) {
     else if (EP.fase === 'alianzas' && g.modo === 'fundador' && Object.keys(EP.contiendas).some(id => alcanceOk(g, id)) && !EP.frentes.length) add('frente', 'info', 'Es la etapa de alianzas: podés armar un frente con otro partido.', 'elecciones');
     else if (['alianzas', 'listas'].includes(EP.fase) && g.modo === 'fundador' && !Object.keys(EP.cupos ?? {}).length && !Object.values(EP.contiendas).some(c => c.estado === 'presentada') && g.player.rank >= 1) add('cupo', 'oportunidad', 'Podés negociar lugares en la lista de otro partido: Organización → Acuerdos.', 'organizacion');
     else if (EP.fase === 'campana') add('campana', 'info', `Campaña en marcha: tus misiones exitosas pesan más. Faltan ${EP.fechas.general - g.day} días para votar.`, 'elecciones');
+  }
+  if (g.guia?.progresivo) {                                                       // lo próximo que se abre, para que se vea el camino
+    const p = proximos(g, 1)[0], f = p?.progreso.find(x => !x.ok);
+    if (p) add('proximo', 'info', `Próximo en abrirse: ${p.titulo}${f ? ` (${f.texto}: ${Number(f.actual).toLocaleString('es-AR')}/${Number(f.meta).toLocaleString('es-AR')})` : ''}.`, 'ayuda');
   }
   if (g.carga.n >= 2 && g.jugador.desgaste >= 40) add('delegar', 'info', `Manejás ${g.carga.n} cargos vos mismo: delegá alguno para ganar tiempo y bajar el desgaste.`, 'partido');
   if (g.org) {

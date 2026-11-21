@@ -4,10 +4,11 @@ import { fitView } from './core/city.js';
 import { GameMap } from './map/map.js';
 import { validate, validarFundacion, limpiarNombre, resumen, SAVE_KEY, MAX_BYTES } from './core/save.js';
 import { limpiarNombrePersona } from './core/personaje.js';
-import { renderPanel, renderVistas, renderVista, renderInforme, renderStats, renderLog, renderEvento, renderFundacion, progresoMapa, marcasRivales, uiState } from './ui/ui.js';
+import { vistasDe, renderPanel, renderVistas, renderVista, renderInforme, renderStats, renderLog, renderEvento, renderFundacion, progresoMapa, marcasRivales, uiState } from './ui/ui.js';
 import { initTooltips } from './ui/tooltip.js';
 import { aplicarModo, setModo, toggleModo } from './ui/modo.js';
 import { iniciarOnboarding } from './ui/onboarding.js';
+import { renderAyuda, renderGuia } from './ui/ayuda.js';
 
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -21,7 +22,7 @@ let CFG = null, PROV = null;
 async function boot() {
   const load = u => fetch(u).then(r => r.json()).catch(() => null);
   [PROV, CFG] = await Promise.all([load('data/provincias.json'), load('data/game.json')]);
-  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida'], ['organizacion', 'organizacion'], ['origenes', 'origenes'], ['elecciones', 'elecciones']]) CFG[k] = await load(`data/${f}.json`);
+  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida'], ['organizacion', 'organizacion'], ['origenes', 'origenes'], ['elecciones', 'elecciones'], ['revelado', 'revelado'], ['ayuda', 'ayuda']]) CFG[k] = await load(`data/${f}.json`);
   CFG.eventos.eventos.push(...(CFG.vida?.eventos ?? []));        // los eventos de vida los sortea el personaje, no el azar general
   CFG.glosario = await load('data/glosario.json');
   tooltips = initTooltips(CFG.glosario ?? {});
@@ -176,8 +177,8 @@ function showFounding(provId, provName, st = { nombre: '', principios: [], trasf
     const err = unirse && !base ? 'Elegí el partido al que te sumás.' : validarFundacion(name.value, st.principios, CFG, st.trasfondo, st.familia, base?.id, unirse ? null : { origen: st.origen, perfil: st.perfil, desprendeDe: st.desprendeDe ?? CFG.partidos.partidos[0].id });
     if (err) { st.error = err; $('#founding-error').textContent = err; return; }
     startGame(provId, provName, null, unirse
-      ? { nombre: base.nombre, principios: base.principios, modo: 'afiliado', partidoBase: base.id, trasfondo: st.trasfondo, familia: st.familia, jugadorNombre: limpiarNombrePersona(yo.value) }
-      : { nombre: limpiarNombre(name.value), principios: st.principios, modo: 'fundador', origen: st.origen, perfil: st.perfil, desprendeDe: st.origen === 'desprendimiento' ? (st.desprendeDe ?? CFG.partidos.partidos[0].id) : null, trasfondo: st.trasfondo, familia: st.familia, jugadorNombre: limpiarNombrePersona(yo.value) });
+      ? { progresivo: true, nombre: base.nombre, principios: base.principios, modo: 'afiliado', partidoBase: base.id, trasfondo: st.trasfondo, familia: st.familia, jugadorNombre: limpiarNombrePersona(yo.value) }
+      : { progresivo: true, nombre: limpiarNombre(name.value), principios: st.principios, modo: 'fundador', origen: st.origen, perfil: st.perfil, desprendeDe: st.origen === 'desprendimiento' ? (st.desprendeDe ?? CFG.partidos.partidos[0].id) : null, trasfondo: st.trasfondo, familia: st.familia, jugadorNombre: limpiarNombrePersona(yo.value) });
   };
   name.focus?.();
 }
@@ -205,10 +206,10 @@ async function startGame(provId, provName, saved = null, partido = null) {
   old.replaceWith(fresh);
   map = new GameMap(fresh, game.city, { onHover: hoverMapa, onSelect(id) { selected = id; if (id) tab = 'zona'; map.select(id); refreshAll(); } });
   selected = null; tab = 'zona'; vista = 'mapa'; uiState.informe = []; uiState.ficha = null; velPrevia = 1;
-  $('#vistas').hidden = false;
+  $('#vistas').hidden = !game.ve('ui.vistas');
   document.body.classList.add('playing');
   refreshAll();
-  iniciarOnboarding();
+  iniciarOnboarding({ pasos: CFG.ayuda?.tour.comun ?? [], final: game.guia?.progresivo ? CFG.ayuda?.tour.final : null });
 }
 
 // Clicks del panel por delegación: pestañas y lanzamiento de misiones
@@ -250,7 +251,16 @@ function wirePanel() {
     const t = e.target.closest('[data-tab]');
     if (t) { tab = t.dataset.tab; refreshAll(); return; }
     const ir = e.target.closest('[data-ir]');                              // franja "Ahora": ir directo a donde hay que decidir
-    if (ir && !ir.disabled) { if (ir.dataset.sub) uiState.datosSub = ir.dataset.sub; if (['partido', 'yo'].includes(ir.dataset.ir)) { if (ir.dataset.ir === 'partido') uiState.psub = 'resumen'; cambiarVista(ir.dataset.ir); } else { tab = ir.dataset.ir; cambiarVista('mapa'); } return; }
+    if (ir && !ir.disabled) {
+      if (ir.dataset.ir === 'ayuda') { mostrarAyuda('progreso'); return; }
+      if (ir.dataset.sub) uiState.datosSub = ir.dataset.sub;
+      if (['partido', 'yo', 'organizacion', 'elecciones'].includes(ir.dataset.ir)) { if (ir.dataset.ir === 'partido') uiState.psub = 'resumen'; cambiarVista(ir.dataset.ir); } else { tab = ir.dataset.ir; cambiarVista('mapa'); }
+      return;
+    }
+    const gok = e.target.closest('[data-guia-ok]');
+    if (gok) { guiaVista(gok.dataset.guiaOk); refreshAll(); return; }
+    const gab = e.target.closest('[data-ayuda-abrir]');
+    if (gab) { mostrarAyuda(gab.dataset.ayudaAbrir); return; }
     const sub = e.target.closest('[data-sub]');
     if (sub) { uiState.datosSub = sub.dataset.sub; refreshAll(); return; }
     const hab = e.target.closest('[data-habilidad]');
@@ -287,15 +297,34 @@ function wirePanel() {
   $('#stats').addEventListener('click', onPanelClick);
   $('#informe-root').addEventListener('click', e => {
     if (e.target.closest('[data-informe-continuar]')) { continuarInforme(); return; }
+    const ir = e.target.closest('[data-informe-ir]');
+    if (ir) { try { irA(JSON.parse(ir.dataset.informeIr)); } catch { /* dato inválido */ } return; }
     const z = e.target.closest('[data-informe-zona]');
     if (z && game.zonas[z.dataset.informeZona]) { selected = z.dataset.informeZona; tab = 'zona'; map.select(selected); cambiarVista('mapa'); }
   });
 }
 
+// Mini-guías de la primera vez en cada solapa (preferencia del navegador, no de la partida)
+const GUIAS_KEY = 'larosca.guias';
+function guiaVista(id, soloConsultar = false) {
+  let vistas = []; try { vistas = JSON.parse(localStorage.getItem(GUIAS_KEY) ?? '[]'); } catch { /* sin almacenamiento */ }
+  if (soloConsultar) return vistas.includes(id);
+  if (!vistas.includes(id)) { vistas.push(id); try { localStorage.setItem(GUIAS_KEY, JSON.stringify(vistas)); } catch { /* sin almacenamiento */ } }
+  return true;
+}
+
 // Solapas generales: el mapa queda vivo (zoom y selección) mientras se mira Partido o Yo
 function cambiarVista(v) {
+  if (!game || !vistasDe(game).some(([id]) => id === v)) return;
   vista = v;
   refreshAll();
+}
+// «Mostrame» de una tarjeta de desbloqueo: lleva al lugar y deja el juego en pausa
+function irA(d) {
+  if (!d?.vista || !game) return;
+  if (d.vista === 'mapa') { tab = d.tab ?? 'zona'; } else if (d.vista === 'partido' && d.sub) uiState.psub = d.sub; else if (d.vista === 'organizacion' && d.sub) uiState.osub = d.sub;
+  uiState.informe = [];
+  cambiarVista(d.vista);
 }
 function continuarInforme() {
   if (!uiState.informe.length) return;
@@ -304,21 +333,43 @@ function continuarInforme() {
   refreshAll();
 }
 
+// Revelado progresivo: el body lleva una clase r-<id> por cada elemento revelado y el CSS oculta el resto
+let clasesRevelado = [];
+function sincronizarRevelado() {
+  const b = document.body, G = game.guia;
+  b.classList.toggle('progresivo', !!G?.progresivo);
+  const nuevas = (G?.revelado ?? []).map(id => 'r-' + id.replace(/\./g, '-'));
+  for (const c of clasesRevelado) if (!nuevas.includes(c)) b.classList.remove(c);
+  for (const c of nuevas) b.classList.add(c);
+  clasesRevelado = nuevas;
+  // lo que no está disponible no se puede mostrar: vuelve a lo básico
+  if (!vistasDe(game).some(([id]) => id === vista)) vista = 'mapa';
+  if (!game.ve({ rivales: 'tab.rivales', datos: 'tab.datos' }[tab] ?? 'mision.base')) tab = 'zona';
+  const vio = vista === 'mapa' ? { rivales: 'vio_rivales', datos: 'vio_datos' }[tab] : { yo: 'vio_yo', partido: 'vio_partido', organizacion: 'vio_org', elecciones: 'vio_elecciones' }[vista];
+  if (vio) game.vio(vio);
+  game.marcarVisto(vista === 'mapa' ? { vista, tab } : vista === 'partido' ? { vista, sub: uiState.psub } : vista === 'organizacion' ? { vista, sub: uiState.osub } : { vista });
+}
+
 function refreshAll() {
   if (!game) return;
+  sincronizarRevelado();
   const panel = $('#panel'), top = panel.scrollTop;
   $('#date').textContent = Clock.format(clock.day);
   map.paint(id => game.zonas[id].control);
   map.setBusy(new Set(game.jobs.map(j => j.zone)));
   map.setProgress(progresoMapa(game, clock.day, clock.acc));   // también en cada cambio, no solo por fotograma
-  map.setRivalMarks(marcasRivales(game));
+  map.setRivalMarks(game.ve('map.rivales') ? marcasRivales(game) : []);
   $('#stats').innerHTML = renderStats(game);
-  panel.innerHTML = renderPanel(game, selected, clock.day, tab);
-  $('#vistas').innerHTML = renderVistas(game, vista);
+  const gid = game.guia?.progresivo ? (vista === 'mapa' ? (['rivales', 'datos'].includes(tab) ? `tab:${tab}` : null) : `vista:${vista}`) : null;
+  const cartel = gid && !guiaVista(gid, true) ? renderGuia(gid, CFG.ayuda) : '';
+  panel.innerHTML = (vista === 'mapa' ? cartel : '') + renderPanel(game, selected, clock.day, tab);
+  const navVistas = renderVistas(game, vista);
+  $('#vistas').innerHTML = navVistas;
+  $('#vistas').hidden = !navVistas;
   const ancha = vista !== 'mapa', vw = $('#vista'), vtop = vw.scrollTop;
   document.body.classList.toggle('vista-ancha', ancha);
   vw.hidden = !ancha;
-  if (ancha) { vw.innerHTML = renderVista(game, vista, clock.day); vw.scrollTop = vtop; }
+  if (ancha) { vw.innerHTML = `<div class="vista-in vista-guia">${cartel}</div>` + renderVista(game, vista, clock.day); vw.scrollTop = vtop; }
   $('#informe-root').innerHTML = renderInforme(uiState.informe);
   tooltips?.revisar();
   panel.scrollTop = top;                                   // no perder el lugar al refrescar
@@ -345,7 +396,7 @@ function refreshLive() {
     document.querySelectorAll(`[data-job-pct="${i}"]`).forEach(txt => { txt.textContent = Math.round(frac * 100) + '%'; });
   });
   map.setProgress(progresoMapa(game, clock.day, f));
-  map.setRivalMarks(marcasRivales(game));
+  map.setRivalMarks(game.ve('map.rivales') ? marcasRivales(game) : []);
 }
 
 function setSpeed(s) {
@@ -377,24 +428,33 @@ function hoverMapa(id, x, y) {
   el.style.left = Math.min(x - wrap.left + 14, wrap.width - 200) + 'px'; el.style.top = Math.max(8, y - wrap.top - 10) + 'px';
 }
 
-function mostrarAyuda() {
-  const root = $('#ayuda-root'), g = CFG.glosario ?? {};
+function mostrarAyuda(sec = 'como') {
+  const root = $('#ayuda-root'), glos = CFG.glosario ?? {};
+  if (game && clock.speed) setSpeed(0);                       // mientras leés, el tiempo no corre
   const atajos = [['Espacio', 'Pausa / seguir'], ['0 · 1 · 2 · 3', 'Pausa, x1, x2, x4'], ['Z · R · D', 'Panel del mapa: Zona, Rivales, Datos'], ['P · O · E · Y', 'Abrir o cerrar Partido, Organización, Elecciones o Yo'], ['Espacio / Enter', 'Continuar cuando termina una acción'], ['M', 'Cambiar Rápido / Detallado'], ['?', 'Esta ayuda'], ['Esc', 'Cerrar']];
-  root.innerHTML = `<div class="modal" data-cerrar-ayuda><div class="card ayuda" role="dialog" aria-modal="true" aria-label="Ayuda y glosario">
-    <div class="ayuda-head"><h2>Ayuda</h2><button id="cerrar-ayuda" aria-label="Cerrar ayuda">✕</button></div>
-    <p class="muted small-p">Modo <b>Rápido</b>: lo esencial. Modo <b>Detallado</b>: todos los números y explicaciones. Pasá el mouse (o enfocá con Tab) sobre cualquier dato subrayado para ver qué significa.</p>
-    <h3>Atajos de teclado</h3><div class="kv">${atajos.map(([k, d]) => `<span><kbd>${esc(k)}</kbd></span><b>${esc(d)}</b>`).join('')}</div>
-    <h3>Glosario</h3><dl class="glosario">${Object.values(g).map(x => `<dt>${esc(x.titulo)}</dt><dd>${esc(x.texto)}</dd>`).join('')}</dl></div></div>`;
+  const pintar = s => {
+    uiState.ayudaSec = s;
+    const cuerpo = root.querySelector('.ayuda-cuerpo'), top = cuerpo?.scrollTop ?? 0;
+    root.innerHTML = renderAyuda(game, CFG.ayuda, glos, s, atajos);
+    const c2 = root.querySelector('.ayuda-cuerpo'); if (c2 && cuerpo && s === uiState.ayudaSec) c2.scrollTop = top;
+    root.querySelector('#cerrar-ayuda').onclick = cerrar;
+    root.querySelector('[data-cerrar-ayuda]').onclick = e => { if (e.target.hasAttribute('data-cerrar-ayuda')) cerrar(); };
+    root.querySelectorAll('[data-ayuda-sec]').forEach(b => b.onclick = () => pintar(b.dataset.ayudaSec));
+    root.querySelectorAll('[data-ayuda-ir]').forEach(b => b.onclick = () => { try { const d = JSON.parse(b.dataset.ayudaIr); cerrar(); irA(d); } catch { /* dato inválido */ } });
+    const tour = root.querySelector('[data-ayuda-tour]'); if (tour) tour.onclick = () => { cerrar(); iniciarOnboarding({ pasos: CFG.ayuda.tour.comun, final: game?.guia?.progresivo ? CFG.ayuda.tour.final : null, forzar: true }); };
+    root.querySelector('.ayuda-nav .on')?.focus();
+  };
   const cerrar = () => { root.innerHTML = ''; };
-  root.querySelector('#cerrar-ayuda').onclick = cerrar;
-  root.querySelector('[data-cerrar-ayuda]').onclick = e => { if (e.target.hasAttribute('data-cerrar-ayuda')) cerrar(); };
-  root.querySelector('#cerrar-ayuda').focus();
+  pintar(sec);
 }
 
 function wireUI() {
   document.querySelectorAll('[data-modo-btn]').forEach(b => b.addEventListener('click', () => setModo(b.dataset.modoBtn)));
-  $('#btn-ayuda').onclick = mostrarAyuda;
-  const bp = $('#btn-pausa'), pintaPausa = () => { bp.textContent = `Pausar al terminar: ${pausarAlTerminar ? 'sí' : 'no'}`; bp.setAttribute('aria-checked', String(pausarAlTerminar)); };
+  $('#btn-ayuda').onclick = () => mostrarAyuda(uiState.ayudaSec ?? 'como');
+  const bpr = $('#btn-progresivo'), pintaProg = () => { if (!game) { bpr.textContent = 'Modo progresivo: sí'; return; } bpr.textContent = `Modo progresivo: ${game.guia?.progresivo ? 'sí' : 'no (se ve todo)'}`; bpr.setAttribute('aria-checked', String(!!game.guia?.progresivo)); };
+  bpr.onclick = () => { if (!game) return; game.setProgresivo(!game.guia.progresivo); pintaProg(); refreshAll(); };
+  $('#menu-partida').addEventListener('toggle', pintaProg);
+  const bp = $('#btn-pausa'), pintaPausa = () => { bp.textContent = `Pausar con avisos: ${pausarAlTerminar ? 'sí' : 'no'}`; bp.setAttribute('aria-checked', String(pausarAlTerminar)); };
   pintaPausa();
   bp.onclick = () => { pausarAlTerminar = !pausarAlTerminar; try { localStorage.setItem(PAUSA_KEY, pausarAlTerminar ? '1' : '0'); } catch {} pintaPausa(); };
   const menu = $('#menu-partida');                                  // el menú se cierra al elegir algo o al tocar afuera
@@ -417,14 +477,14 @@ function wireUI() {
     if (e.code === 'Space' && !/BUTTON|SUMMARY/.test(e.target.tagName)) { e.preventDefault(); setSpeed(clock.speed ? 0 : 1); return; }
     if ({ 0: 0, 1: 1, 2: 2, 3: 4 }[k] !== undefined && game) { setSpeed({ 0: 0, 1: 1, 2: 2, 3: 4 }[k]); return; }
     if (k === 'm') { toggleModo(); return; }
-    if (k === '?') { mostrarAyuda(); return; }
+    if (k === '?') { mostrarAyuda(uiState.ayudaSec ?? 'como'); return; }
     if (!game) return;
     if (k === 'p') { cambiarVista(vista === 'partido' ? 'mapa' : 'partido'); return; }
     if (k === 'y') { cambiarVista(vista === 'yo' ? 'mapa' : 'yo'); return; }
     if (k === 'o' && game?.org) { cambiarVista(vista === 'organizacion' ? 'mapa' : 'organizacion'); return; }
     if (k === 'e') { cambiarVista(vista === 'elecciones' ? 'mapa' : 'elecciones'); return; }
     const pestaña = { z: 'zona', r: 'rivales', d: 'datos' }[k];
-    if (pestaña) { tab = pestaña; vista = 'mapa'; refreshAll(); }
+    if (pestaña && game.ve({ rivales: 'tab.rivales', datos: 'tab.datos' }[pestaña] ?? 'mision.base')) { tab = pestaña; vista = 'mapa'; refreshAll(); }
   });
 }
 
