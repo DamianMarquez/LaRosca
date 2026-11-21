@@ -5,7 +5,7 @@ import { captacionRival } from './plantel.js';
 import * as personaje from './personaje.js';
 import { noAgresion, apoyoEn } from './pactos.js';
 
-export const rivales = g => (g.cfg.partidos?.partidos ?? []).filter(p => p.id !== 'otros');
+export const rivales = g => (g.cfg.partidos?.partidos ?? []).filter(p => p.id !== 'otros' && p.id !== g.partidoBase);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const between = (a, b, rnd = Math.random) => a + Math.floor(rnd() * (b - a + 1));
 const pick = (items, weight, rnd = Math.random) => {
@@ -179,7 +179,7 @@ function terminar(g, r, bot, rnd) {
   const a = bot.accion, def = defAccion(g, a), z = g.zonas[a.zona], B = g.cfg.rivales.base;
   if (a.tipo === 'propia') {
     sumarPresencia(g, a.zona, r.id, def.presencia);
-    const erosion = Math.min(z.control, def.erosion * presencia(g, a.zona)[r.id] / 0.25 * personaje.erosionMult(g));
+    const erosion = Math.min(z.control, def.erosion * presencia(g, a.zona)[r.id] / 0.25 * personaje.erosionMult(g) * (g.org?.comites?.[a.zona] ? g.cfg.organizacion.comite.erosion : 1));
     if (z.control > 0 && erosion > 0) {
       z.control = clamp(z.control - erosion, 0, 1);
       g.note(`${r.nombre} ${def.texto} en ${z.nombre} y te quita terreno (−${(erosion * 100).toFixed(1)}% de control).`, 'rival');

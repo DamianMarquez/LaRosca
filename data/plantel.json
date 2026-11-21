@@ -124,6 +124,24 @@
       "efecto": "Mejores reuniones (hasta +5 puntos) y mejores pactos con otros partidos",
       "rango": 4,
       "habilidad": "negociacion"
+    },
+    {
+      "id": "apoderado",
+      "nombre": "Apoderado legal",
+      "desdeAfiliados": 5,
+      "efecto": "Acelera los trámites legales del partido (hasta −30 % de tiempo)",
+      "rango": 3,
+      "habilidad": "negociacion",
+      "soloFundador": true
+    },
+    {
+      "id": "fiscalizacion",
+      "nombre": "Fiscalización",
+      "desdeAfiliados": 30,
+      "efecto": "Fiscales de mesa el día de la elección: perdés menos votos",
+      "rango": 3,
+      "habilidad": "organizacion",
+      "soloFundador": true
     }
   ],
   "bonos": {

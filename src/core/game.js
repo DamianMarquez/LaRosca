@@ -9,6 +9,9 @@ import * as plantel from './plantel.js';
 import * as escalafon from './escalafon.js';
 import * as pactos from './pactos.js';
 import * as personaje from './personaje.js';
+import * as elecciones from './elecciones.js';
+import * as organizacion from './organizacion.js';
+import { Clock } from './clock.js';
 import { SCHEMA } from './save.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -20,7 +23,9 @@ export class Game {
     this.cfg = cfg;
     const cap = cfg.capitales[provId];
     this.prov = { id: provId, nombre: provName };
+    const base = cfg.partidos?.partidos.find(p => p.id === partido?.partidoBase && p.id !== 'otros');   // partido existente al que te sumaste
     this.partido = { nombre: partido?.nombre ?? 'Tu partido', principios: partido?.principios ?? [],
+      modo: base ? 'afiliado' : (partido?.modo === 'afiliado' ? 'afiliado' : partido?.modo === 'fundador' ? 'fundador' : 'afiliado'), ...(base ? { partidoBase: base.id } : {}), ...(partido?.modo === 'fundador' && !base ? { origen: partido.origen, perfil: partido.perfil, desprendeDe: partido.desprendeDe } : {}),
       trasfondo: eco.trasfondoDe(cfg, partido?.trasfondo) ? partido.trasfondo : eco.trasfondoPorDefecto(cfg) };
     this.city = city ?? generateCity(provId, cap.ciudad, cap.pop);
     this.zonas = Object.fromEntries(this.city.zonas.map(z => [z.id, { ...z, control: 0, trust: cfg.start.trust, efectos: [] }]));
@@ -36,12 +41,15 @@ export class Game {
     this.linea = linea.iniciar(this);  // líder superior y directivas
     this.plantel = plantel.iniciar(this);                          // cuadros con nombre, cargos y vacantes
     this.rivalesPlantel = plantel.iniciarRivales(this, rivales(this)); // líder y cuadros de cada rival
+    this.elecciones = elecciones.iniciar();                        // calendario electoral, listas, resultados y cargos electivos
     this.alianzas = pactos.iniciar(this);                          // relación con cada rival y pactos vigentes
+    this.org = organizacion.iniciar(this, partido);                // modo Fundar: origen, estado legal, comités y notoriedad (null si te sumaste a un partido)
+    if (this.org) this.elecciones.cargos.push(...organizacion.cargosIniciales(this, Clock.dayOf(2029, 12, 10)));
     this.jobs = [];       // {mission, zone, start, end, pago, modo}
     this.log = [];        // {day, text, kind}
     this.day = 0;
     this.listeners = [];
-    this.note(`Fundaste «${this.partido.nombre}» en ${cap.ciudad}. Empezás como afiliado, sin poder interno.`, 'info');
+    this.note(this.modo === 'fundador' ? `Fundaste «${this.partido.nombre}» en ${cap.ciudad}. No hay nadie por encima tuyo: el partido es solo una idea y todo está por construirse.` : `Te sumaste a «${this.partido.nombre}» en ${cap.ciudad}. Empezás como afiliado, sin poder interno.`, 'info');
   }
 
   // Datos reales de la provincia (INDEC 2022 / padrón 2025), si están cargados
@@ -62,9 +70,13 @@ export class Game {
   get slots() { return this.cfg.personalSlots[this.player.rank]; }
   get equipo() { return this.cfg.equipoSlots[this.player.rank] + personaje.equipoExtra(this); }
   usados(modo) { return this.jobs.filter(j => (j.modo ?? 'personal') === modo).length; }
-  get freeSlots() { return this.slots - this.usados('personal') - (this.jugador.descanso ? 1 : 0); }   // descansar también ocupa tu acción
+  get freeSlots() { return this.slots - this.usados('personal') - (this.jugador.descanso ? 1 : 0) - (this.org?.medios ? 1 : 0); }   // descansar o salir en los medios también ocupa tu acción
   get freeEquipo() { return this.equipo - this.usados('delegada'); }
-  get rankName() { return this.cfg.ranks[this.player.rank]; }
+  get modo() { return this.partido.modo; }
+  get partidoBase() { return this.partido.partidoBase ?? null; }
+  // Escala según el modo: escalafón del afiliado o influencia del fundador (que se deriva de su partido, su fama y sus bancas)
+  get rangos() { return this.modo === 'fundador' && this.cfg.organizacion ? this.cfg.organizacion.rangoNombres : this.cfg.ranks; }
+  get rankName() { return this.rangos[this.player.rank]; }
   get nextXp() { return this.cfg.promotionXp[this.player.rank + 1] ?? null; }
   // Escala de la ciudad: los umbrales de afiliados se achican en ciudades chicas (Rawson no es Córdoba)
   get escala() {
@@ -84,6 +96,24 @@ export class Game {
   get carga() { return plantel.carga(this); }
   delegar(cargo) { return plantel.delegar(this, cargo); }
   retomar(cargo) { return plantel.retomar(this, cargo); }
+  // Elecciones: listas, frentes, encuestas y lugares en la lista del partido
+  armarLista(cid) { return elecciones.armarLista(this, cid); }
+  alternarCandidato(cid, qid) { return elecciones.alternarCandidato(this, cid, qid); }
+  presentarLista(cid) { return elecciones.presentarLista(this, cid); }
+  retirarLista(cid) { return elecciones.retirarLista(this, cid); }
+  pedirLugar(cid) { return elecciones.pedirLugar(this, cid); }
+  proponerFrente(rid) { return elecciones.proponerFrente(this, rid); }
+  encargarEncuesta() { return elecciones.encargarEncuesta(this); }
+  proponerCupo(cid, host, lugares, pago) { return elecciones.proponerCupo(this, cid, host, lugares, pago); }
+  armarCupo(cid) { return elecciones.armarCupo(this, cid); }
+  alternarCupo(cid, qid) { return elecciones.alternarCupo(this, cid, qid); }
+  romperBloque(host) { return elecciones.romperBloque(this, host); }
+  alBajarMiembro(m) { elecciones.alBajar(this, m); }
+  // Organización del partido (modo Fundar)
+  iniciarTramite() { return organizacion.iniciarTramite(this); }
+  abrirComite(zona) { return organizacion.abrirComite(this, zona); }
+  cerrarComite(zona) { return organizacion.cerrarComite(this, zona); }
+  aparecer(tipo) { return organizacion.aparecer(this, tipo); }
   designar(vid, cid) { return plantel.designar(this, vid, cid); }
   captarCuadro(rivalId, mid, con) { return plantel.captarCuadro(this, rivalId, mid, con); }
   // Pactos: oferta (costo y probabilidad) y propuesta a un rival
@@ -95,7 +125,11 @@ export class Game {
   get flujo() { return eco.proyeccion(this); }
   ingresoEsperado(m, z) { return eco.ingresoMision(this, m, z); }
   pagarFavor(id, con) { return eco.pagarFavor(this, id, con); }
-  get followers() { return Math.round(Object.values(this.zonas).reduce((s, z) => s + z.pop * z.control * 0.02, 0)); }
+  get followers() {
+    const base = Object.values(this.zonas).reduce((s, z) => s + z.pop * z.control * 0.02, 0);
+    const fans = this.org ? Object.values(this.zonas).reduce((s, z) => s + z.pop, 0) * Math.max(0, this.org.fama - this.cfg.organizacion.fama.piso) / 100 * this.cfg.organizacion.fama.seguidores : 0;   // la fama trae seguidores sin territorio
+    return Math.round(base + fans);
+  }
 
   note(text, kind = 'info') { this.log.unshift({ day: this.day, text, kind }); this.log.length = Math.min(this.log.length, 60); }
   emit(ev) { this.listeners.forEach(f => f(ev)); }
@@ -134,7 +168,7 @@ export class Game {
   // Personas alcanzadas por la misión y cuánto sube el control del barrio (0..1)
   alcance(m, z) {
     if (!m.alcance) return { personas: 0, control: 0 };   // recaudación: no mueve control
-    const personas = Math.round(m.alcance * this.densidadEfecto(m, z).mult * this.modsPrincipios(m).alcanceMult * (1 + this.cfg.plantel.bonos.territorial * plantel.bono(this, 'territorial')));
+    const personas = Math.round(m.alcance * this.densidadEfecto(m, z).mult * this.modsPrincipios(m).alcanceMult * (1 + this.cfg.plantel.bonos.territorial * plantel.bono(this, 'territorial')) * elecciones.alcanceMult(this));
     const control = Math.min(this.cfg.densidad.maxControlPorMision, personas / Math.max(z.pop, 100));
     return { personas, control };
   }
@@ -183,10 +217,11 @@ export class Game {
   canStart(m, zoneId, pago = 'blanco', modo = 'personal') {
     if (this.pending) return 'Resolvé el evento pendiente';
     if (modo !== 'delegada' && this.jugador.descanso) return 'Estás descansando';
-    if (this.player.rank < m.minRank) return 'Requiere rango: ' + this.cfg.ranks[m.minRank];
+    if (modo !== 'delegada' && this.org?.medios) return 'Estás en una actividad mediática';
+    if (this.player.rank < m.minRank) return 'Requiere rango: ' + this.rangos[m.minRank];
     if (modo === 'delegada') {
       if (!m.delegable) return 'No se puede delegar';
-      if (this.equipo === 0) return 'Requiere rango: ' + this.cfg.ranks[this.cfg.delegacion.rangoMin];
+      if (this.equipo === 0) return 'Requiere rango: ' + this.rangos[this.cfg.delegacion.rangoMin];
       if (this.freeEquipo <= 0) return 'Tu equipo está ocupado';
     } else if (this.freeSlots <= 0) return 'Ya estás en una acción';
     const b = this.bloqueo(m, zoneId);
@@ -216,7 +251,7 @@ export class Game {
   // Avanza un día simulado
   advanceDay() {
     this.day++;
-    this._ocupadoHoy = this.jobs.some(j => (j.modo ?? 'personal') === 'personal');   // el día cuenta como trabajado si empezó con una acción en curso
+    this._ocupadoHoy = this.jobs.some(j => (j.modo ?? 'personal') === 'personal') || !!this.org?.medios;   // el día cuenta como trabajado si empezó con una acción en curso
     for (const j of this.jobs.filter(j => j.end <= this.day)) this.resolve(j);
     this.jobs = this.jobs.filter(j => j.end > this.day);
     // Con el tiempo, la confianza se enfría lentamente hacia 20 si no hay actividad
@@ -229,6 +264,8 @@ export class Game {
     escalafon.tick(this);
     pactos.tick(this);
     personaje.tick(this);
+    organizacion.tick(this);
+    elecciones.tick(this);
     const ev = sortear(this);
     if (ev) {
       this.pending = ev;
@@ -278,6 +315,7 @@ export class Game {
     const ok = Math.random() * 100 < this.chance(m, z, j.pago, j.modo ?? 'personal', [j.start, j.end]).c;
     this._ok = ok;
     linea.alResolver(this, j, ok);
+    elecciones.alResolver(this, j, ok);
     personaje.alResolver(this, m, ok);
     if (m.categoria === 'finanzas') { this.resolverFinanzas(m, z, pr, ok); this.checkPromotion(); return; }
     if (ok) {
@@ -332,7 +370,7 @@ export class Game {
     return {
       schemaVersion: SCHEMA, prov: this.prov, partido: this.partido, day: this.day, exposure: this.exposure, ultimoEvento: this.ultimoEvento,
       player: this.player, jobs: this.jobs, log: this.log, pending: this.pending?.id ?? null,
-      bots: this.bots, historialRivales: this.historialRivales, linea: this.linea, economia: this.economia, favores: this.favores, jugador: this.jugador, plantel: this.plantel, rivalesPlantel: this.rivalesPlantel, alianzas: this.alianzas,
+      bots: this.bots, historialRivales: this.historialRivales, linea: this.linea, economia: this.economia, favores: this.favores, jugador: this.jugador, elecciones: this.elecciones, org: this.org ?? undefined, plantel: this.plantel, rivalesPlantel: this.rivalesPlantel, alianzas: this.alianzas,
       zonas: Object.fromEntries(Object.entries(this.zonas).map(([id, z]) => [id, { control: +z.control.toFixed(5), trust: +z.trust.toFixed(3), efectos: z.efectos, rivalPres: z.rivalPres }])),
     };
   }
@@ -365,6 +403,8 @@ export class Game {
     g.plantel = plantel.sanear(g, d.plantel);
     g.rivalesPlantel = plantel.sanearRivales(g, d.rivalesPlantel, rivales(g));
     g.alianzas = pactos.sanear(g, d.alianzas);
+    g.elecciones = elecciones.sanear(g, d.elecciones);
+    g.org = organizacion.sanear(g, d.org);
     g.jugador = personaje.sanear(g, d.jugador, d.partido);
     return g;
   }

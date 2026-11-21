@@ -1,12 +1,16 @@
 // Vistas HTML (cadenas). Sin estado propio.
-import { amenaza, presencia, efectosActivos, choques, agenda, certeza, presenciaCiudad, defAccion } from '../core/rivals.js';
+import { rivales as rivalesDe, amenaza, presencia, efectosActivos, choques, agenda, certeza, presenciaCiudad, defAccion } from '../core/rivals.js';
 import { progreso as progresoDirectiva, etiqueta as etiquetaRelacion } from '../core/linea.js';
 import * as plantel from '../core/plantel.js';
 import { nombreVacante, cargoDef, titular, probCaptar } from '../core/plantel.js';
 import { relacion as relacionRival, pactoCon, tipoDef, etiquetaRelacion as etiquetaRel } from '../core/pactos.js';
 import { NOMBRE_MAX } from '../core/save.js';
 import { consejos } from '../core/consejos.js';
+import { perfil } from '../core/electoral.js';
 import { ico } from './iconos.js';
+import { renderElecciones } from './elecciones.js';
+import { renderOrganizacion } from './organizacion.js';
+import { diasHastaGeneral, FASE_NOMBRE } from '../core/elecciones.js';
 import * as personaje from '../core/personaje.js';
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -16,11 +20,11 @@ const approx5 = v => '~' + Math.round(v * 20) * 5 + '%';          // estimacione
 const jobFrac = (j, day, acc = 0) => Math.min(1, Math.max(0, (day - j.start + acc) / (j.end - j.start)));
 
 export const TABS = [['zona', 'Zona'], ['rivales', 'Rivales'], ['datos', 'Datos']];       // panel lateral (depende del mapa)
-export const VISTAS = [['mapa', 'Mapa'], ['partido', 'Partido'], ['yo', 'Yo']];            // solapas generales
-export const PARTIDO_SUBS = [['resumen', 'Resumen'], ['organigrama', 'Organigrama'], ['personas', 'Personas'], ['escalafon', 'Escalafón'], ['linea', 'Línea'], ['principios', 'Principios']];
+export const vistasDe = g => [['mapa', 'Mapa'], ['partido', 'Partido'], ...(g.org ? [['organizacion', 'Organización']] : []), ['elecciones', 'Elecciones'], ['yo', 'Yo']];   // solapas generales (Organización: solo quien fundó)
+export const partidoSubs = g => (g.modo === 'fundador' ? [['resumen', 'Resumen'], ['organigrama', 'Estructura'], ['personas', 'Personas'], ['principios', 'Principios']] : [['resumen', 'Resumen'], ['organigrama', 'Organigrama'], ['personas', 'Personas'], ['escalafon', 'Escalafón'], ['linea', 'Línea'], ['principios', 'Principios']]);
 
 // Estado de la interfaz que sobrevive a los refrescos (no es parte de la partida)
-export const uiState = { abiertas: new Set(), secs: { terr: true, recaud: false, ilegal: false, rivZona: false }, datosSub: 'finanzas', logFiltro: 'todo', logAbierto: false, psub: 'resumen', ficha: null, pfiltro: 'todos', pord: 'cargo', informe: [] };
+export const uiState = { abiertas: new Set(), secs: { terr: true, recaud: false, ilegal: false, rivZona: false }, datosSub: 'finanzas', logFiltro: 'todo', logAbierto: false, osub: 'estado', cupoPago: 'apoyo', psub: 'resumen', ficha: null, pfiltro: 'todos', pord: 'cargo', informe: [] };
 
 // ---------- Barra superior: tres grupos (rango · recursos · fuerza) con tooltips; lo que vale cero no se muestra ----------
 export function renderStats(g) {
@@ -32,23 +36,51 @@ export function renderStats(g) {
       ${g.exposure >= 1 ? chip('exposicion', 'alerta', `<b>${Math.round(g.exposure)}%</b>`, g.exposure >= 60 ? 'hi' : g.exposure >= 30 ? 'mid' : '') : ''}</div>
     <div class="grp">${chip('afiliados', 'afiliados', `<b>${g.afiliados.toLocaleString('es-AR')}</b>`)}
       ${chip('seguidores', 'seguidores', `<b>${g.followers.toLocaleString('es-AR')}</b>`, 'detalle')}
-      ${chip('voto', 'voto', `<b>${voto.toFixed(voto < 1 ? 2 : 1)}%</b>`)}</div>`;
+      ${chip('voto', 'voto', `<b>${voto.toFixed(voto < 1 ? 2 : 1)}%</b>`)}</div>
+    ${renderChipElecciones(g)}`;
+}
+
+// Cuenta regresiva de la próxima elección
+function renderChipElecciones(g) {
+  const P = g.elecciones?.proceso, d = diasHastaGeneral(g);
+  if (!P || d === null || d < 0) return '';
+  const cerca = ['listas', 'campana', 'veda'].includes(P.fase);
+  return `<div class="grp"><button class="chip chip-el ${cerca ? 'mid' : ''}" data-vista="elecciones" data-tip-texto="${esc(`Elecciones ${P.anio}: ${FASE_NOMBRE[P.fase]}. Faltan ${d} días para votar.`)}">${ico('voto')}<b>${d} d</b><small class="detalle">${esc(FASE_NOMBRE[P.fase])}</small></button></div>`;
 }
 
 // ---------- Fundación del partido ----------
 export function renderFundacion(cfg, provincia, estado) {
-  const cat = cfg.principios.principios, k = cfg.principios.elegir;
+  const cat = cfg.principios.principios, k = cfg.principios.elegir, unirse = estado.modo === 'afiliado';
   const cards = cat.map(p => {
     const on = estado.principios.includes(p.id), full = estado.principios.length >= k && !on;
     return `<label class="principle ${on ? 'on' : ''} ${full ? 'off' : ''}">
       <input type="checkbox" data-principio="${esc(p.id)}" ${on ? 'checked' : ''} ${full ? 'disabled' : ''}>
       <span><b>${esc(p.nombre)}</b><br><small>${esc(p.texto)}</small><br><small class="muted">${esc(modsTexto(p, cfg))}</small></span></label>`;
   }).join('');
-  const rivales = cfg.partidos.partidos.filter(p => p.id !== 'otros').map(p =>
+  const ps = cfg.partidos.partidos.filter(p => p.id !== 'otros');
+  const hist = estado.provId ? perfilElectoral(cfg, estado.provId)[0] : null;
+  const rivales = ps.map(p =>
     `<div class="rival-line"><span class="dot" style="background:${p.color}"></span><span><b>${esc(p.nombre)}</b> · <small class="muted">${esc(p.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small></span></div>`).join('');
-  return `<div class="city">Fundación · ${esc(provincia)}</div><h2>Fundá tu partido</h2>
-    <label class="field">Nombre del partido
-      <input id="party-name" type="text" maxlength="${NOMBRE_MAX}" value="${esc(estado.nombre)}" placeholder="Ej.: Vecinos en Acción" autocomplete="off"></label>
+  const modos = `<h3>¿Cómo empezás?</h3><div class="principles">
+    <label class="principle ${!unirse ? 'on' : ''}"><input type="radio" name="modo" data-modo-inicio="fundador" ${!unirse ? 'checked' : ''}><span><b>Fundar un partido</b><br><small>Sos la cabeza desde el día 1: no tenés superiores, tenés que construir todo. Elegís cómo arrancás: como figura pública, desde abajo o rompiendo con otro partido.</small></span></label>
+    <label class="principle ${unirse ? 'on' : ''}"><input type="radio" name="modo" data-modo-inicio="afiliado" ${unirse ? 'checked' : ''}><span><b>Sumarme a un partido</b><br><small>Entrás como afiliado a un partido que ya existe y vas subiendo en su escalafón, con un superior y una línea partidaria.</small></span></label></div>`;
+  const bases = unirse ? `<h3>¿A qué partido te sumás?</h3><div class="principles">${ps.map(p => {
+    const v = hist?.partidos?.[p.id];
+    return `<label class="principle ${estado.partidoBase === p.id ? 'on' : ''}"><input type="radio" name="base" data-base="${esc(p.id)}" ${estado.partidoBase === p.id ? 'checked' : ''}>
+      <span><span class="dot" style="background:${p.color}"></span> <b>${esc(p.nombre)}</b><br><small>${esc(p.espacio)}</small><br><small class="muted">${esc(p.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small>${v != null ? `<br><small class="muted">En ${esc(provincia)} sacó ${pct(v)} en ${esc(hist.año)}</small>` : ''}</span></label>`;
+  }).join('')}</div>` : '';
+  const oris = cfg.origenes?.origenes ?? [], ori = estado.origen ?? 'abajo';
+  const origenHtml = unirse || !oris.length ? '' : `<h3>Tu origen</h3><div class="principles">${oris.map(o => `<label class="principle ${ori === o.id ? 'on' : ''}"><input type="radio" name="origen" data-origen="${esc(o.id)}" ${ori === o.id ? 'checked' : ''}><span><b>${esc(o.nombre)}</b><br><small>${esc(o.texto)}</small></span></label>`).join('')}</div>
+    ${ori === 'figura' ? `<h3>¿Qué tipo de figura pública sos?</h3><div class="principles">${cfg.origenes.perfiles.map(p => `<label class="principle ${(estado.perfil ?? 'economista') === p.id ? 'on' : ''}"><input type="radio" name="perfil" data-perfil="${esc(p.id)}" ${(estado.perfil ?? 'economista') === p.id ? 'checked' : ''}><span><b>${esc(p.nombre)}</b><br><small>${esc(p.texto)}</small><br><small class="muted">Notoriedad ${p.fama} · ${money(p.dinero)} · ${p.contactos} contactos · ${p.cuadros} cuadro${p.cuadros === 1 ? '' : 's'}</small></span></label>`).join('')}</div>` : ''}
+    ${ori === 'desprendimiento' ? `<h3>¿De qué partido te vas?</h3><div class="principles">${ps.map(p => `<label class="principle ${(estado.desprendeDe ?? ps[0].id) === p.id ? 'on' : ''}"><input type="radio" name="desprende" data-desprende="${esc(p.id)}" ${(estado.desprendeDe ?? ps[0].id) === p.id ? 'checked' : ''}><span><span class="dot" style="background:${p.color}"></span> <b>${esc(p.nombre)}</b><br><small class="muted">${esc(p.espacio)}</small></span></label>`).join('')}</div>` : ''}`;
+  const bloqueFundar = unirse ? '' : `<label class="field">Nombre del partido
+      <input id="party-name" type="text" maxlength="${NOMBRE_MAX}" value="${esc(estado.nombre)}" placeholder="Ej.: Vecinos en Acción" autocomplete="off"></label>`;
+  const principiosHtml = unirse ? '' : `<h3>Tus principios (elegí ${k}) · ${estado.principios.length}/${k}</h3>
+    <div class="principles">${cards}</div>
+    <p class="muted small">Son la identidad de tu partido: marcan cómo trabajás y qué te cuesta. Más adelante serán la base de tus habilidades.</p>
+    <h3>Otros partidos y lo que defienden</h3>${rivales}`;
+  return `<div class="city">${unirse ? 'Afiliación' : 'Fundación'} · ${esc(provincia)}</div><h2>${unirse ? 'Sumate a un partido' : 'Fundá tu partido'}</h2>
+    ${modos}${bases}${origenHtml}${bloqueFundar}
     <label class="field">Tu nombre <small class="muted">(opcional)</small>
       <input id="player-name" type="text" maxlength="30" value="${esc(estado.jugadorNombre ?? '')}" placeholder="Si lo dejás vacío, te ponemos uno" autocomplete="off"></label>
     <h3>Tu situación familiar</h3>
@@ -59,13 +91,12 @@ export function renderFundacion(cfg, provincia, estado) {
     <div class="principles">${(cfg.trasfondos?.trasfondos ?? []).map(t => `<label class="principle ${estado.trasfondo === t.id ? 'on' : ''}">
       <input type="radio" name="trasfondo" data-trasfondo="${esc(t.id)}" ${estado.trasfondo === t.id ? 'checked' : ''}>
       <span><b>${esc(t.nombre)}</b><br><small>${esc(t.texto)}</small><br><small class="muted">${esc(trasfondoTexto(t, cfg))}</small></span></label>`).join('')}</div>
-    <h3>Tus principios (elegí ${k}) · ${estado.principios.length}/${k}</h3>
-    <div class="principles">${cards}</div>
-    <p class="muted small">Son la identidad de tu partido: marcan cómo trabajás y qué te cuesta. Más adelante serán la base de tus habilidades.</p>
-    <h3>Otros partidos y lo que defienden</h3>${rivales}
+    ${principiosHtml}
     <p id="founding-error" class="error" role="alert">${esc(estado.error ?? '')}</p>
-    <button id="found-confirm" class="primary">Fundar el partido</button>`;
+    <button id="found-confirm" class="primary">${unirse ? 'Sumarme' : 'Fundar el partido'}</button>`;
 }
+
+const perfilElectoral = (cfg, provId) => perfil(cfg.historicos, cfg.partidos?.partidos ?? [], provId);
 
 // Resumen legible de un trasfondo: qué da y qué cuesta
 export function trasfondoTexto(t, cfg) {
@@ -116,7 +147,7 @@ export function renderAcciones(g, day) {
   }).join('');
   const desc = g.jugador.descanso, free = g.freeSlots > 0;
   const descTxt = desc ? `<div class="job"><div class="job-head"><b>Descansando</b><span class="badge">${ico('persona')}Vos</span></div><div class="job-sub">Recuperás fuerzas · terminás en ${Math.max(0, desc.hasta - day)} d</div></div>` : '';
-  const equipo = g.equipo > 0 ? `<span tabindex="0" data-tip="equipo">${ico('equipo')}Equipo ${g.freeEquipo}/${g.equipo}</span>` : `<span class="detalle" tabindex="0" data-tip="equipo">${ico('equipo')}Equipo desde ${esc(g.cfg.ranks[g.cfg.delegacion.rangoMin])}</span>`;
+  const equipo = g.equipo > 0 ? `<span tabindex="0" data-tip="equipo">${ico('equipo')}Equipo ${g.freeEquipo}/${g.equipo}</span>` : `<span class="detalle" tabindex="0" data-tip="equipo">${ico('equipo')}Equipo desde ${esc(g.rangos[g.cfg.delegacion.rangoMin])}</span>`;
   return `<section class="actions"><div class="actions-head"><h3>En curso</h3>
       <span class="slots"><span class="${free ? 'free' : 'busy-txt'}" tabindex="0" data-tip="accion">${ico('persona')}${desc ? 'Descansando' : free ? 'Libre' : 'Ocupado'}</span> ${equipo}</span></div>
     ${descTxt}${jobs || (desc ? '' : '<p class="muted">Sin acciones en curso. Sos una sola persona: una acción personal a la vez.</p>')}</section>`;
@@ -135,11 +166,11 @@ export function renderPanel(g, zoneId, day, tab = 'zona') {
 export function renderVistas(g, vista) {
   const cs = consejos(g);
   const ping = id => cs.some(c => (id === 'mapa' ? ['zona', 'rivales', 'datos'].includes(c.tab) : c.tab === id) && c.nivel !== 'info');
-  return VISTAS.map(([id, label]) => `<button role="tab" data-vista="${id}" class="${id === vista ? 'on' : ''}" aria-selected="${id === vista}">${label}${ping(id) ? ' <span class="ping" role="img" aria-label="hay algo pendiente">●</span>' : ''}</button>`).join('');
+  return vistasDe(g).map(([id, label]) => `<button role="tab" data-vista="${id}" class="${id === vista ? 'on' : ''}" aria-selected="${id === vista}">${label}${ping(id) ? ' <span class="ping" role="img" aria-label="hay algo pendiente">●</span>' : ''}</button>`).join('');
 }
 
 export function renderVista(g, vista, day) {
-  const cuerpo = vista === 'yo' ? `<div class="yo-vista">${renderYo(g)}</div>` : renderPartidoVista(g);
+  const cuerpo = vista === 'yo' ? `<div class="yo-vista">${renderYo(g)}</div>` : vista === 'elecciones' ? renderElecciones(g) : vista === 'organizacion' ? renderOrganizacion(g) : renderPartidoVista(g);
   return `<div class="vista-in"><div class="vista-top">${renderAcciones(g, day)}</div>${cuerpo}</div>`;
 }
 
@@ -154,18 +185,20 @@ function personaChip(g, m) {
 }
 
 function renderPartidoVista(g) {
-  const sub = uiState.psub;
-  const nav = `<nav class="subtabs" role="tablist">${PARTIDO_SUBS.map(([id, l]) => `<button role="tab" data-psub="${id}" class="${id === sub ? 'on' : ''}" aria-selected="${id === sub}">${l}</button>`).join('')}</nav>`;
+  const subs = partidoSubs(g), sub = subs.some(([id]) => id === uiState.psub) ? uiState.psub : 'resumen';
+  const nav = `<nav class="subtabs" role="tablist">${subs.map(([id, l]) => `<button role="tab" data-psub="${id}" class="${id === sub ? 'on' : ''}" aria-selected="${id === sub}">${l}</button>`).join('')}</nav>`;
   const cuerpo = sub === 'organigrama' ? renderOrganigrama(g) : sub === 'personas' ? renderPersonas(g)
     : sub === 'escalafon' ? `<div class="ancho-lectura">${renderEscalafon(g)}</div>` : sub === 'linea' ? `<div class="ancho-lectura">${renderLinea(g)}</div>`
     : sub === 'principios' ? renderPrincipios(g) : renderResumen(g);
   return `<h2 class="vista-h">${esc(g.partido.nombre)}</h2>${nav}<div class="psub-body">${cuerpo}</div>`;
 }
 
+const estadoLegalNombre = g => g.cfg.organizacion.estados.find(e => e.id === g.org?.estado)?.nombre ?? '';
+
 function renderResumen(g) {
   const S = g.plantel, P = g.cfg.plantel, p = g.player, next = g.nextXp;
   const cargos = S.miembros.filter(m => m.cargo && !m.cargo.startsWith('ref:')), refs = S.miembros.filter(m => m.cargo?.startsWith('ref:'));
-  const mios = P.cargos.filter(c => g.player.rank > c.rango && g.afiliados >= g.umbral(c.desdeAfiliados));
+  const mios = plantel.cargosDe(g).filter(c => plantel.puedoAdministrar(g, c.id));
   const barrios = Object.values(g.zonas).filter(z => z.control >= 0.05).length;
   const kv = (a, b) => `<span>${a}</span><b>${b}</b>`;
   const lider = g.linea?.lider;
@@ -173,7 +206,7 @@ function renderResumen(g) {
     <section class="card"><h3>Quiénes somos</h3>
       <p class="small-p">${esc(g.partido.nombre)} · ${esc(g.city.ciudad)}, ${esc(g.prov.nombre)}${g.trasfondo ? ` · fundado por ${esc(g.jugador.nombre)} (${esc(g.trasfondo.nombre)})` : ''}</p>
       <div class="chips">${g.principios.map(x => `<span class="tag">${esc(x.nombre)}</span>`).join('')}</div>
-      <div class="kv">${kv('Etapa', esc(g.etapa.nombre))}${kv('Afiliados', g.afiliados.toLocaleString('es-AR'))}${kv('Barrios con presencia', barrios)}${kv('Tu rango', esc(g.rankName))}${kv('Tu superior', lider ? esc(lider.nombre) : 'vacante')}</div></section>
+      <div class="kv">${kv('Etapa', esc(g.etapa.nombre))}${kv('Afiliados', g.afiliados.toLocaleString('es-AR'))}${kv('Barrios con presencia', barrios)}${g.org ? `${kv('Estado legal', esc(estadoLegalNombre(g)))}${kv('Tu influencia', esc(g.rankName))}${kv('Notoriedad', `${Math.round(g.org.fama)}/100`)}` : `${kv('Tu rango', esc(g.rankName))}${kv('Tu superior', lider ? esc(lider.nombre) : 'vacante')}`}</div></section>
     <section class="card"><h3>Equipo con nombre</h3>
       <div class="kv">${kv('Personas del plantel', S.miembros.length)}${kv('Cargos cubiertos', `${cargos.length}${mios.length ? ' / ' + mios.length : ''}`)}${kv('Referentes de barrio', refs.length)}${kv('Sin cargo', S.miembros.filter(m => !m.cargo).length)}${kv('Vacantes abiertas', S.vacantes.length)}</div>
       <p class="muted small-p detalle">Los afiliados son la base del partido; las personas con nombre son los cuadros que podés designar y delegar.</p>
@@ -185,8 +218,9 @@ function renderResumen(g) {
 
 function renderOrganigrama(g) {
   const S = g.plantel, P = g.cfg.plantel, rank = g.player.rank, lider = g.linea?.lider;
-  const arriba = P.cargos.filter(c => rank <= c.rango);
-  const mios = P.cargos.filter(c => rank > c.rango);
+  const fund = g.modo === 'fundador';
+  const arriba = fund ? [] : P.cargos.filter(c => rank <= c.rango);
+  const mios = fund ? plantel.cargosDe(g) : P.cargos.filter(c => rank > c.rango);
   const nodoCargo = c => {
     const abierto = g.afiliados >= g.umbral(c.desdeAfiliados), m = plantel.modo(g, c.id), t = titular(g, c.id);
     const cuerpo = !abierto ? `<small class="muted">Con ${g.umbral(c.desdeAfiliados)} afiliados</small>` : m === 'propio' ? `<small>Lo manejás vos · rinde ${plantel.capPropia(g, c)}%</small>` : t ? personaChip(g, t) : '<small class="warn-txt">Vacante: elegí a alguien abajo</small>';
@@ -195,13 +229,13 @@ function renderOrganigrama(g) {
   const refs = S.miembros.filter(m => m.cargo?.startsWith('ref:')), libres = S.miembros.filter(m => !m.cargo);
   const nivel = (titulo, html, vacio) => `<div class="org-nivel"><h4>${titulo}</h4><div class="org-fila">${html || `<small class="muted">${vacio}</small>`}</div></div>`;
   return `<div class="org">
-    ${nivel('Conducción (por encima tuyo)', `${lider ? `<div class="nodo ext"><b>${esc(lider.nombre)}</b><small>${esc(g.cfg.ranks[Math.min(g.cfg.ranks.length - 1, rank + 1)])} · tu superior</small></div>` : '<div class="nodo ext"><small>Superior vacante</small></div>'}${arriba.map(c => `<div class="nodo ext"><b>${esc(c.nombre)}</b><small>Lo maneja la conducción hasta rango ${esc(g.cfg.ranks[c.rango + 1])}</small></div>`).join('')}`, '')}
-    ${nivel('Vos', `<div class="nodo yo"><b>${esc(g.jugador.nombre)}</b><small>${esc(g.rankName)}</small><button data-vista="yo">Ver mi perfil</button></div>`, '')}
-    ${nivel('Cargos bajo tu mando', mios.map(nodoCargo).join(''), 'Todavía no tenés cargos a cargo: hacés todo vos. Se habilitan al subir de rango.')}
-    ${rank > P.referente.rango ? nivel('Referentes de barrio', refs.map(m => personaChip(g, m)).join(''), 'Sin referentes todavía: aparecen donde tengas presencia.') : ''}
+    ${fund ? '' : nivel('Conducción (por encima tuyo)', `${lider ? `<div class="nodo ext"><b>${esc(lider.nombre)}</b><small>${esc(g.rangos[Math.min(g.rangos.length - 1, rank + 1)])} · tu superior</small></div>` : '<div class="nodo ext"><small>Superior vacante</small></div>'}${arriba.map(c => `<div class="nodo ext"><b>${esc(c.nombre)}</b><small>Lo maneja la conducción hasta rango ${esc(g.rangos[c.rango + 1])}</small></div>`).join('')}`, '')}
+    ${nivel(fund ? 'Presidencia' : 'Vos', `<div class="nodo yo"><b>${esc(g.jugador.nombre)}</b><small>${fund ? `Presidente de ${esc(g.partido.nombre)}` : esc(g.rankName)}</small><button data-vista="yo">Ver mi perfil</button></div>`, '')}
+    ${nivel('Cargos bajo tu mando', mios.map(nodoCargo).join(''), fund ? 'Todavía no hay estructura: hacés todo vos. Los órganos se habilitan al sumar afiliados.' : 'Todavía no tenés cargos a cargo: hacés todo vos. Se habilitan al subir de rango.')}
+    ${fund || rank > P.referente.rango ? nivel('Referentes de barrio', refs.map(m => personaChip(g, m)).join(''), 'Sin referentes todavía: aparecen donde tengas presencia.') : ''}
     ${nivel('Militantes sin cargo', libres.map(m => personaChip(g, m)).join(''), 'No hay militantes sin cargo.')}
   </div>
-  <h3>Cargos y delegación</h3>${renderPlantel(g)}${uiState.ficha ? renderFicha(g, S.miembros.find(m => m.id === uiState.ficha)) : ''}`;
+  <h3>${fund ? 'Órganos y delegación' : 'Cargos y delegación'}</h3>${renderPlantel(g)}${uiState.ficha ? renderFicha(g, S.miembros.find(m => m.id === uiState.ficha)) : ''}`;
 }
 
 function renderPersonas(g) {
@@ -238,7 +272,7 @@ function renderFicha(g, m) {
 function renderPrincipios(g) {
   const cat = g.cfg.principios.principios;
   const mine = g.principios.map(x => `<div class="principle on static"><span><b>${esc(x.nombre)}</b><br><small>${esc(x.texto)}</small><br><small class="muted">${esc(modsTexto(x, g.cfg))}</small></span></div>`).join('');
-  const rivals = g.cfg.partidos.partidos.filter(r => r.id !== 'otros').map(r =>
+  const rivals = rivalesDe(g).map(r =>
     `<div class="rival-line"><span class="dot" style="background:${r.color}"></span><span><b>${esc(r.nombre)}</b> <small class="muted">· ${esc(r.espacio)}</small><br><small>${esc(r.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small></span></div>`).join('');
   return `<div class="resumen-grid"><section class="card"><h3>Nuestros principios</h3>${mine}</section><section class="card"><h3>Otros partidos y lo que defienden</h3>${rivals}</section></div>`;
 }
@@ -251,9 +285,9 @@ const fmtCambio = c => {
 };
 export function renderInforme(lista) {
   if (!lista?.length) return '';
-  const items = lista.map(i => `<div class="inf ${i.ok ? 'ok' : 'mal'}"><div class="inf-h"><b>${i.ok ? '✔' : '✖'} ${esc(i.nombre)}${i.modo === 'delegada' ? ' (equipo)' : ''}</b>${i.zonaNombre ? `<small class="muted">${esc(i.zonaNombre)}</small>` : ''}</div>
+  const items = lista.map(i => `<div class="inf ${i.ok === null ? 'neutro' : i.ok ? 'ok' : 'mal'}"><div class="inf-h"><b>${i.ok === null ? '▸' : i.ok ? '✔' : '✖'} ${esc(i.nombre)}${i.modo === 'delegada' ? ' (equipo)' : ''}</b>${i.zonaNombre ? `<small class="muted">${esc(i.zonaNombre)}</small>` : ''}</div>
     <p>${esc(i.texto)}</p>${i.cambios?.length ? `<div class="cambios">${i.cambios.map(fmtCambio).join('')}</div>` : ''}${i.zona ? `<button data-informe-zona="${esc(i.zona)}">Ver zona</button>` : ''}</div>`).join('');
-  return `<aside class="informe" role="status" aria-live="polite"><h3>${lista.length > 1 ? `Terminaron ${lista.length} acciones` : 'Terminó una acción'}</h3>${items}
+  return `<aside class="informe" role="status" aria-live="polite"><h3>${lista.every(i => i.tipo === 'eleccion') ? (lista.length > 1 ? `${lista.length} novedades electorales` : 'Novedad electoral') : lista.length > 1 ? `Terminaron ${lista.length} acciones` : 'Terminó una acción'}</h3>${items}
     <div class="btns"><button class="primary" data-informe-continuar>Continuar</button></div><small class="muted">Juego en pausa · Espacio también continúa</small></aside>`;
 }
 
@@ -373,7 +407,7 @@ function renderRivalesBody(g, z) {
 // Pestaña Rivales: qué está haciendo cada partido ahora y qué hizo hace poco
 function renderTabRivales(g, zoneId) {
   const cat = g.cfg.principios.principios, ag = Object.fromEntries(agenda(g).map(a => [a.rival, a]));
-  const rs = g.cfg.partidos.partidos.filter(r => r.id !== 'otros').sort((a, b) => presenciaCiudad(g, b.id) - presenciaCiudad(g, a.id));
+  const rs = rivalesDe(g).sort((a, b) => presenciaCiudad(g, b.id) - presenciaCiudad(g, a.id));
   const cards = rs.map(r => {
     const a = ag[r.id], bot = g.bots[r.id];
     let estado;
@@ -418,7 +452,7 @@ function renderTabRivales(g, zoneId) {
 // Línea partidaria: tu líder superior y las bajadas de línea
 function renderLinea(g) {
   const L = g.linea, cat = g.cfg.principios.principios;
-  if (!L?.lider) return `<h3>Línea partidaria</h3><p class="muted small-p">${g.player.rank + 1 >= g.cfg.ranks.length ? 'Sos la máxima conducción: no tenés superior.' : 'Tu superior dejó el cargo: el puesto está vacante y se cubrirá en unos días. Es una oportunidad para ascender.'}</p>`;
+  if (!L?.lider) return `<h3>Línea partidaria</h3><p class="muted small-p">${g.modo === 'fundador' || g.player.rank + 1 >= g.rangos.length ? 'Sos la máxima conducción: no tenés superior.' : 'Tu superior dejó el cargo: el puesto está vacante y se cubrirá en unos días. Es una oportunidad para ascender.'}</p>`;
   const l = L.lider, rel = Math.round(l.relacion), et = etiquetaRelacion(g, rel);
   const ps = l.principios.map(id => cat.find(c => c.id === id)?.nombre).filter(Boolean).map(n => `<span class="chip ${g.partido.principios.includes(cat.find(c => c.nombre === n)?.id) ? 'common' : ''}">${esc(n)}</span>`).join('');
   let dir;
@@ -470,14 +504,14 @@ function renderEscalafon(g) {
 
 const meter = (v, cls = '') => `<span class="meter ${cls}"><i style="width:${v}%"></i></span>`;
 const origenTxt = { fundador: 'fundador', interno: 'ascenso interno', externo: 'incorporado', captado: 'captado de un rival', interino: 'interino', rival: 'rival' };
-const miembroCard = (m, extra = '') => `<div class="miembro"><div class="m-head"><b>${esc(m.nombre)}</b><small class="muted">${esc(origenTxt[m.origen] ?? '')}</small></div>
+export const miembroCard = (m, extra = '') => `<div class="miembro"><div class="m-head"><b>${esc(m.nombre)}</b><small class="muted">${esc(origenTxt[m.origen] ?? '')}</small></div>
   <div class="m-stats"><span tabindex="0" data-tip="capacidad">Cap. ${m.capacidad}${meter(m.capacidad)}</span><span tabindex="0" data-tip="lealtad">Leal. ${m.lealtad}${meter(m.lealtad, m.lealtad < 40 ? 'bad' : '')}</span><span tabindex="0" data-tip="ambicion">Amb. ${m.ambicion}${meter(m.ambicion, m.ambicion > 70 ? 'warn' : '')}</span></div>${extra}</div>`;
 
 // Plantel como jerarquía: conducción (arriba, solo lectura) → vos → cargos bajo tu mando (propio o delegado) → referentes → militantes
-function renderPlantel(g) {
-  const P = g.cfg.plantel, S = g.plantel, rank = g.player.rank, K = P.propio, car = g.carga;
+export function renderPlantel(g) {
+  const P = g.cfg.plantel, S = g.plantel, fund = g.modo === 'fundador', rank = fund ? 99 : g.player.rank, K = P.propio, car = g.carga;
   const arriba = P.cargos.filter(c => rank <= c.rango);
-  const mios = P.cargos.filter(c => rank > c.rango);
+  const mios = plantel.cargosDe(g).filter(c => rank > c.rango);
   const cardCargo = c => {
     const abierto = g.afiliados >= g.umbral(c.desdeAfiliados), m = plantel.modo(g, c.id), t = titular(g, c.id), v = S.vacantes.find(x => x.cargo === c.id);
     const hab = g.cfg.habilidades.ramas.find(r => r.id === c.habilidad)?.nombre ?? '';
@@ -502,9 +536,9 @@ function renderPlantel(g) {
   const libres = S.miembros.filter(m => !m.cargo).map(m => miembroCard(m, '<small class="muted">Sin cargo: podés designarlo en una vacante.</small>')).join('');
   const sig = P.cargos.filter(c => rank <= c.rango).sort((a, b) => a.rango - b.rango)[0];
   return `<h3>Mi estructura</h3>
-    <p class="small-p muted">Solo administrás lo que está por debajo de tu rango. Cada cargo lo manejás vos o lo delegás.</p>
-    ${arriba.length ? `<div class="cargo cerrado" tabindex="0" data-tip-texto="Esos cargos los maneja la conducción hasta que subas de rango."><b>Conducción</b><small class="muted">${esc(g.rankName)}${g.linea?.lider ? ` · tu superior: ${esc(g.linea.lider.nombre)}` : ''}. Por encima tuyo: ${arriba.map(c => esc(c.nombre)).join(', ')} (rango ${esc(g.cfg.ranks[Math.min(...arriba.map(c => c.rango)) + 1] ?? '')}).</small></div>` : ''}
-    ${mios.length ? `<div class="kv"><span tabindex="0" data-tip-texto="Cada cargo que manejás vos te resta tiempo (acciones más lentas) y suma desgaste. Delegar libera esa carga.">Carga propia</span><b>${car.n ? `${car.n} cargo${car.n > 1 ? 's' : ''} · +${Math.round(car.tiempo * 100)}% tiempo` : 'ninguna'}</b></div>` : `<p class="small-p">Todavía no tenés cargos bajo tu mando: hacés todo vos. ${sig ? `Con rango «${esc(g.cfg.ranks[P.referente.rango + 1])}» vas a poder organizar referentes y delegar.` : ''}</p>`}
+    <p class="small-p muted">${fund ? 'Sos la cabeza del partido: todo órgano es tuyo. Cada uno lo manejás vos o se lo delegás a alguien.' : 'Solo administrás lo que está por debajo de tu rango. Cada cargo lo manejás vos o lo delegás.'}</p>
+    ${arriba.length ? `<div class="cargo cerrado" tabindex="0" data-tip-texto="Esos cargos los maneja la conducción hasta que subas de rango."><b>Conducción</b><small class="muted">${esc(g.rankName)}${g.linea?.lider ? ` · tu superior: ${esc(g.linea.lider.nombre)}` : ''}. Por encima tuyo: ${arriba.map(c => esc(c.nombre)).join(', ')} (rango ${esc(g.rangos[Math.min(...arriba.map(c => c.rango)) + 1] ?? '')}).</small></div>` : ''}
+    ${mios.length ? `<div class="kv"><span tabindex="0" data-tip-texto="Cada cargo que manejás vos te resta tiempo (acciones más lentas) y suma desgaste. Delegar libera esa carga.">Carga propia</span><b>${car.n ? `${car.n} cargo${car.n > 1 ? 's' : ''} · +${Math.round(car.tiempo * 100)}% tiempo` : 'ninguna'}</b></div>` : `<p class="small-p">Todavía no tenés cargos bajo tu mando: hacés todo vos. ${sig ? `Con rango «${esc(g.rangos[P.referente.rango + 1])}» vas a poder organizar referentes y delegar.` : ''}</p>`}
     ${vacs ? `<div class="vacantes"><p class="small-p"><b>Hay vacantes por cubrir.</b> Elegí a quien tenga más capacidad y lealtad.</p>${vacs}</div>` : ''}
     ${mios.map(cardCargo).join('')}${refsHtml}${libres ? `<h3>Militantes sin cargo</h3>${libres}` : ''}`;
 }
@@ -531,6 +565,7 @@ function renderYo(g) {
   const tiempo = personaje.tiempoMult(g, null), gastoFam = personaje.gastoFamiliar(g);
   return `<h2>${esc(J.nombre)}</h2>
     <p class="muted">${esc(g.rankName)} · ${esc(tr?.nombre ?? '')} · ${esc(personaje.familiaNombre(g))}</p>
+    ${g.org ? `<h3>Notoriedad</h3><div class="desgaste"><div class="d-top"><span tabindex="0" data-tip="fama"><b>Fama</b></span><span>${Math.round(g.org.fama)}/100</span></div><div class="bar"><i style="width:${Math.round(g.org.fama)}%"></i></div><small class="muted">Da votos de opinión y poder de negociación, pero no estructura. Se enfría si no te mostrás.</small></div>` : ''}
     <h3>Cómo estás</h3>${desgasteHtml}
     <h3>Habilidades${J.puntos > 0 ? ` <span class="tag warn">${J.puntos} punto${J.puntos > 1 ? 's' : ''}</span>` : ''}</h3>
     <p class="muted small-p detalle">Se entrenan haciendo misiones afines y mejoran con los puntos que ganás al ascender.</p>${ramas}
@@ -546,7 +581,7 @@ function renderYo(g) {
 function renderPartido(g) {
   const cat = g.cfg.principios.principios, p = g.player;
   const mine = g.principios.map(x => `<div class="principle on static"><span><b>${esc(x.nombre)}</b><br><small>${esc(x.texto)}</small><br><small class="muted">${esc(modsTexto(x, g.cfg))}</small></span></div>`).join('');
-  const rivals = g.cfg.partidos.partidos.filter(r => r.id !== 'otros').map(r =>
+  const rivals = rivalesDe(g).map(r =>
     `<div class="rival-line"><span class="dot" style="background:${r.color}"></span><span><b>${esc(r.nombre)}</b> <small class="muted">· ${esc(r.espacio)}</small><br><small>${esc(r.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small></span></div>`).join('');
   const next = g.nextXp;
   return `<h2>${esc(g.partido.nombre)}</h2>

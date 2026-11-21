@@ -4,6 +4,7 @@ import * as personaje from './personaje.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const E = g => g.cfg.escalafon;
+const fundador = g => g.modo === 'fundador';   // quien funda no escala: su influencia se deriva de su partido (ver organizacion.js)
 
 // Puestos que existen en un nivel (rango): crecen con el tamaño del partido
 export const puestos = (g, nivel) => Math.max(1, Math.floor(g.afiliados / (g.umbral(E(g).porPuesto[nivel] ?? Infinity))));
@@ -12,8 +13,9 @@ export const hayVacante = (g, nivel) => puestos(g, nivel) > ocupados(g, nivel);
 
 // Checklist para pedir el ascenso al siguiente rango. null si ya estás en la cima.
 export function requisitos(g) {
+  if (fundador(g)) return null;
   const destino = g.player.rank + 1;
-  if (destino >= g.cfg.ranks.length) return null;
+  if (destino >= g.rangos.length) return null;
   const R = E(g).requisitos[destino];
   const nZonas = R.zonas.n > 0 ? Math.min(R.zonas.n, Math.max(1, Math.round(Object.keys(g.zonas).length * 0.25))) : 0;   // ciudades con pocos barrios piden menos
   const zonas = Object.values(g.zonas).filter(z => z.control >= R.zonas.control).length;
@@ -25,9 +27,20 @@ export function requisitos(g) {
   ];
   if (nZonas > 0) items.push({ id: 'zonas', texto: `Barrios con ≥${Math.round(R.zonas.control * 100)}% de control`, ok: zonas >= nZonas, actual: zonas, meta: nZonas });
   if (R.relacion > 0) items.push({ id: 'relacion', texto: 'Relación con tu líder', ok: rel === undefined || rel >= R.relacion, actual: rel === undefined ? '—' : Math.round(rel), meta: R.relacion });
-  items.push({ id: 'vacante', texto: `Puesto vacante: ${g.cfg.ranks[destino]}`, ok: hayVacante(g, destino), actual: `${ocupados(g, destino)}/${puestos(g, destino)} ocupados`, meta: null,
+  for (const x of R.extras ?? []) items.push(extra(g, x));   // exigencias electorales de los rangos altos
+  items.push({ id: 'vacante', texto: `Puesto vacante: ${g.rangos[destino]}`, ok: hayVacante(g, destino), actual: `${ocupados(g, destino)}/${puestos(g, destino)} ocupados`, meta: null,
     ayuda: hayVacante(g, destino) ? null : `Se abre un puesto más cada ${g.umbral(E(g).porPuesto[destino])} afiliados, o si su titular se va.` });
-  return { destino, rango: g.cfg.ranks[destino], items, todos: items.every(i => i.ok) };
+  return { destino, rango: g.rangos[destino], items, todos: items.every(i => i.ok) };
+}
+
+// Condiciones extra de los rangos altos del afiliado: dependen del motor electoral.
+function extra(g, x) {
+  if (x.tipo === 'referentes') { const n = g.plantel.miembros.filter(m => m.cargo?.startsWith('ref:')).length; return { id: 'referentes', texto: `Referentes de barrio (${x.n})`, ok: n >= x.n, actual: n, meta: x.n }; }
+  if (x.tipo === 'pacto') { const n = g.alianzas?.pactos?.length ?? 0; return { id: 'pacto', texto: 'Al menos un pacto vigente', ok: n >= 1, actual: n, meta: 1 }; }
+  if (x.tipo === 'bancas') { const n = g.elecciones ? (g.elecciones.bancas ?? 0) : null; return { id: 'bancas', texto: `Bancas obtenidas (${x.n})`, ok: n === null || n >= x.n, actual: n ?? '—', meta: x.n }; }
+  if (x.tipo === 'alcance') { const n = g.elecciones ? g.elecciones.alcance ?? 'local' : null, orden = ['local', 'distrito', 'provincial', 'nacional']; return { id: 'alcance', texto: `Alcance ${x.nivel}`, ok: n === null || orden.indexOf(n) >= orden.indexOf(x.nivel), actual: n ?? '—', meta: null }; }
+  if (x.tipo === 'elecciones') { const n = g.elecciones?.participaciones ?? 0; return { id: 'elecciones', texto: `Elecciones vividas desde adentro (${x.n})`, ok: n >= x.n, actual: n, meta: x.n }; }
+  return { id: x.tipo, texto: x.tipo, ok: true, actual: '—', meta: null };
 }
 
 // El jugador pide el ascenso. Devuelve null si salió bien o el motivo si no.
@@ -73,6 +86,7 @@ export function tick(g, rnd = Math.random) {
       }
     }
   }
+  if (fundador(g)) return;
   if (g.day > 0 && g.day % 30 === 0 && g.linea?.lider) {
     const l = g.linea.lider, nivel = g.player.rank + 1;
     const p = E(g).bajaLiderMensual * (1 + (100 - l.relacion) / 100 + l.ambicion / 100) / 2;

@@ -114,5 +114,33 @@
   "riesgo": {
     "titulo": "Riesgo de irse",
     "texto": "Probabilidad estimada de que esa persona abandone el partido en los próximos 30 días. Sube con baja lealtad, mucha ambición, exposición alta y números rojos; un buen Organigrama interno la baja."
+  },
+  "elecciones": {
+    "titulo": "Elecciones",
+    "texto": "Cada dos años hay elecciones: legislativas (concejales, legisladores, diputados, senadores) y ejecutivas (intendente, gobernador, presidente), alternando. El proceso tiene convocatoria, alianzas, cierre de listas, PASO, campaña, veda, votación y asunción."
+  },
+  "frente": {
+    "titulo": "Frente electoral",
+    "texto": "Alianza de dos partidos que compiten juntos: sus votos se suman y las bancas se reparten entre ellos según cuánto aportó cada uno."
+  },
+  "dhondt": {
+    "titulo": "Sistema D'Hondt",
+    "texto": "Forma de repartir bancas proporcionalmente: cada banca va al partido con el mayor cociente de votos. Los partidos que no llegan al 3 % del padrón quedan afuera."
+  },
+  "fama": {
+    "titulo": "Notoriedad (fama)",
+    "texto": "Qué tan conocido sos. Da votos de opinión sin necesidad de territorio y poder de negociación con otros partidos, pero no da estructura y se enfría si no te mostrás. Los escándalos te pegan más."
+  },
+  "influencia": {
+    "titulo": "Influencia",
+    "texto": "Quien funda un partido no escala un escalafón: su peso político se deriva del estado legal de su partido, de su notoriedad y de las bancas que consiga."
+  },
+  "estado_legal": {
+    "titulo": "Estado legal",
+    "texto": "Etapa de reconocimiento del partido ante la justicia electoral: idea, agrupación, personería provisoria, reconocimiento de distrito, provincial y nacional. Cada una exige afiliados, autoridades con nombre y comités, y se tramita."
+  },
+  "comite": {
+    "titulo": "Comité barrial",
+    "texto": "Sede del partido en un barrio. Reduce a la mitad lo que te quitan los rivales, aporta fiscales el día de la elección y cuenta para el reconocimiento."
   }
 }

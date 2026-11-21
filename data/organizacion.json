@@ -1,0 +1,224 @@
+{
+  "nota": "Organización partidaria del modo Fundar: estados legales con requisitos y trámite. 'rango' es la influencia equivalente que da cada estado (el rango del jugador se deriva: máximo entre el estado, su fama y sus bancas). Afiliados y barrios se escalan con el tamaño de la ciudad. Constantes provisionales.",
+  "rangoNombres": [
+    "Sin peso político",
+    "Referente emergente",
+    "Dirigente barrial",
+    "Dirigente local",
+    "Figura reconocida",
+    "Figura de peso",
+    "Figura de alcance ciudadano",
+    "Líder provincial",
+    "Líder de proyección nacional",
+    "Figura histórica"
+  ],
+  "fama": {
+    "decae": 0.12,
+    "piso": 18,
+    "rangoPor": 12,
+    "rangoMax": 6,
+    "seguidores": 0.0015,
+    "controversiaDecae": 0.05,
+    "pisoExposicion": 0.3
+  },
+  "bancasRango": [
+    [
+      1,
+      4
+    ],
+    [
+      2,
+      5
+    ],
+    [
+      4,
+      6
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      20,
+      8
+    ]
+  ],
+  "estados": [
+    {
+      "id": "idea",
+      "nombre": "Idea de partido",
+      "rango": 0,
+      "texto": "Todavía no existe formalmente: un nombre, unas ideas y un puñado de gente.",
+      "habilita": "Podés hacer campaña de base y juntar adherentes."
+    },
+    {
+      "id": "agrupacion",
+      "nombre": "Agrupación",
+      "rango": 1,
+      "afiliados": 60,
+      "organos": [
+        "apoderado"
+      ],
+      "dias": 45,
+      "costo": 300,
+      "texto": "Un grupo promotor con acta fundacional y un apoderado.",
+      "habilita": "Tenés existencia pública y podés iniciar la personería."
+    },
+    {
+      "id": "personeria",
+      "nombre": "Personería provisoria",
+      "rango": 2,
+      "afiliados": 400,
+      "zonas": {
+        "n": 1,
+        "control": 0.12
+      },
+      "organos": [
+        "apoderado",
+        "finanzas"
+      ],
+      "dias": 90,
+      "costo": 1200,
+      "texto": "La justicia electoral te reconoce de forma provisoria: hay estatuto, domicilio y tesorería.",
+      "habilita": "Podés recibir aportes y abrir una sede."
+    },
+    {
+      "id": "distrito",
+      "nombre": "Reconocimiento de distrito",
+      "rango": 3,
+      "afiliados": 2000,
+      "zonas": {
+        "n": 2,
+        "control": 0.12
+      },
+      "organos": [
+        "apoderado",
+        "finanzas",
+        "interna"
+      ],
+      "comites": 2,
+      "dias": 150,
+      "costo": 3000,
+      "texto": "Se exige un mínimo de afiliados (cerca del 4‰ del padrón), autoridades y un comité funcionando.",
+      "habilita": "Podés presentar listas municipales propias y armar frentes."
+    },
+    {
+      "id": "provincial",
+      "nombre": "Partido provincial",
+      "rango": 7,
+      "afiliados": 15000,
+      "zonas": {
+        "n": 10,
+        "control": 0.3
+      },
+      "organos": [
+        "apoderado",
+        "finanzas",
+        "interna",
+        "territorial",
+        "comunicacion",
+        "fiscalizacion"
+      ],
+      "comites": 3,
+      "bancas": 1,
+      "dias": 200,
+      "costo": 12000,
+      "texto": "Presencia en toda la provincia, estructura completa y representación electa.",
+      "habilita": "Podés competir por la legislatura y la gobernación."
+    },
+    {
+      "id": "nacional",
+      "nombre": "Partido nacional",
+      "rango": 8,
+      "afiliados": 40000,
+      "zonas": {
+        "n": 12,
+        "control": 0.35
+      },
+      "organos": [
+        "apoderado",
+        "finanzas",
+        "interna",
+        "territorial",
+        "comunicacion",
+        "fiscalizacion",
+        "formacion",
+        "campana"
+      ],
+      "comites": 6,
+      "bancas": 3,
+      "dias": 300,
+      "costo": 30000,
+      "texto": "Reconocimiento en varios distritos: hace falta una red y bancas en más de un nivel.",
+      "habilita": "Podés presentar candidatos a diputado, senador y presidente."
+    }
+  ],
+  "comite": {
+    "control": 0.1,
+    "costo": 800,
+    "mensual": 100,
+    "erosion": 0.5
+  },
+  "medios": [
+    {
+      "id": "entrevista",
+      "nombre": "Entrevista en televisión",
+      "texto": "Te ve mucha gente. Riesgo moderado de decir algo de más.",
+      "dias": 1,
+      "fama": 6,
+      "controversia": 4,
+      "riesgo": 0.05
+    },
+    {
+      "id": "nota",
+      "nombre": "Nota de opinión",
+      "texto": "Más pausada y segura: suma poco, pero casi no te expone.",
+      "dias": 2,
+      "fama": 3,
+      "controversia": 1,
+      "riesgo": 0.02
+    },
+    {
+      "id": "debate",
+      "nombre": "Debate público",
+      "texto": "Sube tu imagen si lo hacés bien, y te pone en la mira.",
+      "dias": 2,
+      "fama": 7,
+      "controversia": 5,
+      "riesgo": 0.08
+    },
+    {
+      "id": "polemica",
+      "nombre": "Polémica en redes",
+      "texto": "Explota tu notoriedad, pero con mucho riesgo de escándalo.",
+      "dias": 1,
+      "fama": 8,
+      "controversia": 12,
+      "riesgo": 0.15
+    }
+  ],
+  "medios_cfg": {
+    "oratoriaPorNivel": 0.1,
+    "rendimientoMax": 130,
+    "escandalo": {
+      "exposicion": 10,
+      "fama": -4,
+      "controversia": 5
+    }
+  },
+  "finanzas": {
+    "fppPorVoto": 40000,
+    "fppMinPct": 0.03,
+    "rendicionDia": 200,
+    "sancion": {
+      "multa": 0.05,
+      "exposicion": 8,
+      "fppSuspendeDias": 180
+    },
+    "limites": {
+      "exposicion": 60,
+      "favores": 2
+    },
+    "fiscalesBloque": 0.3
+  }
+}

@@ -1,17 +1,114 @@
 {
   "nota": "Requisitos para pedir el ascenso al rango indicado (clave = rango destino). porPuesto: afiliados necesarios para que exista un puesto más en ese nivel del partido.",
   "requisitos": {
-    "1": {"afiliados": 15, "zonas": {"n": 0, "control": 0}, "relacion": 0},
-    "2": {"afiliados": 60, "zonas": {"n": 1, "control": 0.12}, "relacion": 40},
-    "3": {"afiliados": 150, "zonas": {"n": 2, "control": 0.12}, "relacion": 45},
-    "4": {"afiliados": 350, "zonas": {"n": 4, "control": 0.15}, "relacion": 50},
-    "5": {"afiliados": 800, "zonas": {"n": 6, "control": 0.2}, "relacion": 50},
-    "6": {"afiliados": 1800, "zonas": {"n": 8, "control": 0.25}, "relacion": 55},
-    "7": {"afiliados": 4000, "zonas": {"n": 10, "control": 0.3}, "relacion": 55},
-    "8": {"afiliados": 9000, "zonas": {"n": 12, "control": 0.35}, "relacion": 60},
-    "9": {"afiliados": 20000, "zonas": {"n": 14, "control": 0.4}, "relacion": 60}
+    "1": {
+      "afiliados": 15,
+      "zonas": {
+        "n": 0,
+        "control": 0
+      },
+      "relacion": 0
+    },
+    "2": {
+      "afiliados": 60,
+      "zonas": {
+        "n": 1,
+        "control": 0.12
+      },
+      "relacion": 40
+    },
+    "3": {
+      "afiliados": 150,
+      "zonas": {
+        "n": 2,
+        "control": 0.12
+      },
+      "relacion": 45
+    },
+    "4": {
+      "afiliados": 350,
+      "zonas": {
+        "n": 4,
+        "control": 0.15
+      },
+      "relacion": 50
+    },
+    "5": {
+      "afiliados": 800,
+      "zonas": {
+        "n": 6,
+        "control": 0.2
+      },
+      "relacion": 50
+    },
+    "6": {
+      "afiliados": 1800,
+      "zonas": {
+        "n": 8,
+        "control": 0.25
+      },
+      "relacion": 55,
+      "extras": [
+        {
+          "tipo": "elecciones",
+          "n": 1
+        }
+      ]
+    },
+    "7": {
+      "afiliados": 4000,
+      "zonas": {
+        "n": 10,
+        "control": 0.3
+      },
+      "relacion": 55,
+      "extras": [
+        {
+          "tipo": "bancas",
+          "n": 1
+        }
+      ]
+    },
+    "8": {
+      "afiliados": 9000,
+      "zonas": {
+        "n": 12,
+        "control": 0.35
+      },
+      "relacion": 60,
+      "extras": [
+        {
+          "tipo": "bancas",
+          "n": 2
+        }
+      ]
+    },
+    "9": {
+      "afiliados": 20000,
+      "zonas": {
+        "n": 14,
+        "control": 0.4
+      },
+      "relacion": 60,
+      "extras": [
+        {
+          "tipo": "bancas",
+          "n": 4
+        }
+      ]
+    }
   },
-  "porPuesto": {"1": 40, "2": 120, "3": 300, "4": 700, "5": 1500, "6": 3500, "7": 8000, "8": 18000, "9": 40000},
+  "porPuesto": {
+    "1": 40,
+    "2": 120,
+    "3": 300,
+    "4": 700,
+    "5": 1500,
+    "6": 3500,
+    "7": 8000,
+    "8": 18000,
+    "9": 40000
+  },
   "refillDias": 30,
   "bajaLiderMensual": 0.03
 }

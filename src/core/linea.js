@@ -8,8 +8,8 @@ const L_ = g => g.cfg.linea;
 
 // Líder del rango siguiente (null si ya estás en la cima). Determinista por provincia, partido y rango.
 export function nuevoLider(g, salt = '') {
-  const rank = g.player.rank, ranks = g.cfg.ranks;
-  if (rank + 1 >= ranks.length) return null;
+  const rank = g.player.rank, ranks = g.rangos;
+  if (g.modo === 'fundador' || rank + 1 >= ranks.length) return null;   // el fundador es la cabeza: no tiene superior
   const C = L_(g), r = rng(`${g.prov.id}:${g.partido.nombre}:${rank}:${salt}`);
   const cat = (g.cfg.principios?.principios ?? []).map(p => p.id);
   const mios = new Set(g.partido.principios), suyos = [];

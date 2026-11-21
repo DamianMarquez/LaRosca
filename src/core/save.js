@@ -10,11 +10,24 @@ const isNum = v => typeof v === 'number' && Number.isFinite(v);
 export const limpiarNombre = s => String(s ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, NOMBRE_MAX);
 
 // Valida la fundación (nombre + principios). Devuelve null si es válida o un mensaje en español.
-export function validarFundacion(nombre, principios, cfg, trasfondo, familia) {
+export function validarFundacion(nombre, principios, cfg, trasfondo, familia, partidoBase, origen) {
+  if (partidoBase) {                                   // te sumás a un partido existente: nombre y principios son los suyos
+    if (!cfg.partidos?.partidos.some(p => p.id === partidoBase && p.id !== 'otros')) return 'Elegí un partido para sumarte.';
+    const ts0 = cfg.trasfondos?.trasfondos;
+    if (ts0 && trasfondo !== undefined && !ts0.some(x => x.id === trasfondo)) return 'Elegí un trasfondo.';
+    if (cfg.vida && familia !== undefined && !cfg.vida.familia.some(x => x.id === familia)) return 'Elegí tu situación familiar.';
+    return null;
+  }
   const n = limpiarNombre(nombre);
   if (n.length < NOMBRE_MIN) return `El nombre del partido necesita al menos ${NOMBRE_MIN} letras.`;
   const rival = cfg.partidos?.partidos.find(p => p.nombre.toLowerCase() === n.toLowerCase());
   if (rival) return 'Ese nombre ya lo usa otro partido. Elegí uno distinto.';
+  if (origen && cfg.origenes) {                          // quien funda elige cómo arranca
+    const O = cfg.origenes;
+    if (!O.origenes.some(o => o.id === origen.origen)) return 'Elegí tu origen.';
+    if (origen.origen === 'figura' && !O.perfiles.some(p => p.id === origen.perfil)) return 'Elegí qué tipo de figura pública sos.';
+    if (origen.origen === 'desprendimiento' && !cfg.partidos?.partidos.some(p => p.id === origen.desprendeDe && p.id !== 'otros')) return 'Elegí de qué partido te vas.';
+  }
   const cat = cfg.principios?.principios ?? [], k = cfg.principios?.elegir ?? 3;
   if (!Array.isArray(principios) || new Set(principios).size !== principios.length) return 'Principios repetidos.';
   if (principios.length !== k) return `Elegí exactamente ${k} principios.`;
@@ -32,6 +45,8 @@ export function validate(d, cfg) {
   if (d.schemaVersion !== SCHEMA) return `Versión de partida no compatible (${d.schemaVersion ?? 'desconocida'}); se esperaba ${SCHEMA}.`;
   if (!d.prov || typeof d.prov.id !== 'string' || !cfg.capitales[d.prov.id]) return 'La partida indica una provincia desconocida.';
   if (!d.partido || typeof d.partido.nombre !== 'string' || !Array.isArray(d.partido.principios)) return 'Datos del partido inválidos.';
+  if (d.partido.modo !== undefined && !['fundador', 'afiliado'].includes(d.partido.modo)) return 'Modo de partida inválido.';
+  if (d.partido.partidoBase !== undefined && !cfg.partidos?.partidos.some(p => p.id === d.partido.partidoBase && p.id !== 'otros')) return 'Partido base desconocido.';
   const f = validarFundacion(d.partido.nombre, d.partido.principios, { ...cfg, partidos: { partidos: [] } }, d.partido.trasfondo);
   if (f) return 'Datos del partido inválidos: ' + f;
   const p = d.player;
@@ -44,6 +59,7 @@ export function validate(d, cfg) {
   }
   // Campos opcionales (partidas anteriores no los traen): si están, deben tener la forma esperada; el contenido se sanea al cargar
   const obj = v => v && typeof v === 'object' && !Array.isArray(v);
+  if (d.org !== undefined && !obj(d.org)) return 'Datos de la organización inválidos.';
   if (d.jugador !== undefined && !obj(d.jugador)) return 'Datos del personaje inválidos.';
   if (d.alianzas !== undefined && !obj(d.alianzas)) return 'Datos de los pactos inválidos.';
   if (d.plantel !== undefined && !obj(d.plantel)) return 'Datos del plantel inválidos.';

@@ -1,0 +1,89 @@
+{
+  "nota": "Orígenes de quien funda un partido. Figura pública: parte con fama y contactos pero sin estructura. Desde abajo: casi invisible, lento. Desprendimiento: sale de un partido existente con gente, algunos barrios y concejales. Personajes y partidos son ficticios.",
+  "origenes": [
+    {
+      "id": "figura",
+      "nombre": "Figura pública / outsider",
+      "texto": "Sos conocido por los medios y tenés contactos. Podés saltar rápido a una candidatura, pero no tenés estructura territorial, ni fiscales, y cualquier escándalo te pega fuerte."
+    },
+    {
+      "id": "abajo",
+      "nombre": "Desde abajo, con acuerdos",
+      "texto": "Casi nadie te conoce. Todo es lento y duro: crecés barrio por barrio, haciendo tratos y yendo en listas de otros partidos hasta poder ir solo."
+    },
+    {
+      "id": "desprendimiento",
+      "nombre": "Desprendimiento de un partido",
+      "texto": "Rompés con un partido existente y te llevás a parte de su gente, algunos barrios y concejales. Arrancás con estructura, pero con un enemigo directo."
+    }
+  ],
+  "perfiles": [
+    {
+      "id": "economista",
+      "nombre": "Economista mediático",
+      "texto": "Famoso por tus intervenciones en televisión y redes. Vehemente y polémico.",
+      "fama": 80,
+      "controversia": 70,
+      "dinero": 6000,
+      "habilidades": {
+        "oratoria": 4
+      },
+      "cuadros": 1,
+      "contactos": 2
+    },
+    {
+      "id": "periodista",
+      "nombre": "Periodista o influencer",
+      "texto": "Tenés audiencia propia y sabés comunicar. Conocés a mucha gente del ambiente.",
+      "fama": 70,
+      "controversia": 45,
+      "dinero": 4000,
+      "habilidades": {
+        "oratoria": 3
+      },
+      "cuadros": 2,
+      "contactos": 3
+    },
+    {
+      "id": "celebridad",
+      "nombre": "Deportista o celebridad",
+      "texto": "Todos te conocen y te quieren, pero no sabés de política.",
+      "fama": 85,
+      "controversia": 30,
+      "dinero": 9000,
+      "habilidades": {
+        "oratoria": 1,
+        "calle": 1
+      },
+      "cuadros": 1,
+      "contactos": 2
+    },
+    {
+      "id": "empresario",
+      "nombre": "Empresario conocido",
+      "texto": "Tenés plata y relaciones. Te conocen menos que a una celebridad.",
+      "fama": 55,
+      "controversia": 25,
+      "dinero": 28000,
+      "habilidades": {
+        "negociacion": 2,
+        "finanzas": 2
+      },
+      "cuadros": 2,
+      "contactos": 3
+    }
+  ],
+  "abajo": {
+    "fama": 3,
+    "trust": 28,
+    "contactos": 1
+  },
+  "desprendimiento": {
+    "fama": 22,
+    "cuadros": 6,
+    "control": 0.11,
+    "barrios": 6,
+    "concejales": 2,
+    "relacionMadre": 5
+  }
+}

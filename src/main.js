@@ -21,7 +21,7 @@ let CFG = null, PROV = null;
 async function boot() {
   const load = u => fetch(u).then(r => r.json()).catch(() => null);
   [PROV, CFG] = await Promise.all([load('data/provincias.json'), load('data/game.json')]);
-  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida']]) CFG[k] = await load(`data/${f}.json`);
+  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida'], ['organizacion', 'organizacion'], ['origenes', 'origenes'], ['elecciones', 'elecciones']]) CFG[k] = await load(`data/${f}.json`);
   CFG.eventos.eventos.push(...(CFG.vida?.eventos ?? []));        // los eventos de vida los sortea el personaje, no el azar general
   CFG.glosario = await load('data/glosario.json');
   tooltips = initTooltips(CFG.glosario ?? {});
@@ -134,7 +134,7 @@ function showPicker() {
       map.select(id);
       const p = PROV.provincias.find(x => x.id === id), cap = CFG.capitales[id];
       $('#panel').innerHTML = `${continueButton()}<h2>${esc(p.nombre)}</h2><p class="muted">Capital: ${esc(cap.ciudad)} (~${cap.pop.toLocaleString('es-AR')} hab.)</p>
-        <button id="found" class="primary">Fundar el partido aquí</button>`;
+        <button id="found" class="primary">Empezar aquí</button>`;
       $('#found').onclick = () => showFounding(id, p.nombre);
       wireContinue();
     },
@@ -145,12 +145,18 @@ function showPicker() {
 }
 
 // ---------- Pantalla 2: fundación (nombre + principios) ----------
-function showFounding(provId, provName, st = { nombre: '', principios: [], trasfondo: CFG.trasfondos?.trasfondos.find(t => t.id === 'empleado_publico')?.id ?? CFG.trasfondos?.trasfondos[0]?.id, familia: 'soltero', jugadorNombre: '', error: '' }) {
+function showFounding(provId, provName, st = { nombre: '', principios: [], trasfondo: CFG.trasfondos?.trasfondos.find(t => t.id === 'empleado_publico')?.id ?? CFG.trasfondos?.trasfondos[0]?.id, familia: 'soltero', jugadorNombre: '', error: '', modo: 'fundador', partidoBase: null, origen: 'abajo', perfil: 'economista', desprendeDe: null, provId }) {
   const panel = $('#panel');
   panel.innerHTML = renderFundacion(CFG, provName, st);
-  const name = $('#party-name'), yo = $('#player-name');
+  const name = $('#party-name') ?? { value: st.nombre }, yo = $('#player-name');
   yo.oninput = () => { st.jugadorNombre = yo.value; };
-  name.oninput = () => { st.nombre = name.value; st.error = ''; $('#founding-error').textContent = ''; };
+  if ($('#party-name')) name.oninput = () => { st.nombre = name.value; st.error = ''; $('#founding-error').textContent = ''; };
+  const guardar = () => { st.nombre = name.value; st.jugadorNombre = yo.value; st.error = ''; };
+  panel.querySelectorAll('[data-modo-inicio]').forEach(c => c.onchange = () => { guardar(); st.modo = c.dataset.modoInicio; showFounding(provId, provName, st); });
+  panel.querySelectorAll('[data-origen]').forEach(c => c.onchange = () => { guardar(); st.origen = c.dataset.origen; showFounding(provId, provName, st); });
+  panel.querySelectorAll('[data-perfil]').forEach(c => c.onchange = () => { guardar(); st.perfil = c.dataset.perfil; showFounding(provId, provName, st); });
+  panel.querySelectorAll('[data-desprende]').forEach(c => c.onchange = () => { guardar(); st.desprendeDe = c.dataset.desprende; showFounding(provId, provName, st); });
+  panel.querySelectorAll('[data-base]').forEach(c => c.onchange = () => { guardar(); st.partidoBase = c.dataset.base; showFounding(provId, provName, st); });
   panel.querySelectorAll('[data-familia]').forEach(c => c.onchange = () => {
     st.nombre = name.value; st.jugadorNombre = yo.value; st.error = ''; st.familia = c.dataset.familia;
     showFounding(provId, provName, st);
@@ -166,11 +172,14 @@ function showFounding(provId, provName, st = { nombre: '', principios: [], trasf
     showFounding(provId, provName, st);
   });
   $('#found-confirm').onclick = () => {
-    const err = validarFundacion(name.value, st.principios, CFG, st.trasfondo, st.familia);
+    const unirse = st.modo === 'afiliado', base = unirse ? CFG.partidos.partidos.find(p => p.id === st.partidoBase) : null;
+    const err = unirse && !base ? 'Elegí el partido al que te sumás.' : validarFundacion(name.value, st.principios, CFG, st.trasfondo, st.familia, base?.id, unirse ? null : { origen: st.origen, perfil: st.perfil, desprendeDe: st.desprendeDe ?? CFG.partidos.partidos[0].id });
     if (err) { st.error = err; $('#founding-error').textContent = err; return; }
-    startGame(provId, provName, null, { nombre: limpiarNombre(name.value), principios: st.principios, trasfondo: st.trasfondo, familia: st.familia, jugadorNombre: limpiarNombrePersona(yo.value) });
+    startGame(provId, provName, null, unirse
+      ? { nombre: base.nombre, principios: base.principios, modo: 'afiliado', partidoBase: base.id, trasfondo: st.trasfondo, familia: st.familia, jugadorNombre: limpiarNombrePersona(yo.value) }
+      : { nombre: limpiarNombre(name.value), principios: st.principios, modo: 'fundador', origen: st.origen, perfil: st.perfil, desprendeDe: st.origen === 'desprendimiento' ? (st.desprendeDe ?? CFG.partidos.partidos[0].id) : null, trasfondo: st.trasfondo, familia: st.familia, jugadorNombre: limpiarNombrePersona(yo.value) });
   };
-  name.focus();
+  name.focus?.();
 }
 
 // ---------- Pantalla 3: la capital, dividida en barrios ----------
@@ -207,9 +216,30 @@ function wirePanel() {
   const onPanelClick = e => {
     if (!game) return;
     const vs = e.target.closest('[data-vista]');
-    if (vs) { cambiarVista(vs.dataset.vista); return; }
+    if (vs) { if (vs.dataset.osubIr) uiState.osub = vs.dataset.osubIr; cambiarVista(vs.dataset.vista); return; }
     const ps = e.target.closest('[data-psub]');
     if (ps) { uiState.psub = ps.dataset.psub; refreshAll(); return; }
+    const act = (sel, fn) => { const b = e.target.closest(sel); if (!b || b.disabled) return false; const err = fn(b); if (err) toast(err); refreshAll(); return true; };
+    if (act('[data-el-toggle]', b => game.alternarCandidato(b.dataset.elToggle, b.dataset.q))) return;
+    if (act('[data-el-auto]', b => game.armarLista(b.dataset.elAuto))) return;
+    if (act('[data-el-presentar]', b => game.presentarLista(b.dataset.elPresentar))) return;
+    if (act('[data-el-retirar]', b => game.retirarLista(b.dataset.elRetirar))) return;
+    if (act('[data-el-lugar]', b => game.pedirLugar(b.dataset.elLugar))) return;
+    if (act('[data-el-frente]', b => game.proponerFrente(b.dataset.elFrente))) return;
+    if (act('[data-el-encuesta]', () => game.encargarEncuesta())) return;
+    const osub = e.target.closest('[data-osub]');
+    if (osub) { uiState.osub = osub.dataset.osub; refreshAll(); return; }
+    if (act('[data-org-tramite]', () => game.iniciarTramite())) return;
+    if (act('[data-org-comite]', b => game.abrirComite(b.dataset.orgComite))) return;
+    if (act('[data-org-medios]', b => game.aparecer(b.dataset.orgMedios))) return;
+    const cup = e.target.closest('[data-cupo]');
+    if (cup && !cup.disabled) { const [cid, host, L] = cup.dataset.cupo.split('|'); const err = game.proponerCupo(cid, host, +L, uiState.cupoPago ?? 'apoyo'); if (err) toast(err); refreshAll(); return; }
+    const cpg = e.target.closest('[data-cupo-pago]');
+    if (cpg) { uiState.cupoPago = cpg.dataset.cupoPago; refreshAll(); return; }
+    if (act('[data-cupo-toggle]', b => game.alternarCupo(b.dataset.cupoToggle, b.dataset.q))) return;
+    if (act('[data-cupo-auto]', b => game.armarCupo(b.dataset.cupoAuto))) return;
+    if (act('[data-bloque-romper]', b => (confirm('Romper el bloque te deja con tus electos pero con un enemigo nuevo y menos confianza entre los demás partidos. ¿Seguro?') ? game.romperBloque(b.dataset.bloqueRomper) : null))) return;
+    if (act('[data-org-cerrar]', b => game.cerrarComite(b.dataset.orgCerrar))) return;
     const pf = e.target.closest('[data-persona]');
     if (pf) { uiState.ficha = pf.dataset.persona; refreshAll(); document.querySelector('.ficha')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
     if (e.target.closest('[data-cerrar-ficha]')) { uiState.ficha = null; refreshAll(); return; }
@@ -254,6 +284,7 @@ function wirePanel() {
   $('#panel').addEventListener('click', onPanelClick);
   $('#vista').addEventListener('click', onPanelClick);
   $('#vistas').addEventListener('click', onPanelClick);
+  $('#stats').addEventListener('click', onPanelClick);
   $('#informe-root').addEventListener('click', e => {
     if (e.target.closest('[data-informe-continuar]')) { continuarInforme(); return; }
     const z = e.target.closest('[data-informe-zona]');
@@ -348,7 +379,7 @@ function hoverMapa(id, x, y) {
 
 function mostrarAyuda() {
   const root = $('#ayuda-root'), g = CFG.glosario ?? {};
-  const atajos = [['Espacio', 'Pausa / seguir'], ['0 · 1 · 2 · 3', 'Pausa, x1, x2, x4'], ['Z · R · D', 'Panel del mapa: Zona, Rivales, Datos'], ['P · Y', 'Abrir o cerrar la vista Partido o Yo'], ['Espacio / Enter', 'Continuar cuando termina una acción'], ['M', 'Cambiar Rápido / Detallado'], ['?', 'Esta ayuda'], ['Esc', 'Cerrar']];
+  const atajos = [['Espacio', 'Pausa / seguir'], ['0 · 1 · 2 · 3', 'Pausa, x1, x2, x4'], ['Z · R · D', 'Panel del mapa: Zona, Rivales, Datos'], ['P · O · E · Y', 'Abrir o cerrar Partido, Organización, Elecciones o Yo'], ['Espacio / Enter', 'Continuar cuando termina una acción'], ['M', 'Cambiar Rápido / Detallado'], ['?', 'Esta ayuda'], ['Esc', 'Cerrar']];
   root.innerHTML = `<div class="modal" data-cerrar-ayuda><div class="card ayuda" role="dialog" aria-modal="true" aria-label="Ayuda y glosario">
     <div class="ayuda-head"><h2>Ayuda</h2><button id="cerrar-ayuda" aria-label="Cerrar ayuda">✕</button></div>
     <p class="muted small-p">Modo <b>Rápido</b>: lo esencial. Modo <b>Detallado</b>: todos los números y explicaciones. Pasá el mouse (o enfocá con Tab) sobre cualquier dato subrayado para ver qué significa.</p>
@@ -390,6 +421,8 @@ function wireUI() {
     if (!game) return;
     if (k === 'p') { cambiarVista(vista === 'partido' ? 'mapa' : 'partido'); return; }
     if (k === 'y') { cambiarVista(vista === 'yo' ? 'mapa' : 'yo'); return; }
+    if (k === 'o' && game?.org) { cambiarVista(vista === 'organizacion' ? 'mapa' : 'organizacion'); return; }
+    if (k === 'e') { cambiarVista(vista === 'elecciones' ? 'mapa' : 'elecciones'); return; }
     const pestaña = { z: 'zona', r: 'rivales', d: 'datos' }[k];
     if (pestaña) { tab = pestaña; vista = 'mapa'; refreshAll(); }
   });

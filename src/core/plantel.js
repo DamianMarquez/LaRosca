@@ -31,6 +31,12 @@ export function iniciar(g) {
 }
 
 // Cuadros de los rivales: un líder y dos más, visibles en la pestaña Rivales
+// Suma cuadros nuevos con nombre (los usa el desprendimiento: gente que se va con vos)
+export function agregarCuadros(g, n, { cap = [30, 65], lealtad = [50, 85], origen = 'externo', seed = '' } = {}) {
+  const r = rng(`${g.prov.id}:${g.partido.nombre}:cuadros:${seed}`);
+  for (let i = 0; i < n; i++) g.plantel.miembros.push({ ...persona(g, r, { cap, lealtad, origen }), cargo: null, desde: g.day });
+}
+
 export function iniciarRivales(g, rivales) {
   const out = {};
   for (const x of rivales) {
@@ -48,19 +54,21 @@ export function etapa(g) {
 
 // ---------- Cargos y bonos ----------
 export const cargoDef = (g, id) => C(g).cargos.find(c => c.id === id);
+// Cargos que existen en tu partido: los de Fundar (apoderado, fiscalización) no existen si te sumaste a otro
+export const cargosDe = g => C(g).cargos.filter(c => !c.soloFundador || g.modo === 'fundador');
 export const titular = (g, cargo) => g.plantel.miembros.find(m => m.cargo === cargo) ?? null;
 export const referenteDe = (g, zonaId) => g.plantel.miembros.find(m => m.cargo === `ref:${zonaId}`) ?? null;
 export const vacanteDe = (g, key) => g.plantel.vacantes.find(v => (v.cargo ?? `ref:${v.zona}`) === key) ?? null;
 // ---------- Jerarquía: solo administrás lo que está por debajo de tu rango ----------
 // Afiliados sin el bono de Organización interna (evita la circularidad con g.afiliados)
 const afilBase = g => g.followers * g.cfg.economia.tasaAfiliacion * personaje.afiliacionMult(g);
-export const puedoAdministrar = (g, cargo) => { const c = cargoDef(g, cargo); return !!c && g.player.rank > c.rango && afilBase(g) >= g.umbral(c.desdeAfiliados); };
-export const rangoDe = (g, c) => g.cfg.ranks[c.rango + 1] ?? '';   // rango mínimo del jugador para mandar sobre el cargo
+export const puedoAdministrar = (g, cargo) => { const c = cargoDef(g, cargo); if (!c || (c.soloFundador && g.modo !== 'fundador')) return false; return (g.modo === 'fundador' || g.player.rank > c.rango) && afilBase(g) >= g.umbral(c.desdeAfiliados); };   // quien funda no tiene a nadie por encima: todo cargo es suyo
+export const rangoDe = (g, c) => g.rangos[c.rango + 1] ?? '';   // rango mínimo del jugador para mandar sobre el cargo
 export const modo = (g, cargo) => (g.plantel.modos?.[cargo] === 'delegado' ? 'delegado' : 'propio');
 // Habilidad personal aplicada al cargo cuando lo manejás vos (0..1 de capacidad)
 export function capPropia(g, c) { const K = C(g).propio; return Math.min(K.tope, personaje.nivel(g, c.habilidad) * K.porNivel); }
 // Cargos que hoy manejás vos (cuestan tiempo y desgaste)
-export const cargosPropios = g => C(g).cargos.filter(c => puedoAdministrar(g, c.id) && modo(g, c.id) === 'propio');
+export const cargosPropios = g => cargosDe(g).filter(c => puedoAdministrar(g, c.id) && modo(g, c.id) === 'propio');
 export function carga(g) { const K = C(g).propio, n = Math.min(K.cargaMax, cargosPropios(g).length); return { n, desgaste: n * K.cargaDesgaste, tiempo: n * K.cargaTiempo }; }
 // Quién aporta y con cuánta capacidad (0..100): vos, el titular o nadie
 export function aporte(g, cargo) {
@@ -76,7 +84,7 @@ export const bono = (g, cargo) => aporte(g, cargo).cap / 100;
 export function delegar(g, cargo) {
   const c = cargoDef(g, cargo);
   if (!c) return 'Ese cargo no existe.';
-  if (g.player.rank <= c.rango) return `Ese cargo lo maneja la conducción: necesitás ser ${rangoDe(g, c)}.`;
+  if (g.modo !== 'fundador' && g.player.rank <= c.rango) return `Ese cargo lo maneja la conducción: necesitás ser ${rangoDe(g, c)}.`;
   if (g.afiliados < g.umbral(c.desdeAfiliados)) return `Todavía no hay estructura: hacen falta ${g.umbral(c.desdeAfiliados)} afiliados.`;
   if (modo(g, cargo) === 'delegado') return 'Ya está delegado.';
   g.plantel.modos[cargo] = 'delegado';
@@ -152,6 +160,7 @@ function interino(g, v) {
 
 // ---------- Bajas ----------
 function baja(g, m, motivo, rivalId = null) {
+  g.alBajarMiembro?.(m);
   g.plantel.miembros = g.plantel.miembros.filter(x => x !== m);
   if (rivalId && g.rivalesPlantel[rivalId]) {
     g.rivalesPlantel[rivalId].push({ id: m.id, nombre: m.nombre, capacidad: m.capacidad, lealtad: m.lealtad, ambicion: m.ambicion, principios: m.principios, origen: 'rival', rol: 'Cuadro' });
@@ -162,7 +171,7 @@ function baja(g, m, motivo, rivalId = null) {
   g.note(`${m.nombre} (${rol}) ${motivo}.`, rivalId ? 'rival' : 'bad');
 }
 
-const rivalesPorAfinidad = (g, m) => (g.cfg.partidos?.partidos ?? []).filter(p => p.id !== 'otros')
+const rivalesPorAfinidad = (g, m) => (g.cfg.partidos?.partidos ?? []).filter(p => p.id !== 'otros' && p.id !== g.partidoBase)
   .map(p => ({ id: p.id, w: 1 + 2 * p.principios.filter(x => m.principios.includes(x)).length }));
 
 // Captación de un rival contra uno de tus cuadros. Devuelve el resultado para mostrar.
@@ -208,11 +217,11 @@ export const antiguedad = (g, m) => Math.max(0, g.day - (m.desde ?? 0));
 export function tick(g, rnd = Math.random) {
   const S = g.plantel, P = C(g), afil = g.afiliados;
   // 0) lo que quedó fuera de tu mando (guardados viejos, retrocesos) vuelve a la conducción
-  for (const c of P.cargos) if (!puedoAdministrar(g, c.id)) { const t = titular(g, c.id); if (t) t.cargo = null; S.vacantes = S.vacantes.filter(v => v.cargo !== c.id); }
-  const rangoRef = g.player.rank > P.referente.rango;
+  for (const c of cargosDe(g)) if (!puedoAdministrar(g, c.id)) { const t = titular(g, c.id); if (t) t.cargo = null; S.vacantes = S.vacantes.filter(v => v.cargo !== c.id); }
+  const rangoRef = g.modo === 'fundador' || g.player.rank > P.referente.rango;
   if (!rangoRef) S.vacantes = S.vacantes.filter(v => !v.zona);
   // 1) solo se cubren los cargos que decidiste delegar
-  for (const c of P.cargos) if (puedoAdministrar(g, c.id) && modo(g, c.id) === 'delegado' && !titular(g, c.id)) abrirVacante(g, { cargo: c.id });
+  for (const c of cargosDe(g)) if (puedoAdministrar(g, c.id) && modo(g, c.id) === 'delegado' && !titular(g, c.id)) abrirVacante(g, { cargo: c.id });
   // 2) referentes de barrio: si delegaste el Territorial los cubre el coordinador; si no, los cubrís vos
   const coord = modo(g, 'territorial') === 'delegado' ? titular(g, 'territorial') : null;
   const cupo = Math.floor(afil / g.umbral(P.referente.porAfiliados)) + 1;

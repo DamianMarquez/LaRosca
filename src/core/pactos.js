@@ -6,7 +6,7 @@ import * as personaje from './personaje.js';
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const fin = Number.isFinite;
 const P = g => g.cfg.pactos;
-const rivalesIds = g => (g.cfg.partidos?.partidos ?? []).filter(p => p.id !== 'otros');
+const rivalesIds = g => (g.cfg.partidos?.partidos ?? []).filter(p => p.id !== 'otros' && p.id !== g.partidoBase);
 
 // Afinidad de principios con el jugador: sube la relación inicial
 export function relacionInicial(g, rival) {

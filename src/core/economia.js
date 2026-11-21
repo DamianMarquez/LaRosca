@@ -2,6 +2,8 @@
 import { rng } from './city.js';
 import { bono } from './plantel.js';
 import * as personaje from './personaje.js';
+import { ingresoMensual } from './elecciones.js';
+import { gastoComites, ingresoFpp } from './organizacion.js';
 import { cambiarRelacion } from './pactos.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -18,6 +20,8 @@ export function proyeccion(g) {
   const C = E(g), t = g.trasfondo, afil = g.afiliados;
   const ingresos = {
     [`Aporte propio (${t?.nombre ?? 'trabajo'})`]: personaje.aporteTrabajo(g),
+    ...(ingresoFpp(g) > 0 ? { 'Fondo partidario permanente': ingresoFpp(g) } : {}),
+    ...(ingresoMensual(g) > 0 ? { 'Dietas y aportes electorales': ingresoMensual(g) } : {}),
     'Cuotas de afiliados': Math.round(afil * C.cuota.mensual * C.cuota.tasaPago * (1 + g.cfg.plantel.bonos.finanzas.cuotas * bono(g, 'finanzas'))),
   };
   // Los gastos fijos también escalan con el tamaño de la ciudad (sale menos una sede en Rawson que en Córdoba)
@@ -27,6 +31,7 @@ export function proyeccion(g) {
     ...(afil >= g.umbral(G.sede.desdeAfiliados) ? { 'Sede partidaria': Math.round(G.sede.costo * mult) } : {}),
     ...(g.plantel.miembros.some(m => m.cargo) ? { 'Viáticos del plantel': Math.round((g.plantel.miembros.filter(m => m.cargo && !m.cargo.startsWith('ref:')).length * G.plantel.porCargo + g.plantel.miembros.filter(m => m.cargo?.startsWith('ref:')).length * G.plantel.porReferente) * mult) } : {}),
     ...(g.equipo > 0 ? { 'Equipo de trabajo': Math.round(g.equipo * G.equipo.porMiembro * mult) } : {}),
+    ...(gastoComites(g) > 0 ? { 'Comités barriales': gastoComites(g) } : {}),
     ...(personaje.gastoFamiliar(g) > 0 ? { 'Gastos de tu familia': personaje.gastoFamiliar(g) } : {}),
   };
   const sum = o => Object.values(o).reduce((a, b) => a + b, 0);

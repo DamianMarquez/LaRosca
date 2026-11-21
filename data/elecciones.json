@@ -1,0 +1,253 @@
+{
+  "nota": "Ciclo electoral argentino simplificado. Elecciones en años impares: legislativa (2025, 2029…) y ejecutiva (2027, 2031…). Fechas de referencia: PASO 2.º domingo de agosto, general 4.º domingo de octubre, asunción el 10 de diciembre. 'fases' = días antes de la general. Los montos se escalan con el tamaño de la ciudad. Constantes provisionales. Provincial y nacional: no se simulan por barrio; el resto del país se modela por distrito con la historia electoral real (partidos ficticios) y la penetración de tu partido.",
+  "primerAnio": 2025,
+  "anioEjecutivo": 2027,
+  "fases": {
+    "convocatoria": 180,
+    "alianzas": 120,
+    "listas": 100,
+    "campana": 60,
+    "veda": 2
+  },
+  "cierreListasAntesPaso": 3,
+  "mandatoDias": 1461,
+  "umbral": 0.03,
+  "modelo": {
+    "controlPeso": 0.5,
+    "confianzaPeso": 0.08,
+    "campanaMax": 0.15,
+    "campanaPorMision": 0.03,
+    "escandaloPeso": 0.3,
+    "ruidoBarrio": 0.12,
+    "climaSigma": 0.04,
+    "climaMax": 0.3,
+    "participacionRuido": 0.02,
+    "derrameBase": 0.3,
+    "opinionPeso": 0.3,
+    "perdidaFiscal": 0.08
+  },
+  "encuesta": {
+    "costo": 600,
+    "margen": 0.03,
+    "max": 5
+  },
+  "frente": {
+    "relacionMin": 50,
+    "max": 1,
+    "famaPorPunto": 0.003,
+    "contacto": 0.15
+  },
+  "lugar": {
+    "base": 0.2,
+    "porRango": 0.1,
+    "porRelacion": 0.005
+  },
+  "efectos": {
+    "alcancePorBanca": 0.02,
+    "alcanceMax": 0.2,
+    "aporteFundador": 0.2,
+    "lealtadGana": 5,
+    "lealtadPierde": -6
+  },
+  "contiendas": [
+    {
+      "id": "concejales",
+      "ambito": "municipal",
+      "cargo": "Concejal",
+      "sistema": "dhondt",
+      "ciclos": [
+        "legislativa",
+        "ejecutiva"
+      ],
+      "renovacion": 0.5,
+      "activa": true,
+      "bancas": {
+        "min": 7,
+        "base": 7,
+        "porMillon": 16,
+        "max": 41,
+        "tipo": "ciudad"
+      },
+      "requiere": {
+        "alcance": "distrito",
+        "rangoCandidato": 3
+      },
+      "costo": 1500,
+      "dieta": 1200,
+      "titulo": "Concejo Deliberante",
+      "cupo": true
+    },
+    {
+      "id": "intendente",
+      "ambito": "municipal",
+      "cargo": "Intendente",
+      "sistema": "unipersonal",
+      "ciclos": [
+        "ejecutiva"
+      ],
+      "renovacion": 1,
+      "activa": true,
+      "requiere": {
+        "alcance": "distrito",
+        "rangoCandidato": 6
+      },
+      "costo": 6000,
+      "dieta": 4000,
+      "titulo": "Intendente"
+    },
+    {
+      "id": "legisladores",
+      "titulo": "Legislatura provincial",
+      "ambito": "provincial",
+      "cargo": "Legislador",
+      "sistema": "dhondt",
+      "ciclos": [
+        "legislativa",
+        "ejecutiva"
+      ],
+      "renovacion": 0.5,
+      "activa": true,
+      "bancas": {
+        "tipo": "provincia",
+        "min": 24,
+        "base": 24,
+        "porMillon": 12,
+        "max": 72
+      },
+      "requiere": {
+        "alcance": "provincial",
+        "rangoCandidato": 6
+      },
+      "costo": 8000,
+      "dieta": 2500,
+      "cupo": true
+    },
+    {
+      "id": "gobernador",
+      "titulo": "Gobernador",
+      "ambito": "provincial",
+      "cargo": "Gobernador",
+      "sistema": "unipersonal",
+      "ciclos": [
+        "ejecutiva"
+      ],
+      "renovacion": 1,
+      "activa": true,
+      "requiere": {
+        "alcance": "provincial",
+        "rangoCandidato": 7
+      },
+      "costo": 20000,
+      "dieta": 6000
+    },
+    {
+      "id": "diputados",
+      "titulo": "Diputados nacionales",
+      "ambito": "nacional",
+      "cargo": "Diputado nacional",
+      "sistema": "dhondt",
+      "ciclos": [
+        "legislativa",
+        "ejecutiva"
+      ],
+      "renovacion": 0.5,
+      "activa": true,
+      "bancas": {
+        "tipo": "diputados",
+        "total": 257,
+        "min": 5
+      },
+      "requiere": {
+        "alcance": "nacional",
+        "rangoCandidato": 7
+      },
+      "costo": 15000,
+      "dieta": 5000,
+      "cupo": true
+    },
+    {
+      "id": "senadores",
+      "titulo": "Senadores nacionales",
+      "ambito": "nacional",
+      "cargo": "Senador",
+      "sistema": "senado",
+      "ciclos": [
+        "legislativa",
+        "ejecutiva"
+      ],
+      "renovacion": 1,
+      "activa": true,
+      "bancas": {
+        "tipo": "senado"
+      },
+      "requiere": {
+        "alcance": "nacional",
+        "rangoCandidato": 8
+      },
+      "costo": 15000,
+      "dieta": 6500
+    },
+    {
+      "id": "presidente",
+      "titulo": "Presidente",
+      "ambito": "nacional",
+      "cargo": "Presidente",
+      "sistema": "unipersonal",
+      "ciclos": [
+        "ejecutiva"
+      ],
+      "renovacion": 1,
+      "activa": true,
+      "balotaje": true,
+      "requiere": {
+        "alcance": "nacional",
+        "rangoCandidato": 8
+      },
+      "costo": 40000,
+      "dieta": 12000
+    }
+  ],
+  "penetracion": {
+    "provincial": 0.6,
+    "nacional": 0.7
+  },
+  "penetracionOtros": {
+    "nacional": 0.2
+  },
+  "balotaje": {
+    "umbral": 0.45,
+    "minimo": 0.4,
+    "ventaja": 0.1,
+    "transferencia": 0.85
+  },
+  "cupo": {
+    "transferencia": 0.8,
+    "posiciones": [
+      3,
+      6,
+      9
+    ],
+    "maxLugares": 3,
+    "costoDinero": 3000,
+    "base": 0.1,
+    "porRelacion": 0.008,
+    "porFama": 0.0025,
+    "contacto": 0.1,
+    "porLugar": -0.08,
+    "pago": {
+      "dinero": 0.12,
+      "apoyo": 0.08,
+      "bloque": 0.1
+    },
+    "estructura": 0.1,
+    "relacionGana": 4,
+    "fiscalesBloque": 0.3,
+    "ruptura": {
+      "host": -40,
+      "otros": -5,
+      "fama": 3
+    },
+    "maxIntentos": 2,
+    "desplazamiento": 3
+  }
+}

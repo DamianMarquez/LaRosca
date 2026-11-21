@@ -20,6 +20,10 @@ export class Clock {
       this.onDay(this.day);
     }
   }
+  // Día de simulación de una fecha de calendario (día 0 = 1/mar/2025)
+  static dayOf(anio, mes, dia) { return Math.round((Date.UTC(anio, mes - 1, dia) - Date.UTC(2025, 2, 1)) / 86400000); }
+  // Partes de la fecha de un día de simulación
+  static parts(day) { const d = new Date(Date.UTC(2025, 2, 1 + day)); return { anio: d.getUTCFullYear(), mes: d.getUTCMonth() + 1, dia: d.getUTCDate() }; }
   // Fecha de calendario a partir del 1/mar/2025
   static format(day) {
     const d = new Date(Date.UTC(2025, 2, 1 + day));
