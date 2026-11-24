@@ -1,0 +1,36 @@
+{
+  "nota": "Invitaciones de medios: aparecen por fama, estilo y atención de rivales. minFama: fama mínima; peso: frecuencia relativa; vence: días para aceptar. Las decisiones viven en eventos.json (tipo 'medio'); su éxito es un chequeo de habilidad, profesión y estilo.",
+  "max": 2,
+  "vence": 6,
+  "probBase": 0.04,
+  "probPorFama": 0.004,
+  "enfriamiento": 4,
+  "habilidadPorNivel": 7,
+  "etiqueta": 8,
+  "debil": -10,
+  "estiloFigura": 3,
+  "estiloMilitante": -3,
+  "tipos": [
+    {
+      "id": "entrevista",
+      "evento": "med_entrevista",
+      "nombre": "Entrevista en radio",
+      "minFama": 6,
+      "peso": 3
+    },
+    {
+      "id": "debate",
+      "evento": "med_debate",
+      "nombre": "Debate público",
+      "minFama": 14,
+      "peso": 2
+    }
+  ],
+  "emboscada": {
+    "evento": "med_emboscada",
+    "minFama": 10,
+    "prob": 0.012,
+    "probPorAtencion": 0.0006,
+    "enfriamiento": 15
+  }
+}

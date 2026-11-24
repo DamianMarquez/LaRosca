@@ -10,7 +10,26 @@ const isNum = v => typeof v === 'number' && Number.isFinite(v);
 export const limpiarNombre = s => String(s ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, NOMBRE_MAX);
 
 // Valida la fundación (nombre + principios). Devuelve null si es válida o un mensaje en español.
-export function validarFundacion(nombre, principios, cfg, trasfondo, familia, partidoBase, origen) {
+// Estilo público y puntos libres de la creación: opcionales; si vienen, deben ser coherentes con los datos
+function validarPerfil(cfg, trasfondo, perfil) {
+  if (!perfil) return null;
+  const E = cfg.vida?.estilos, H = cfg.habilidades;
+  if (perfil.estilo !== undefined && E && !E.some(e => e.id === perfil.estilo)) return 'Elegí cómo te mostrás.';
+  if (perfil.puntos !== undefined && H) {
+    const t = cfg.trasfondos?.trasfondos.find(x => x.id === trasfondo);
+    let total = 0;
+    for (const r of H.ramas) {
+      const n = perfil.puntos?.[r.id] ?? 0;
+      if (!Number.isInteger(n) || n < 0) return 'Puntos inválidos.';
+      total += n;
+      if (n + (t?.habilidades?.[r.id] ?? 0) > (H.baseMax ?? 3)) return `El máximo inicial por habilidad es ${H.baseMax ?? 3}.`;
+    }
+    if (total > (H.puntosCreacion ?? 0)) return `Tenés ${H.puntosCreacion} puntos para repartir.`;
+  }
+  return null;
+}
+export function validarFundacion(nombre, principios, cfg, trasfondo, familia, partidoBase, origen, perfil) {
+  const ep = validarPerfil(cfg, trasfondo, perfil); if (ep) return ep;
   if (partidoBase) {                                   // te sumás a un partido existente: nombre y principios son los suyos
     if (!cfg.partidos?.partidos.some(p => p.id === partidoBase && p.id !== 'otros')) return 'Elegí un partido para sumarte.';
     const ts0 = cfg.trasfondos?.trasfondos;

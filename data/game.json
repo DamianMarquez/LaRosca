@@ -204,7 +204,31 @@
         "bonus": 6,
         "expo": 5
       },
-      "delegable": true
+      "delegable": true,
+      "modalidades": [
+        {
+          "id": "barrio",
+          "nombre": "Casa por casa",
+          "texto": "Conversás con cada vecino: lento pero genera confianza.",
+          "base": 2,
+          "dias": 1,
+          "alcance": 0.8,
+          "fama": 0,
+          "expo": 0,
+          "habilidad": "calle"
+        },
+        {
+          "id": "masivo",
+          "nombre": "Esquina masiva",
+          "texto": "Repartís a mucha gente rápido: más alcance, menos vínculo.",
+          "base": -3,
+          "dias": 0,
+          "alcance": 1.4,
+          "fama": 1,
+          "expo": 2,
+          "habilidad": "calle"
+        }
+      ]
     },
     {
       "id": "pintadas",
@@ -228,7 +252,31 @@
         "bonus": 10,
         "expo": 8
       },
-      "delegable": true
+      "delegable": true,
+      "modalidades": [
+        {
+          "id": "permiso",
+          "nombre": "Con permiso",
+          "texto": "Paredes cedidas por vecinos: seguro y discreto.",
+          "base": 6,
+          "dias": 0,
+          "alcance": 0.8,
+          "fama": 0,
+          "expo": 0,
+          "habilidad": "calle"
+        },
+        {
+          "id": "clandestina",
+          "nombre": "De noche, sin permiso",
+          "texto": "Mucho alcance y fama, pero te pueden agarrar.",
+          "base": -8,
+          "dias": 0,
+          "alcance": 1.4,
+          "fama": 2,
+          "expo": 4,
+          "habilidad": "calle"
+        }
+      ]
     },
     {
       "id": "visitas",
@@ -248,7 +296,31 @@
       "alcance": 500,
       "densExp": 0.3,
       "densPref": -1,
-      "delegable": true
+      "delegable": true,
+      "modalidades": [
+        {
+          "id": "puerta",
+          "nombre": "Puerta a puerta",
+          "texto": "Escuchás problemas uno por uno.",
+          "base": 2,
+          "dias": 0,
+          "alcance": 0.9,
+          "fama": 0,
+          "expo": 0,
+          "habilidad": "calle"
+        },
+        {
+          "id": "referentes",
+          "nombre": "Con referentes",
+          "texto": "Te mostrás con el almacenero y el club: más alcance y visibilidad.",
+          "base": -2,
+          "dias": 0,
+          "alcance": 1.2,
+          "fama": 1,
+          "expo": 1,
+          "habilidad": "negociacion"
+        }
+      ]
     },
     {
       "id": "comunidad",
@@ -273,7 +345,12 @@
         "expo": 10
       },
       "delegable": true,
-      "minDia": 10
+      "requiere": [
+        {
+          "tipo": "misiones",
+          "n": 5
+        }
+      ]
     },
     {
       "id": "reunion",
@@ -298,7 +375,36 @@
         "expo": 8
       },
       "delegable": true,
-      "minDia": 20
+      "requiere": [
+        {
+          "tipo": "afiliados",
+          "n": 15
+        }
+      ],
+      "modalidades": [
+        {
+          "id": "casa",
+          "nombre": "En casa de un vecino",
+          "texto": "Íntima: poca gente, mucha adhesión.",
+          "base": 6,
+          "dias": 0,
+          "alcance": 0.7,
+          "fama": 0,
+          "expo": 0,
+          "habilidad": "organizacion"
+        },
+        {
+          "id": "plaza",
+          "nombre": "Abierta en la plaza",
+          "texto": "Te ve mucha gente: fama y alcance, con más riesgo.",
+          "base": -6,
+          "dias": 0,
+          "alcance": 1.5,
+          "fama": 3,
+          "expo": 2,
+          "habilidad": "oratoria"
+        }
+      ]
     },
     {
       "id": "colecta",
@@ -510,5 +616,6 @@
   "delegacion": {
     "penal": 8,
     "rangoMin": 3
-  }
+  },
+  "nota_modalidades": "missions[].modalidades: formas de hacer una misión. base: puntos de éxito; dias: días extra; alcance: multiplicador; fama: notoriedad que suma al salir bien; expo: exposición; habilidad: rama que rinde más (+1 por nivel sobre 2 si es la afín). La primera es la predeterminada."
 }

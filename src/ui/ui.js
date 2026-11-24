@@ -2,6 +2,8 @@
 import { rivales as rivalesDe, amenaza, presencia, efectosActivos, choques, agenda, certeza, presenciaCiudad, defAccion } from '../core/rivals.js';
 import { progreso as progresoDirectiva, etiqueta as etiquetaRelacion } from '../core/linea.js';
 import * as plantel from '../core/plantel.js';
+import { chequeo } from '../core/medios.js';
+import * as ideo from '../core/ideologia.js';
 import { nombreVacante, cargoDef, titular, probCaptar } from '../core/plantel.js';
 import { relacion as relacionRival, pactoCon, tipoDef, etiquetaRelacion as etiquetaRel } from '../core/pactos.js';
 import { NOMBRE_MAX } from '../core/save.js';
@@ -9,7 +11,7 @@ import { consejos } from '../core/consejos.js';
 import { perfil } from '../core/electoral.js';
 import { ico } from './iconos.js';
 import { renderElecciones } from './elecciones.js';
-import { ve, nuevoVista, nuevoTab, nuevoSub } from '../core/revelado.js';
+import { ve, nuevoVista, nuevoTab, nuevoSub, fraccionConds } from '../core/revelado.js';
 import { renderOrganizacion } from './organizacion.js';
 import { diasHastaGeneral, FASE_NOMBRE } from '../core/elecciones.js';
 import * as personaje from '../core/personaje.js';
@@ -56,6 +58,23 @@ function renderChipElecciones(g) {
   return `<div class="grp"><button class="chip chip-el ${cerca ? 'mid' : ''}" data-vista="elecciones" data-tip-texto="${esc(`Elecciones ${P.anio}: ${FASE_NOMBRE[P.fase]}. Faltan ${d} días para votar.`)}">${ico('voto')}<b>${d} d</b><small class="detalle">${esc(FASE_NOMBRE[P.fase])}</small></button></div>`;
 }
 
+// Estilo público y puntos libres del personaje, con un resumen en vivo de cómo arrancás
+function perfilHtml(cfg, estado) {
+  const E = cfg.vida?.estilos ?? [], H = cfg.habilidades, t = cfg.trasfondos?.trasfondos.find(x => x.id === estado.trasfondo);
+  if (!E.length || !H) return '';
+  const estilo = E.find(e => e.id === (estado.estilo ?? 'equilibrado')) ?? E[0], pts = estado.puntos ?? {};
+  const usados = H.ramas.reduce((s, r) => s + (pts[r.id] ?? 0), 0), resto = (H.puntosCreacion ?? 0) - usados;
+  const base = r => (t?.habilidades?.[r.id] ?? 0) + (pts[r.id] ?? 0);
+  const filas = H.ramas.map(r => `<div class="punto"><span><b>${esc(r.nombre)}</b> <small class="muted">${esc(r.texto)}</small></span>
+      <span class="stepper"><button type="button" data-punto="${esc(r.id)}" data-delta="-1" ${(pts[r.id] ?? 0) <= 0 ? 'disabled' : ''} aria-label="Quitar punto de ${esc(r.nombre)}">−</button><b>${base(r)}</b><button type="button" data-punto="${esc(r.id)}" data-delta="1" ${resto <= 0 || base(r) >= (H.baseMax ?? 3) ? 'disabled' : ''} aria-label="Sumar punto a ${esc(r.nombre)}">+</button></span></div>`).join('');
+  const fortalezas = [...(t?.etiquetas ?? [])].map(e => ({ letrado: 'debates y trámites', academico: 'datos y argumentos', datos: 'debates con datos', mediatico: 'entrevistas', calle: 'la calle', obrero: 'la organización de base', comunidad: 'el trabajo comunitario', negocios: 'las negociaciones', institucional: 'la gestión' }[e])).filter(Boolean);
+  const debil = (t?.debil ?? []).map(e => ({ entrevista: 'entrevistas', debate: 'debates', emboscada: 'emboscadas' }[e])).filter(Boolean);
+  const fama0 = Math.max(0, (t?.fama ?? 0) + (estilo.famaInicial ?? 0));
+  return `<h3>Cómo te mostrás</h3><div class="principles">${E.map(e => `<label class="principle ${estilo.id === e.id ? 'on' : ''}"><input type="radio" name="estilo" data-estilo="${esc(e.id)}" ${estilo.id === e.id ? 'checked' : ''}><span><b>${esc(e.nombre)}</b><br><small>${esc(e.texto)}</small></span></label>`).join('')}</div>
+    <h3>Tus puntos <small class="muted">· te quedan ${resto} de ${H.puntosCreacion ?? 0}</small></h3><div class="puntos">${filas}</div>
+    <div class="resumen-perfil"><b>Así arrancás:</b> ${H.ramas.map(r => `${esc(r.nombre)} ${base(r)}`).join(' · ')} · Fama inicial ${fama0}${fortalezas.length ? `<br><small>Te sale mejor: ${esc(fortalezas.join(', '))}.</small>` : ''}${debil.length ? `<br><small class="muted">Te cuesta más: ${esc(debil.join(', '))}.</small>` : ''}</div>`;
+}
+
 // ---------- Fundación del partido ----------
 export function renderFundacion(cfg, provincia, estado) {
   const cat = cfg.principios.principios, k = cfg.principios.elegir, unirse = estado.modo === 'afiliado';
@@ -99,6 +118,7 @@ export function renderFundacion(cfg, provincia, estado) {
     <div class="principles">${(cfg.trasfondos?.trasfondos ?? []).map(t => `<label class="principle ${estado.trasfondo === t.id ? 'on' : ''}">
       <input type="radio" name="trasfondo" data-trasfondo="${esc(t.id)}" ${estado.trasfondo === t.id ? 'checked' : ''}>
       <span><b>${esc(t.nombre)}</b><br><small>${esc(t.texto)}</small><br><small class="muted">${esc(trasfondoTexto(t, cfg))}</small></span></label>`).join('')}</div>
+    ${perfilHtml(cfg, estado)}
     ${principiosHtml}
     <p id="founding-error" class="error" role="alert">${esc(estado.error ?? '')}</p>
     <button id="found-confirm" class="primary">${unirse ? 'Sumarme' : 'Fundar el partido'}</button>`;
@@ -114,6 +134,9 @@ export function trasfondoTexto(t, cfg) {
   if (t.donMult > 1) out.push(`recaudás +${Math.round((t.donMult - 1) * 100)}%`);
   if (t.gastoMult < 1) out.push(`gastos fijos −${Math.round((1 - t.gastoMult) * 100)}%`);
   if (t.escandaloMult < 1) out.push(`los escándalos te pegan ${Math.round((1 - t.escandaloMult) * 100)}% menos`);
+  const hab = Object.entries(t.habilidades ?? {}).map(([id, n]) => `${cfg.habilidades?.ramas.find(r => r.id === id)?.nombre ?? id} ${n}`);
+  if (hab.length) out.push('parte con ' + hab.join(', '));
+  if (t.fama > 0) out.push(`fama inicial ${t.fama}`);
   for (const [id, v] of Object.entries(t.chance ?? {})) out.push(`${cfg.missions.find(m => m.id === id)?.nombre ?? id} ${v > 0 ? '+' : ''}${v}% éxito`);
   return out.join(' · ');
 }
@@ -138,8 +161,10 @@ export function renderEvento(g) {
     if (c.money) parts.push(money(c.money) + ' blancos');
     if (c.black) parts.push(money(c.black) + ' negros');
     if (op.azar) parts.push(Math.round(op.azar.p * 100) + '% de salir bien');
+    let tip = '';
+    if (op.chequeo) { const q = chequeo(g, ev, op); parts.push(Math.round(q.p * 100) + '% de salir bien'); tip = ` title="${esc(q.factores.map(f => f[0] + ': ' + (f[1] > 0 ? '+' : '') + f[1]).join(' · '))}"`; }
     const lock = (c.money ?? 0) > 0 && c.money > g.player.money ? 'Falta dinero blanco' : (c.black ?? 0) > 0 && c.black > g.player.black ? 'Falta dinero negro' : null;
-    return `<button data-event-choice="${i}" ${lock ? 'disabled' : ''}>${esc(op.label)}<small>${esc(lock ?? (parts.join(' · ') || 'Sin costo'))}</small></button>`;
+    return `<button data-event-choice="${i}"${tip} ${lock ? 'disabled' : ''}>${esc(op.label)}<small>${esc(lock ?? (parts.join(' · ') || 'Sin costo'))}</small></button>`;
   }).join('');
   return `<div class="modal"><div class="card ${ev.tipo === 'escandalo' ? 'scandal' : ''}"><h2>${esc(ev.titulo)}</h2><p>${esc(ev.texto)}</p><div class="choices">${ops}</div></div></div>`;
 }
@@ -153,13 +178,14 @@ export function renderAcciones(g, day) {
       <div class="job-sub">${esc(g.zonas[j.zone].nombre)} · termina en <span data-job-eta="${i}">${restante(Math.max(0, j.end - day))}</span></div>
       <div class="bar big"><i data-job-bar="${i}" style="width:${(f * 100).toFixed(1)}%"></i><span data-job-pct="${i}">${Math.round(f * 100)}%</span></div></div>`;
   }).join('');
+  const invs = (g.jugador.invitaciones ?? []).map(i => { const t = g.cfg.medios?.tipos.find(x => x.id === i.tipo); return t ? `<div class="job invitacion"><div class="job-head"><b>📺 ${esc(t.nombre)}</b><span class="badge">Invitación · ${Math.max(0, Math.ceil(i.vence - day))} d</span></div><div class="btns"><button data-inv="aceptar" data-tipo="${esc(i.tipo)}">Aceptar</button><button data-inv="rechazar" data-tipo="${esc(i.tipo)}">Rechazar</button></div></div>` : ''; }).join('');
   const viaje = renderViajeActivo(g, day);
   const desc = g.jugador.descanso, free = g.freeSlots > 0;
   const descTxt = desc ? `<div class="job"><div class="job-head"><b>Descansando</b><span class="badge">${ico('persona')}Vos</span></div><div class="job-sub">Recuperás fuerzas · terminás en ${Math.max(0, desc.hasta - day)} d</div></div>` : '';
   const equipo = !ve(g, 'hud.equipo') ? '' : g.equipo > 0 ? `<span tabindex="0" data-tip="equipo">${ico('equipo')}Equipo ${g.freeEquipo}/${g.equipo}</span>` : `<span class="detalle" tabindex="0" data-tip="equipo">${ico('equipo')}Equipo desde ${esc(g.rangos[g.cfg.delegacion.rangoMin])}</span>`;
   return `<section class="actions"><div class="actions-head"><h3>En curso</h3>
       <span class="slots"><span class="${free ? 'free' : 'busy-txt'}" tabindex="0" data-tip="accion">${ico('persona')}${desc ? 'Descansando' : viaje ? 'Viajando' : free ? 'Libre' : 'Ocupado'}</span> ${equipo}</span></div>
-    ${viaje}${descTxt}${jobs || (desc || viaje ? '' : '<p class="muted">Sin acciones en curso. Sos una sola persona: una acción personal a la vez.</p>')}</section>`;
+    ${invs}${viaje}${descTxt}${jobs || (desc || viaje ? '' : '<p class="muted">Sin acciones en curso. Sos una sola persona: una acción personal a la vez.</p>')}</section>`;
 }
 
 // ---------- Pestañas ----------
@@ -185,6 +211,9 @@ export function renderVista(g, vista, day) {
   return `<div class="vista-in"><div class="vista-top">${renderAcciones(g, day)}</div>${cuerpo}</div>`;
 }
 
+// Chip de afinidad ideológica con un rival (opuesto natural / afín) y los ejes en que chocan
+const chipIdeo = (g, r) => { if (!g.cfg.ideologia) return ''; const x = ideo.relacionIdeologica(g, r); if (x.tipo === 'neutral') return ''; const ch = ideo.choque(g, r).slice(0, 2).join(' · ');
+  return ` <span class="tag ideo ${x.tipo}" tabindex="0" data-tip-titulo="${esc(x.texto)}" data-tip-texto="${esc(x.tipo === 'opuesto' ? 'Piensan distinto en lo central' + (ch ? ' (' + ch + ')' : '') + ': tienden a enfrentarse, les cuesta pactar y te golpean más.' : 'Piensan parecido: es más fácil pactar y es menos probable que te ataquen.')}">${esc(x.texto)}</span>`; };
 const prName = (g, id) => g.cfg.principios.principios.find(p => p.id === id)?.nombre ?? id;
 const rolDe = (g, m) => !m.cargo ? 'Militante' : m.cargo.startsWith('ref:') ? `Referente de ${g.zonas[m.cargo.slice(4)]?.nombre ?? 'un barrio'}` : (cargoDef(g, m.cargo)?.nombre ?? 'Cargo');
 const sem = (v, inv = false) => { const x = inv ? 100 - v : v; return x >= 66 ? 'alto' : x >= 40 ? 'medio' : 'bajo'; };
@@ -284,7 +313,7 @@ function renderPrincipios(g) {
   const cat = g.cfg.principios.principios;
   const mine = g.principios.map(x => `<div class="principle on static"><span><b>${esc(x.nombre)}</b><br><small>${esc(x.texto)}</small><br><small class="muted">${esc(modsTexto(x, g.cfg))}</small></span></div>`).join('');
   const rivals = rivalesDe(g).map(r =>
-    `<div class="rival-line"><span class="dot" style="background:${r.color}"></span><span><b>${esc(r.nombre)}</b> <small class="muted">· ${esc(r.espacio)}</small><br><small>${esc(r.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small></span></div>`).join('');
+    `<div class="rival-line"><span class="dot" style="background:${r.color}"></span><span><b>${esc(r.nombre)}</b>${chipIdeo(g, r)} <small class="muted">· ${esc(r.espacio)}</small><br><small>${esc(r.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small></span></div>`).join('');
   return `<div class="resumen-grid"><section class="card"><h3>Nuestros principios</h3>${mine}</section><section class="card"><h3>Otros partidos y lo que defienden</h3>${rivals}</section></div>`;
 }
 
@@ -344,6 +373,16 @@ function recomendada(g, lista, z, zoneId) {
   return mejor;
 }
 
+// «Cómo hacerlo»: chips con las formas de hacer la misión y su efecto sobre éxito, alcance y fama
+function modalidadesHtml(g, m, z) {
+  if (!m.modalidades?.length) return '';
+  const sel = g.modalidad(m).id;
+  return `<div class="modalidades" role="group" aria-label="Cómo hacerlo"><small class="muted">Cómo hacerlo</small>${m.modalidades.map(x => {
+    const c = g.chance(m, z, 'blanco', 'personal', null, x.id).c, al = g.alcance(m, z, x.id).personas;
+    return `<button type="button" class="chip ${x.id === sel ? 'on' : ''}" data-modalidad="${esc(m.id)}" data-mod="${esc(x.id)}" aria-pressed="${x.id === sel}" title="${esc(x.texto)}"><b>${esc(x.nombre)}</b><small>${c}% · ~${al.toLocaleString('es-AR')} pers.${x.fama ? ' · +fama' : ''}${x.expo ? ' · +expo' : ''}</small></button>`;
+  }).join('')}</div>`;
+}
+
 // Tarjeta de misión: fila compacta (nombre · éxito · tiempo · costo · Lanzar). El resto vive en "…" (Rápido) o a la vista (Detallado).
 function misionCard(g, m, z, zoneId, rec) {
   const lock = g.canStart(m, zoneId), ch = g.chance(m, z), al = g.alcance(m, z), fin = m.categoria === 'finanzas';
@@ -365,6 +404,7 @@ function misionCard(g, m, z, zoneId, rec) {
       ${avisos}
       <div class="detalle m-extra">
         <small class="muted">${esc(m.desc)}</small>
+        ${modalidadesHtml(g, m, z)}
         <div class="meta">${resultado}</div>
         <details><summary>Por qué ${ch.c}%</summary><ul class="factors">${why}</ul></details>
         <div class="btns">${m.negro ? negroBtn(g, m, z, zoneId) : ''}
@@ -378,7 +418,7 @@ function renderZona(g, zoneId) {
   if (!zoneId) return '<p class="muted">Elegí un barrio en el mapa para ver sus datos, a los rivales que hay y lanzar misiones.</p>';
   const z = g.zonas[zoneId], ms = g.cfg.missions;
   const base = ve(g, 'mision.mas') ? null : ['volantes', 'visitas'];
-  const lejos = m => !!g.guia?.progresivo && (m.minRank > g.player.rank + 1 || g.day < (m.minDia ?? 0) - 3);       // las misiones que exigen mucho más rango no se muestran todavía
+  const lejos = m => !!g.guia?.progresivo && (m.minRank > g.player.rank + 1 || (!!m.requiere && fraccionConds(g, m.requiere) < 0.4));       // las misiones que exigen mucho más rango no se muestran todavía
   const grupo = (f) => ms.filter(m => f(m) && !lejos(m)), terr = grupo(m => m.categoria !== 'finanzas' && (!base || base.includes(m.id))), legal = grupo(m => m.categoria === 'finanzas' && !m.ilegal), ilegal = grupo(m => m.ilegal);
   const proxima = ms.filter(m => lejos(m) || (m.minRank > g.player.rank)).sort((a, b) => a.minRank - b.minRank)[0];
   const cards = (lista, rec) => lista.map(m => misionCard(g, m, z, zoneId, m.id === rec)).join('');
@@ -432,12 +472,14 @@ function renderRivalesBody(g, z) {
   const rows = am.detalle.map(d => {
     const r = d.partido, ps = r.principios.map(id => cat.find(c => c.id === id)?.nombre).filter(Boolean).join(', ');
     const react = d.prob30 > 0.01 && d.accion ? `<small class="react">Podría: ${esc(d.accion.nombre.toLowerCase())} · ${approx5(d.prob30)} en 30 d</small>` : '';
-    return `<div class="rival"><div class="rival-top"><span class="dot" style="background:${r.color}"></span><span class="rn">${esc(r.nombre)}</span><span class="rp">${approx5(pres[r.id])}</span></div>
+    return `<div class="rival"><div class="rival-top"><span class="dot" style="background:${r.color}"></span><span class="rn">${esc(r.nombre)}${chipIdeo(g, r)}</span><span class="rp">${approx5(pres[r.id])}</span></div>
       <div class="bar thin"><i style="width:${(pres[r.id] * 100).toFixed(0)}%;background:${r.color}"></i></div>
       <small class="muted detalle">${esc(ps)}</small>${react}${ofensivaMenu(g, r.id, z.id)}</div>`;
   }).join('');
   const nivelTxt = { ninguna: 'Todavía no te toman como amenaza: con poco control en el barrio, los rivales no reaccionan.', baja: 'Riesgo de reacción rival: <b>bajo</b>.', media: 'Riesgo de reacción rival: <b class="mid">medio</b>.', alta: 'Riesgo de reacción rival: <b class="hi">alto</b>.' }[am.nivel];
-  return `<p class="muted small-p">${nivelTxt} <small>(estimación)</small></p>${enZona}${activos}${rows}`;
+  const att = Math.round(g.atencion());
+  const attTxt = att >= 15 ? `<p class="muted small-p">Atención de los rivales: <b>${att}</b>/100 — ser conocido y ayudar a la comunidad te hace más visible, y también más blanco.</p>` : '';
+  return `<p class="muted small-p">${attTxt}${nivelTxt} <small>(estimación)</small></p>${enZona}${activos}${rows}`;
 }
 
 // Pestaña Rivales: qué está haciendo cada partido ahora y qué hizo hace poco

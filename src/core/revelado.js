@@ -1,6 +1,7 @@
 // Revelado progresivo: el juego empieza con muy poco en pantalla y se abre de a poco. Sin DOM.
 // Cada elemento (data/revelado.json) se revela una sola vez y nunca se vuelve a ocultar.
 import { FASES } from './elecciones.js';
+import { fama as famaDe } from './personaje.js';
 
 const fin = Number.isFinite;
 const ESTADOS = ['idea', 'agrupacion', 'personeria', 'distrito', 'provincial', 'nacional'];
@@ -17,18 +18,25 @@ function cumple(g, c) {
     case 'dia': return g.day >= c.n;
     case 'misiones': return (g.guia?.hechos?.misiones ?? 0) >= c.n;
     case 'afiliados': return g.afiliados >= g.umbral(c.n);
+    case 'vacante': return (g.plantel?.vacantes?.length ?? 0) > 0;
     case 'rango': return g.player.rank >= c.n;
     case 'control': return Object.values(g.zonas).some(z => z.control >= c.n);
     case 'dineroBajo': return g.player.money <= (g.guia?.dineroInicial ?? g.cfg.start.money) * 0.4;
     case 'cierreMes': return (g.economia?.historial?.length ?? 0) >= 1;
     case 'accionRival': return (g.historialRivales?.length ?? 0) > 0;
     case 'equipo': return g.equipo > 0;
-    case 'fama': return (g.org?.fama ?? 0) >= c.n;
+    case 'fama': return famaDe(g) >= c.n;
     case 'estado': return ESTADOS.indexOf(g.org?.estado) >= ESTADOS.indexOf(c.estado);
     case 'fase': { const P = g.elecciones?.proceso; return !!P && FASES.indexOf(P.fase) >= FASES.indexOf(c.fase); }
+    case 'hecho': return (g.guia?.hechos?.[c.clave] ?? 0) >= (c.n ?? 1);
+    case 'popularidad': return g.intencionVoto >= c.n;
     default: return false;
   }
 }
+// Condiciones sueltas (misiones, eventos): todas deben cumplirse
+export const cumpleConds = (g, conds) => (conds ?? []).every(c => cumple(g, c));
+export const fraccionConds = (g, conds) => { const l = (conds ?? []).map(c => Math.min(1, fraccion(g, c))); return l.length ? l.reduce((a, b) => a + b, 0) / l.length : 1; };
+export const progresoConds = (g, conds) => progreso(g, { cond: conds });
 export function cumpleElemento(g, e) {
   const todas = (e.cond ?? []).every(c => cumple(g, c)), alguna = !e.alguna || e.alguna.some(c => cumple(g, c));
   return todas && alguna;
@@ -46,16 +54,19 @@ export function progreso(g, e) {
       case 'accionRival': return { texto: 'Primera acción de un rival', actual: g.historialRivales?.length ? 1 : 0, meta: 1 };
       case 'dineroBajo': return { texto: 'Quedarte con poco dinero', actual: cumple(g, c) ? 1 : 0, meta: 1 };
       case 'equipo': return { texto: 'Rango con equipo', actual: g.equipo > 0 ? 1 : 0, meta: 1 };
-      case 'fama': return { texto: 'Notoriedad', actual: Math.round(g.org?.fama ?? 0), meta: c.n };
+      case 'vacante': return { texto: 'Un cargo vacante', actual: (g.plantel?.vacantes?.length ?? 0) > 0 ? 1 : 0, meta: 1 };
+      case 'fama': return { texto: 'Notoriedad', actual: Math.round(famaDe(g)), meta: c.n };
       case 'estado': return { texto: `Estado legal: ${g.cfg.organizacion?.estados.find(x => x.id === c.estado)?.nombre ?? c.estado}`, actual: cumple(g, c) ? 1 : 0, meta: 1 };
       case 'fase': return { texto: 'Etapa electoral', actual: cumple(g, c) ? 1 : 0, meta: 1 };
+      case 'hecho': return { texto: g.cfg.revelado?.etiquetasHecho?.[c.clave] ?? c.clave, actual: g.guia?.hechos?.[c.clave] ?? 0, meta: c.n ?? 1 };
+      case 'popularidad': return { texto: 'Intención de voto', actual: Math.round(g.intencionVoto * 100), meta: Math.round(c.n * 100), unidad: '%' };
       default: return { texto: c.tipo, actual: 0, meta: 1 };
     }
   };
   const conds = [...(e.cond ?? []), ...(e.alguna ? [e.alguna.slice().sort((a, b) => fraccion(g, b) - fraccion(g, a))[0]] : [])];
   return conds.map(c => ({ ...t(c), ok: cumple(g, c), alguna: !!e.alguna && !(e.cond ?? []).includes(c) }));
 }
-const fraccion = (g, c) => { if (cumple(g, c)) return 1; if (c.tipo === 'dia') return g.day / c.n; if (c.tipo === 'afiliados') return g.afiliados / Math.max(1, g.umbral(c.n)); if (c.tipo === 'misiones') return (g.guia?.hechos?.misiones ?? 0) / c.n; if (c.tipo === 'control') return Math.max(0, ...Object.values(g.zonas).map(z => z.control)) / c.n; return 0; };
+const fraccion = (g, c) => { if (cumple(g, c)) return 1; if (c.tipo === 'dia') return g.day / c.n; if (c.tipo === 'fama') return famaDe(g) / c.n; if (c.tipo === 'hecho') return (g.guia?.hechos?.[c.clave] ?? 0) / (c.n ?? 1); if (c.tipo === 'popularidad') return g.intencionVoto / c.n; if (c.tipo === 'afiliados') return g.afiliados / Math.max(1, g.umbral(c.n)); if (c.tipo === 'misiones') return (g.guia?.hechos?.misiones ?? 0) / c.n; if (c.tipo === 'control') return Math.max(0, ...Object.values(g.zonas).map(z => z.control)) / c.n; return 0; };
 export function fraccionElemento(g, e) {
   const todas = (e.cond ?? []).map(c => fraccion(g, c)), alguna = e.alguna ? [Math.max(...e.alguna.map(c => fraccion(g, c)))] : [];
   const l = [...todas, ...alguna]; return l.length ? l.reduce((a, b) => a + Math.min(1, b), 0) / l.length : 1;
@@ -80,7 +91,8 @@ export function iniciar(g, progresivo = false) {
 }
 
 // Cuenta una acción hecha (para las condiciones y el checklist del primer mes)
-const CLAVES = ['misiones', 'recaudo', 'vio_rivales', 'vio_datos', 'vio_yo', 'vio_partido', 'vio_org', 'vio_elecciones', 'vio_calendario', 'encuentros'];
+const CLAVES = ['misiones', 'recaudo', 'vio_rivales', 'vio_datos', 'vio_yo', 'vio_partido', 'vio_org', 'vio_elecciones', 'vio_calendario', 'encuentros', 'golpes', 'viajes', 'medios'];
+const claveValida = k => CLAVES.includes(k) || /^m_[a-z_]{1,30}$/.test(k);   // m_<mision>: veces que salió bien esa misión
 export function hecho(g, clave) { if (g.guia) g.guia.hechos[clave] = (g.guia.hechos[clave] ?? 0) + 1; }
 export function registrarEncuentro(g, id) { if (!g.guia) return; if (!g.guia.encuentros.includes(id)) g.guia.encuentros.push(id); hecho(g, 'encuentros'); }
 export function vio(g, clave) { if (g.guia && !g.guia.hechos[clave]) g.guia.hechos[clave] = 1; }
@@ -138,7 +150,7 @@ export function sanear(g, raw) {
     progresivo: !!raw.progresivo,
     revelado: Array.isArray(raw.revelado) ? [...new Set(raw.revelado.filter(id => ids.has(id)))] : [],
     nuevo: Array.isArray(raw.nuevo) ? [...new Set(raw.nuevo.filter(id => ids.has(id)))].slice(0, 30) : [],
-    hechos: Object.fromEntries(CLAVES.map(k => [k, fin(raw.hechos?.[k]) ? Math.max(0, Math.floor(raw.hechos[k])) : 0])),
+    hechos: Object.fromEntries([...new Set([...CLAVES, ...Object.keys(raw.hechos ?? {}).filter(claveValida).slice(0, 80)])].map(k => [k, fin(raw.hechos?.[k]) ? Math.max(0, Math.floor(raw.hechos[k])) : 0])),
     encuentros: Array.isArray(raw.encuentros) ? [...new Set(raw.encuentros.filter(x => typeof x === 'string'))].slice(0, 60) : [],
     ultimoAviso: fin(raw.ultimoAviso) ? raw.ultimoAviso : null,
     dineroInicial: fin(raw.dineroInicial) ? raw.dineroInicial : g.cfg.start.money,

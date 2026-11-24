@@ -24,7 +24,7 @@ export function motivo(g, a, rid, zonaId) {
   if (noAgresion(g, rid)) return 'Tenés un pacto de no agresión con ese partido.';
   if (presencia(g, zonaId)[rid] < O(g).presenciaMin) return 'Ese partido casi no tiene presencia acá.';
   const R = a.requiere ?? {};
-  if (R.fama && (g.org?.fama ?? 0) < R.fama && g.modo === 'fundador') return `Necesitás notoriedad ${R.fama}.`;
+  if (R.fama && g.fama < R.fama && g.modo === 'fundador') return `Necesitás notoriedad ${R.fama}.`;
   if (R.fases && !R.fases.includes(g.elecciones?.proceso?.fase)) return 'Solo en campaña electoral.';
   if (a.captacion && !(g.rivalesPlantel?.[rid] ?? []).some(m => m.rol !== 'Líder')) return 'No quedan cuadros para seducir.';
   return g.canStart(a, zonaId);
@@ -32,7 +32,7 @@ export function motivo(g, a, rid, zonaId) {
 export function chance(g, a, zonaId, rid) {
   const z = g.zonas[zonaId], base = g.chance(a, z), pres = presencia(g, zonaId)[rid] ?? 0;
   const factors = [...base.factors, [`Presencia de ${g.rival(rid)?.nombre ?? 'el rival'} en el barrio`, -Math.round(pres * O(g).presenciaDificultad)]];
-  if (a.grupo === 'medios') { const f = Math.round((g.org?.fama ?? 0) / 10); if (f) factors.push(['Tu notoriedad', f]); }
+  if (a.grupo === 'medios') { const f = Math.round(g.fama / 10); if (f) factors.push(['Tu notoriedad', f]); }
   return { c: clamp(Math.round(factors.reduce((s, f) => s + f[1], 0)), 5, 95), factors };
 }
 export const exposicionPrevista = a => a.efecto?.exposicion ?? 0;
@@ -52,7 +52,7 @@ export function resolver(g, j, a, z, ok) {
     if (E.presencia) sumarPresencia(g, z.id, rid, E.presencia);
     if (E.relacion) cambiarRelacion(g, rid, E.relacion);
     if (E.exposicion) g.exposure = clamp(g.exposure + E.exposicion, 0, 100);
-    if (E.fama && g.org) g.org.fama = clamp(g.org.fama + E.fama, 0, 100);
+    if (E.fama) g.ganarFama(E.fama);
     if (E.trustZona) z.trust = clamp(z.trust + E.trustZona, 0, 100);
     if (E.campana && g.elecciones?.proceso) g.elecciones.proceso.campana[z.id] = clamp((g.elecciones.proceso.campana[z.id] ?? 0) + E.campana, 0, g.cfg.elecciones.modelo.campanaMax);
     subirRencor(g, rid, E.rencor ?? 0);

@@ -11,7 +11,8 @@ const ORDEN = { urgente: 0, alerta: 1, oportunidad: 2, info: 3 };
 // Devuelve [{ id, nivel, texto, tab, sub? }] ordenado de más a menos importante
 export function consejos(g) {
   const c = [];
-  const add = (id, nivel, texto, tab, sub) => c.push({ id, nivel, texto, tab, ...(sub ? { sub } : {}) });
+  const VISTAS = ['partido', 'yo', 'organizacion', 'elecciones', 'calendario'];   // si esa vista todavía no se abrió, el aviso no lleva a ningún lado
+  const add = (id, nivel, texto, tab, sub) => c.push({ id, nivel, texto, tab: VISTAS.includes(tab) && g.guia?.progresivo && !g.ve('vista.' + tab) ? undefined : tab, ...(sub ? { sub } : {}) });
 
   if (g.pending) add('evento', 'urgente', `Tenés que decidir: ${g.pending.titulo}.`, null);
   if (g.player.money < 0) add('rojos', 'urgente', 'Estás en números rojos: recaudá para poder volver a gastar.', 'zona');
@@ -24,7 +25,7 @@ export function consejos(g) {
     const r = g.rival(golpe.rival), z = g.zonas[golpe.zona];
     add('golpe', 'alerta', `${r.nombre} ${golpe.fase === 'planeada' ? 'prepara' : 'ejecuta'} «${golpe.def.nombre.toLowerCase()}» en ${z.nombre}.`, 'rivales');
   }
-  if (g.plantel.vacantes.length) add('vacante', 'oportunidad', `Hay ${g.plantel.vacantes.length} vacante${g.plantel.vacantes.length > 1 ? 's' : ''} por cubrir en tu plantel.`, 'partido');
+  if (g.plantel.vacantes.length && g.ve('vista.partido')) add('vacante', 'oportunidad', `Hay ${g.plantel.vacantes.length} vacante${g.plantel.vacantes.length > 1 ? 's' : ''} por cubrir en tu plantel.`, 'partido');
   const EP = g.elecciones?.proceso;
   if (EP && g.cfg.elecciones && g.day < EP.fechas.general) {
     const cierre = g.elecciones ? EP.fechas.paso - g.cfg.elecciones.cierreListasAntesPaso - g.day : 0;

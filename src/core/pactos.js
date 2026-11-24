@@ -2,6 +2,7 @@
 import { registrarFavor } from './economia.js';
 import { bono } from './plantel.js';
 import * as personaje from './personaje.js';
+import * as ideologia from './ideologia.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const fin = Number.isFinite;
@@ -11,7 +12,8 @@ const rivalesIds = g => (g.cfg.partidos?.partidos ?? []).filter(p => p.id !== 'o
 // Afinidad de principios con el jugador: sube la relación inicial
 export function relacionInicial(g, rival) {
   const comunes = rival.principios.filter(id => g.partido.principios.includes(id)).length;
-  return clamp(P(g).relacion.base + comunes * P(g).relacion.porPrincipio, 0, 100);
+  const ide = g.cfg.ideologia ? (0.5 - ideologia.distanciaRival(g, rival)) * g.cfg.ideologia.relacionPorDistancia : 0;   // opuestos de entrada se llevan mal
+  return clamp(P(g).relacion.base + comunes * P(g).relacion.porPrincipio + ide, 0, 100);
 }
 
 export function iniciar(g) {

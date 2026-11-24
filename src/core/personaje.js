@@ -14,11 +14,16 @@ export function iniciar(g, partido) {
   const fam = V(g).familia.find(f => f.id === partido?.familia) ?? V(g).familia[0];
   const r = rng(`${g.prov.id}:${g.partido.nombre}:jugador`), N = g.cfg.plantel.nombres;
   const generado = `${N.nombre[Math.floor(r() * N.nombre.length)]} ${N.apellido[Math.floor(r() * N.apellido.length)]}`;
+  const estilo = V(g).estilos?.find(e => e.id === partido?.estilo)?.id ?? 'equilibrado';
+  const tf = g.trasfondo ?? null, ES = V(g).estilos?.find(e => e.id === estilo);
+  const base = Object.fromEntries(H(g).ramas.map(x => [x.id, clamp((tf?.habilidades?.[x.id] ?? 0) + libres(g, partido?.puntos)[x.id], 0, H(g).baseMax ?? 3)]));   // profesión + puntos libres
+  const famaBase = clamp((tf?.fama ?? 0) + (ES?.famaInicial ?? 0), 0, 100);
   return {
     nombre: limpia(partido?.jugadorNombre) || generado,
     familia: { pareja: fam.pareja, hijos: fam.hijos },
     trabajo: { estado: 'completo', mejora: 0, ultimoCambio: -999 },
-    habilidades: Object.fromEntries(H(g).ramas.map(x => [x.id, { xp: 0, invertidos: 0 }])),
+    habilidades: Object.fromEntries(H(g).ramas.map(x => [x.id, { xp: 0, invertidos: 0, base: base[x.id] }])),
+    estilo, fama: famaBase, famaBase,
     puntos: 0, desgaste: 5, descanso: null, ultimaCrisis: -999,
   };
 }
@@ -30,7 +35,27 @@ function natural(g, id) {
   for (let i = 1; i < T.length; i++) if (xp >= T[i]) n = i;
   return n;
 }
-export const nivel = (g, id) => (g.jugador.habilidades[id] ? Math.min(H(g).maximo, natural(g, id) + g.jugador.habilidades[id].invertidos) : 0);
+export const nivel = (g, id) => (g.jugador.habilidades[id] ? Math.min(H(g).maximo, natural(g, id) + g.jugador.habilidades[id].invertidos + (g.jugador.habilidades[id].base ?? 0)) : 0);
+
+// Puntos libres de la creación: {rama: n}, recortados al total permitido y al máximo por rama
+export function libres(g, puntos) {
+  const out = Object.fromEntries(H(g).ramas.map(x => [x.id, 0]));
+  let resto = H(g).puntosCreacion ?? 0;
+  if (puntos && typeof puntos === 'object') for (const x of H(g).ramas) { const n = clamp(Math.floor(Number(puntos[x.id]) || 0), 0, Math.min(resto, H(g).baseMax ?? 3)); out[x.id] = n; resto -= n; }
+  return out;
+}
+
+// ---------- Estilo público y fama ----------
+export const estiloDe = g => V(g).estilos?.find(e => e.id === g.jugador.estilo) ?? { famaMult: 1, confianzaMult: 1, afiliacionMult: 1, escandaloMult: 1, rencorMult: 1 };
+// Fama del personaje: la del fundador (notoriedad del partido) o la propia si te afiliaste
+export const fama = g => (g.org ? g.org.fama : g.jugador.fama);
+export function ganarFama(g, n) {
+  const E = V(g).efectosFamilia, T = V(g).trabajo.famaMult ?? {};
+  const vida = Math.max(0.5, 1 + (g.jugador.familia.pareja ? E.famaPareja ?? 0 : 0) + g.jugador.familia.hijos * (E.famaHijo ?? 0)) * (T[g.jugador.trabajo.estado] ?? 1);   // familia y trabajo condicionan el tiempo para los medios
+  const v = n > 0 ? n * estiloDe(g).famaMult * vida : n;
+  if (g.org) g.org.fama = clamp(g.org.fama + v, 0, 100); else g.jugador.fama = clamp(g.jugador.fama + v, 0, 100);
+  return v;
+}
 // Avance hacia el próximo nivel natural (null si la práctica ya no da más)
 export function progresoNivel(g, id) {
   const T = H(g).xpNivel, n = natural(g, id), xp = g.jugador.habilidades[id].xp;
@@ -55,10 +80,10 @@ export function factores(g, m, modo = 'personal') {
 
 // Ventajas y bonos por nivel (los usan los demás módulos)
 export const alcanceMult = (g, m) => (nivel(g, 'oratoria') >= 5 && ORATORIA.includes(m.id) ? 1.1 : 1);
-export const afiliacionMult = g => 1 + 0.04 * nivel(g, 'organizacion');
+export const afiliacionMult = g => (1 + 0.04 * nivel(g, 'organizacion')) * estiloDe(g).afiliacionMult;
 export const equipoExtra = g => (nivel(g, 'organizacion') >= 5 ? 1 : 0);
 export const desercionMult = g => (nivel(g, 'organizacion') >= 3 ? 0.85 : 1);
-export const confianzaMult = (g, m) => (nivel(g, 'calle') >= 3 && CALLE.includes(m.id) ? 1.25 : 1);
+export const confianzaMult = (g, m) => (nivel(g, 'calle') >= 3 && CALLE.includes(m.id) ? 1.25 : 1) * estiloDe(g).confianzaMult;
 export const erosionMult = g => (nivel(g, 'calle') >= 5 ? 0.7 : 1);
 export const recaudacionMult = g => 1 + 0.05 * nivel(g, 'finanzas');
 export const gastoFijoMult = g => (nivel(g, 'finanzas') >= 3 ? 0.9 : 1);
@@ -196,6 +221,7 @@ export function tick(g, rnd = Math.random) {
     const ev = g.cfg.eventos?.eventos.find(e => e.id === 'crisis_agotamiento');
     if (ev) { J.ultimaCrisis = g.day; g.pending = ev; g.ultimoEvento = g.day; g.note(`Evento: ${ev.titulo}.`, 'bad'); g.emit('event'); return; }
   }
+  if (!g.org && J.fama > (J.famaBase ?? 0)) J.fama = Math.max(J.famaBase ?? 0, J.fama - (g.cfg.organizacion?.fama?.decae ?? 0.12));   // la fama propia se enfría
   if (g.day > 0 && g.day % 30 === 0) despido(g, rnd);
   if (g.day > 0 && g.day % 30 === 15 && !g.pending && rnd() < V(g).eventoMensual) eventoDeVida(g, rnd);
 }
@@ -211,9 +237,15 @@ export function sanear(g, raw, partido) {
   if (raw.habilidades && typeof raw.habilidades === 'object') {
     for (const id of Object.keys(base.habilidades)) {
       const h = raw.habilidades[id];
-      if (h && fin(h.xp) && fin(h.invertidos)) base.habilidades[id] = { xp: clamp(h.xp, 0, 1e6), invertidos: clamp(Math.floor(h.invertidos), 0, H(g).maximo) };
+      if (h && fin(h.xp) && fin(h.invertidos)) base.habilidades[id] = { xp: clamp(h.xp, 0, 1e6), invertidos: clamp(Math.floor(h.invertidos), 0, H(g).maximo), base: fin(h.base) ? clamp(Math.floor(h.base), 0, H(g).baseMax ?? 3) : base.habilidades[id].base };
     }
   }
+  if (V(g).estilos?.some(e => e.id === raw.estilo)) base.estilo = raw.estilo;
+  if (fin(raw.famaBase)) base.famaBase = clamp(raw.famaBase, 0, 100);
+  if (fin(raw.fama)) base.fama = clamp(raw.fama, 0, 100);
+  if (Array.isArray(raw.invitaciones)) base.invitaciones = raw.invitaciones.filter(i => i && typeof i.tipo === 'string' && fin(i.vence)).slice(0, 4).map(i => ({ tipo: i.tipo, vence: i.vence }));
+  if (fin(raw.ultimaInvitacion)) base.ultimaInvitacion = raw.ultimaInvitacion;
+  if (fin(raw.ultimaEmboscada)) base.ultimaEmboscada = raw.ultimaEmboscada;
   if (fin(raw.puntos)) base.puntos = clamp(Math.floor(raw.puntos), 0, 99);
   if (fin(raw.desgaste)) base.desgaste = clamp(raw.desgaste, 0, 100);
   if (fin(raw.ultimaCrisis)) base.ultimaCrisis = raw.ultimaCrisis;

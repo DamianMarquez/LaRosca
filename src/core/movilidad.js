@@ -109,9 +109,10 @@ export function tick(g, t = g.day) {
   const v = g.movilidad?.viaje; if (!v || t < v.llega) return false;
   g.movilidad.viaje = null; g.movilidad.ubicacion = v.hasta;
   if (v.etapa === 'vuelta') { g.note(`Volviste a casa (${g.zonas[v.hasta].nombre}).`, 'info'); return true; }
+  g.hecho?.('viajes');
   g.note(`Llegaste a ${g.zonas[v.hasta].nombre} (${medioDe(g, v.medio)?.nombre.toLowerCase() ?? 'viaje'}).`, 'info');
   const p = v.pendiente;
-  if (p && g.mission(p.mision)) g.jobs.push({ mission: p.mision, zone: v.hasta, start: g.day, end: g.day + g.dias(g.mission(p.mision)), pago: p.pago, modo: 'personal', ...(p.rival ? { rival: p.rival } : {}) });
+  if (p && g.mission(p.mision)) g.jobs.push({ mission: p.mision, zone: v.hasta, start: g.day, end: g.day + g.dias(g.mission(p.mision), p.modalidad), pago: p.pago, modo: 'personal', ...(p.modalidad ? { modalidad: p.modalidad } : {}), ...(p.rival ? { rival: p.rival } : {}) });
   return true;
 }
 // Cancelar la ida: te quedás en el barrio más cercano de la ruta, se devuelve la acción y la vuelta pagada, y volvés a casa si hace falta
@@ -160,7 +161,7 @@ export function mudarse(g, zoneId) {
 export function motivoCompra(g, id) {
   const m = mejoraDe(g, id); if (!m) return 'No existe.';
   if (tiene(g, id)) return 'Ya la tenés';
-  if (g.guia?.progresivo && g.day < (m.minDia ?? 0)) return `Disponible desde el día ${m.minDia}`;
+  const h = (m.requiereHechos ?? []).find(c => (g.guia?.hechos?.[c.clave] ?? 0) < c.n); if (g.guia?.progresivo && h) return `Primero: ${h.n} viajes (${g.guia?.hechos?.[h.clave] ?? 0}/${h.n})`;
   if (g.player.rank < (m.minRank ?? 0)) return `Requiere rango: ${g.rangos[m.minRank]}`;
   const f = (m.requiere ?? []).find(r => !tiene(g, r)); if (f) return `Primero: ${mejoraDe(g, f).nombre}`;
   if (g.player.money < m.costo) return 'Falta dinero';
@@ -187,7 +188,7 @@ export function sanear(g, raw) {
     const p = v.pendiente, ok = p && typeof p.mision === 'string' && (g.cfg.missions.some(m => m.id === p.mision) || g.cfg.ofensivas?.acciones.some(m => m.id === p.mision));
     const etapa = v.etapa === 'vuelta' ? 'vuelta' : 'ida';
     M.viaje = { etapa, desde: v.desde, hasta: v.hasta, medio: v.medio, km: fin(v.km) ? v.km : 0, costo: fin(v.costo) ? v.costo : 0, inicio: Math.min(v.inicio, v.llega), llega: v.llega,
-      pendiente: etapa === 'ida' && ok ? { mision: p.mision, pago: p.pago === 'negro' ? 'negro' : 'blanco', ...(typeof p.rival === 'string' ? { rival: p.rival } : {}) } : null };
+      pendiente: etapa === 'ida' && ok ? { mision: p.mision, pago: p.pago === 'negro' ? 'negro' : 'blanco', ...(typeof p.modalidad === 'string' ? { modalidad: p.modalidad } : {}), ...(typeof p.rival === 'string' ? { rival: p.rival } : {}) } : null };
   }
   return M;
 }

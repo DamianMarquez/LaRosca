@@ -162,9 +162,9 @@ function resolverMedios(g) {
   const org = g.org, m = medioDef(g, org.medios.tipo), C = O(g).medios_cfg;
   org.medios = null;
   const f0 = org.fama, c0 = org.controversia;
-  org.fama = clamp(org.fama + m.fama * rendimientoMedios(g, m), 0, 100);
+  personaje.ganarFama(g, m.fama * rendimientoMedios(g, m)); g.hecho?.('medios');
   org.controversia = clamp(org.controversia + m.controversia, 0, 100);
-  const escandalo = Math.random() < m.riesgo * (1 + org.controversia / 100);
+  const escandalo = Math.random() < m.riesgo * (1 + org.controversia / 100) * personaje.estiloDe(g).escandaloMult;
   if (escandalo) { g.exposure = clamp(g.exposure + C.escandalo.exposicion, 0, 100); org.fama = clamp(org.fama + C.escandalo.fama, 0, 100); org.controversia = clamp(org.controversia + C.escandalo.controversia, 0, 100); }
   const df = org.fama - f0, dc = org.controversia - c0;
   const texto = escandalo ? `${m.nombre}: te fue mal, se viralizó algo que dijiste y creció la sospecha.` : `${m.nombre}: salió bien y ganaste notoriedad.`;

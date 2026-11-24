@@ -73,6 +73,20 @@ Los scripts que los generan son `scripts/build-*.{mjs,py}`; algunos requieren de
 Duraciones, costos, alcances, probabilidades, gastos y requisitos de ascenso son valores provisionales de prototipo, en `data/*.json` (`game`, `economia`, `trasfondos`, `plantel`, `escalafon`, `rivales`, `pactos`, `linea`, `eventos`, `organizacion`, `origenes`, `elecciones`, `revelado`, `ayuda`).
 
 
+## Creación del personaje y fama
+- **Profesión** (12: docente, abogado, periodista, estudiante de economía…): da habilidades iniciales, fama, fortalezas y puntos débiles (`data/trasfondos.json`). **Puntos libres** (3) para repartir; **estilo público**: figura (más fama y exposición), equilibrado o militante (más confianza y afiliación, menos fama).
+- **Fama** (`g.fama`) vale para fundadores y afiliados. Se gana con acciones visibles, entrevistas y debates.
+
+## Avance por objetivos
+Nada se abre por pasar los días: cada elemento de `data/revelado.json` se destraba por hechos (misiones, afiliados, fama, control, rivalidad, fases del calendario electoral). Lo mismo valen `requiere` en misiones y `cuando` en eventos. Una partida inactiva no abre casi nada. «Próximo en abrirse» explica qué falta.
+
+## Modalidades y medios
+- Las misiones tienen **modalidades** (casa por casa o esquina masiva, pintada con permiso o clandestina, reunión en casa o en la plaza…): cambian éxito, alcance, tiempo, fama y exposición (`missions[].modalidades`).
+- **Medios** (`src/core/medios.js`, `data/medios.json`): con fama llegan invitaciones a entrevistas y debates, y los rivales te arman emboscadas. Cada decisión es un chequeo de habilidad + perfil (profesión) + estilo, entre 5 y 95%.
+
+## Ideología y atención
+Cada principio ubica en 4 ejes (Estado/mercado, federal/unitario, orden/libertades, cambio/tradición; `data/principios.json`). La distancia con cada rival (`src/core/ideologia.js`, `data/ideologia.json`) marca **opuestos naturales** y **afines**: cambia su hostilidad, la relación inicial y con quién se alían en la Mesa. Tu **atención** crece con la fama y con ayudar a la comunidad, y atrae golpes.
+
 ## Ritmo del modo progresivo
 Las capas se abren escalonadas (primera misión → Yo ~día 7 → Rivales ~día 14-21 → Recaudación ~día 28 → Fin de mes → Presencia ~día 35 → Partido ~día 45 → Estructura ~día 75 → Pactos ~día 100 → Dinero ilegal ~día 120 → Elecciones desde ~día 90). Hay un cooldown de 7 días entre avisos mayores (`cooldownDias` en `data/revelado.json`). En los primeros 60 días aparecen *encuentros de barrio* (eventos con `encuentro: true` en `data/eventos.json`) que anticipan cada mecánica. Botones: principal dorado, secundario gris azulado, ghost de texto, `danger` y `negro` (variables en `:root`).
 

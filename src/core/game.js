@@ -16,6 +16,8 @@ import * as ofensivas from './ofensivas.js';
 import * as mesa from './mesa.js';
 import * as movilidad from './movilidad.js';
 import * as revelado from './revelado.js';
+import * as medios from './medios.js';
+import * as ideologia from './ideologia.js';
 import { Clock } from './clock.js';
 import { SCHEMA } from './save.js';
 
@@ -50,6 +52,7 @@ export class Game {
     this.elecciones = elecciones.iniciar();                        // calendario electoral, listas, resultados y cargos electivos
     this.alianzas = pactos.iniciar(this);                          // relación con cada rival y pactos vigentes
     this.org = organizacion.iniciar(this, partido);                // modo Fundar: origen, estado legal, comités y notoriedad (null si te sumaste a un partido)
+    if (this.org) this.org.fama = Math.max(0, Math.min(100, this.org.fama + (this.trasfondo?.fama ?? 0) + (this.cfg.vida?.estilos?.find(e => e.id === this.jugador.estilo)?.famaInicial ?? 0)));   // la profesión y el estilo suman al punto de partida
     if (this.org) this.elecciones.cargos.push(...organizacion.cargosIniciales(this, Clock.dayOf(2029, 12, 10)));
     this.jobs = [];       // {mission, zone, start, end, pago, modo}
     this.movilidad = movilidad.iniciar(this);                      // dónde estás, cómo viajás y qué mejoras de transporte tenés
@@ -131,17 +134,23 @@ export class Game {
   marcarVisto(donde) { revelado.marcarVisto(this, donde); }
   setProgresivo(v) { revelado.setProgresivo(this, v); }
   vio(clave) { revelado.vio(this, clave); }
+  hecho(clave) { revelado.hecho(this, clave); }
   designar(vid, cid) { return plantel.designar(this, vid, cid); }
   captarCuadro(rivalId, mid, con) { return plantel.captarCuadro(this, rivalId, mid, con); }
   // Pactos: oferta (costo y probabilidad) y propuesta a un rival
   ofertaPacto(rid, tipo) { return pactos.oferta(this, rid, tipo); }
   proponerPacto(rid, tipo, opts) { return pactos.proponer(this, rid, tipo, opts); }
   // Duración efectiva de una misión: el trasfondo da más o menos tiempo libre
-  dias(m) { return Math.max(1, Math.round(m.dias * personaje.tiempoMult(this, m))); }
+  // Modalidad: la forma de hacer la misión (elegida por el jugador; la primera es la predeterminada)
+  modalidad(m, id) { const l = m.modalidades; if (!l?.length) return null; return l.find(x => x.id === (id ?? this.elegida?.[m.id])) ?? l[0]; }
+  elegirModalidad(mid, id) { const m = this.mission(mid); if (m?.modalidades?.some(x => x.id === id)) (this.elegida ??= {})[mid] = id; }
+  dias(m, mod) { return Math.max(1, Math.round((m.dias + (this.modalidad(m, mod)?.dias ?? 0)) * personaje.tiempoMult(this, m))); }
   // Proyección del mes (ingresos − gastos) y dinero esperado de una recaudación
   get flujo() { return eco.proyeccion(this); }
   ingresoEsperado(m, z) { return eco.ingresoMision(this, m, z); }
   pagarFavor(id, con) { return eco.pagarFavor(this, id, con); }
+  get fama() { return personaje.fama(this); }
+  ganarFama(n) { return personaje.ganarFama(this, n); }
   get followers() {
     const base = Object.values(this.zonas).reduce((s, z) => s + z.pop * z.control * 0.02, 0);
     const fans = this.org ? Object.values(this.zonas).reduce((s, z) => s + z.pop, 0) * Math.max(0, this.org.fama - this.cfg.organizacion.fama.piso) / 100 * this.cfg.organizacion.fama.seguidores : 0;   // la fama trae seguidores sin territorio
@@ -183,9 +192,9 @@ export class Game {
   }
 
   // Personas alcanzadas por la misión y cuánto sube el control del barrio (0..1)
-  alcance(m, z) {
+  alcance(m, z, mod) {
     if (!m.alcance) return { personas: 0, control: 0 };   // recaudación: no mueve control
-    const personas = Math.round(m.alcance * this.densidadEfecto(m, z).mult * this.modsPrincipios(m).alcanceMult * (1 + this.cfg.plantel.bonos.territorial * plantel.bono(this, 'territorial')) * elecciones.alcanceMult(this));
+    const personas = Math.round(m.alcance * this.densidadEfecto(m, z).mult * this.modsPrincipios(m).alcanceMult * (1 + this.cfg.plantel.bonos.territorial * plantel.bono(this, 'territorial')) * elecciones.alcanceMult(this) * (this.modalidad(m, mod)?.alcance ?? 1));
     const control = Math.min(this.cfg.densidad.maxControlPorMision, personas / Math.max(z.pop, 100));
     return { personas, control };
   }
@@ -193,13 +202,15 @@ export class Game {
   // Probabilidad de éxito (%) y factores visibles
   // pago: 'blanco' o 'negro' (más eficaz, sube la exposición) · modo: 'personal' o 'delegada' (equipo, menos eficaz)
   // ventana: [desde, hasta] de la misión (por defecto, si la lanzaras hoy) para detectar choques con los rivales
-  chance(m, z, pago = 'blanco', modo = 'personal', ventana = null) {
+  chance(m, z, pago = 'blanco', modo = 'personal', ventana = null, mod = undefined) {
     const de = this.densidadEfecto(m, z);
     const factors = [['Dificultad base', m.base], ['Confianza local', Math.round((z.trust - 50) * 0.25)]];
     if (de.riesgo) factors.push([`Densidad (${de.densidad.toLocaleString('es-AR')} hab/km²)`, de.riesgo]);
     if (z.control > 0.5) factors.push(['Presencia previa', 4]);
     if (pago === 'negro' && m.negro) factors.push(['Dinero negro', m.negro.bonus]);
     if (modo === 'delegada') factors.push(['Equipo con menos experiencia', -this.cfg.delegacion.penal]);
+    const md = this.modalidad(m, mod);
+    if (md) { factors.push([`Modalidad: ${md.nombre}`, md.base]); const n = md.habilidad ? personaje.nivel(this, md.habilidad) : 0; if (n > 2) factors.push([`Pericia en ${md.habilidad} para esta modalidad`, n - 2]); else if (n < 1 && md.habilidad && md.base < 0) factors.push([`Poca pericia en ${md.habilidad}`, -2]); }
     const pr = this.modsPrincipios(m);
     if (pr.chance) factors.push([`Principios (${pr.nombres.join(', ')})`, pr.chance]);
     if (['volantes', 'pintadas'].includes(m.id)) { const t = plantel.aporte(this, 'comunicacion'); if (t.cap) factors.push([`Comunicación (${t.quien})`, Math.round(this.cfg.plantel.bonos.comunicacion * t.cap / 100)]); }
@@ -211,7 +222,7 @@ export class Game {
     factors.push(...calendario.factores(this, m));
     const tc = this.trasfondo?.chance?.[m.id];
     if (tc) factors.push([`Trasfondo (${this.trasfondo.nombre})`, tc]);
-    const [desde, hasta] = ventana ?? [this.day, this.day + this.dias(m)];
+    const [desde, hasta] = ventana ?? [this.day, this.day + this.dias(m, mod)];
     for (const c of choques(this, m, z.id, desde, hasta)) {
       factors.push([`Choque con ${this.rival(c.rival).nombre}: ${c.accion.nombre.toLowerCase()}${c.enCurso ? '' : ` (en ${c.enDias} d)`}`, c.chance]);
     }
@@ -238,7 +249,7 @@ export class Game {
     if (modo !== 'delegada' && this.org?.medios) return 'Estás en una actividad mediática';
     if (modo !== 'delegada' && this.movilidad?.viaje) return 'Estás viajando';
     if (this.player.rank < m.minRank) return 'Requiere rango: ' + this.rangos[m.minRank];
-    if (this.guia?.progresivo && this.day < (m.minDia ?? 0)) return `Disponible desde el día ${m.minDia}`;
+    if (this.guia?.progresivo && !revelado.cumpleConds(this, m.requiere)) { const f = revelado.progresoConds(this, m.requiere).find(x => !x.ok); return f ? `Requiere: ${f.texto} ${Number(f.actual).toLocaleString('es-AR')}/${Number(f.meta).toLocaleString('es-AR')}` : 'Todavía no disponible'; }
     if (modo === 'delegada') {
       if (!m.delegable) return 'No se puede delegar';
       if (this.equipo === 0) return 'Requiere rango: ' + this.rangos[this.cfg.delegacion.rangoMin];
@@ -263,13 +274,14 @@ export class Game {
       this.exposure = clamp(this.exposure + Math.round(m.negro.expo * this.modsPrincipios(m).expoMult), 0, 100);
       linea.alUsarNegro(this);
     } else this.player.money -= m.costo;
+    const modalidad = this.modalidad(m, extra?.modalidad)?.id;
     const plan = modo === 'delegada' ? null : movilidad.planear(this, zoneId, extra?.medio, m);   // el equipo no viaja; vos sí
     if (plan) {                                                      // primero viajás; la acción arranca al llegar
-      movilidad.salir(this, plan, { mision: missionId, pago, ...(extra?.rival ? { rival: extra.rival } : {}) });
+      movilidad.salir(this, plan, { mision: missionId, pago, ...(modalidad ? { modalidad } : {}), ...(extra?.rival ? { rival: extra.rival } : {}) });
       return true;
     }
     if (modo !== 'delegada') this.movilidad.ubicacion = zoneId;
-    this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + this.dias(m), pago, modo, ...(extra?.rival ? { rival: extra.rival } : {}) });
+    this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + this.dias(m, modalidad), pago, modo, ...(modalidad ? { modalidad } : {}), ...(extra?.rival ? { rival: extra.rival } : {}) });
     this.note(`${modo === 'delegada' ? 'Delegaste' : 'Empezaste'} «${m.nombre}» en ${this.zonas[zoneId].nombre}${pago === 'negro' ? ' con dinero negro' : ''}.`);
     return true;
   }
@@ -295,6 +307,7 @@ export class Game {
     pactos.tick(this);
     ofensivas.tick(this);
     personaje.tick(this);
+    medios.tick(this);
     organizacion.tick(this);
     elecciones.tick(this);
     mesa.tick(this);
@@ -320,6 +333,9 @@ export class Game {
   cancelarViaje() { return movilidad.cancelar(this); }
   comprarMovilidad(id) { return movilidad.comprar(this, id); }
   elegirMedio(id) { movilidad.elegirPreferido(this, id); }
+  atencion() { return ideologia.atencion(this); }
+  aceptarInvitacion(tipo) { return medios.aceptar(this, tipo); }
+  rechazarInvitacion(tipo) { return medios.rechazar(this, tipo); }
   // Aceptar o rechazar la directiva que baja el partido / tu líder
   responderDirectiva(aceptar) { return linea.responder(this, aceptar); }
 
@@ -358,18 +374,21 @@ export class Game {
 
   _resolver(j) {
     const m = this.mission(j.mission), z = this.zonas[j.zone], pr = this.modsPrincipios(m);
-    const prob = m.categoria === 'ofensiva' ? ofensivas.chance(this, m, j.zone, j.rival).c : this.chance(m, z, j.pago, j.modo ?? 'personal', [j.start, j.end]).c;
+    const prob = m.categoria === 'ofensiva' ? ofensivas.chance(this, m, j.zone, j.rival).c : this.chance(m, z, j.pago, j.modo ?? 'personal', [j.start, j.end], j.modalidad).c;
     const ok = Math.random() * 100 < prob;
     this._ok = ok;
     revelado.hecho(this, 'misiones');
     if (m.categoria === 'finanzas' && ok && !m.ilegal) revelado.hecho(this, 'recaudo');
+    if (ok) revelado.hecho(this, 'm_' + String(m.id).replace(/[^a-z_]/g, '_').slice(0, 30));
     linea.alResolver(this, j, ok);
     elecciones.alResolver(this, j, ok);
     personaje.alResolver(this, m, ok);
     if (m.categoria === 'ofensiva') { ofensivas.resolver(this, j, m, z, ok); this.checkPromotion(); return; }
     if (m.categoria === 'finanzas') { this.resolverFinanzas(m, z, pr, ok); this.checkPromotion(); return; }
     if (ok) {
-      const al = this.alcance(m, z);
+      const al = this.alcance(m, z, j.modalidad), md = this.modalidad(m, j.modalidad);
+      if (md?.fama) this.ganarFama(md.fama);
+      if (md?.expo) this.exposure = clamp(this.exposure + md.expo, 0, 100);
       z.control = clamp(z.control + al.control, 0, 1);
       z.trust = clamp(z.trust + m.gana.trust * (j.pago === 'negro' ? pr.negroConfianzaMult : 1) * personaje.confianzaMult(this, m), 0, 100);
       this.ganarXp(m.gana.xp);

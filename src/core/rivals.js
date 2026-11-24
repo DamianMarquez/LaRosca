@@ -5,6 +5,7 @@ import { captacionRival } from './plantel.js';
 import * as personaje from './personaje.js';
 import { noAgresion, apoyoEn } from './pactos.js';
 import { hostilExtra } from './ofensivas.js';
+import * as ideologia from './ideologia.js';
 
 export const rivales = g => (g.cfg.partidos?.partidos ?? []).filter(p => p.id !== 'otros' && p.id !== g.partidoBase);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -148,7 +149,7 @@ function elegir(g, r, bot, rnd) {
   const conControl = zonas.filter(z => z.control >= B.controlMin && presencia(g, z.id)[r.id] >= B.presenciaMin);
   const pop = zonas.reduce((s, z) => s + z.pop, 0) || 1;
   const amenazaGlobal = zonas.reduce((s, z) => s + z.pop * z.control, 0) / pop;
-  const pHostil = conControl.length && !noAgresion(g, r.id) && !(!!g.guia?.progresivo && !g.guia.revelado.includes('tab.rivales')) ? clamp(B.hostilBase + B.hostilPorAmenaza * amenazaGlobal + hostilExtra(g, r.id), 0, B.hostilMax) : 0;   // al empezar los rivales solo hacen campaña propia: los golpes llegan cuando se abre Rivales
+  const pHostil = conControl.length && !noAgresion(g, r.id) && !(!!g.guia?.progresivo && !g.guia.revelado.includes('tab.rivales')) ? clamp(B.hostilBase + B.hostilPorAmenaza * amenazaGlobal + hostilExtra(g, r.id) + ideologia.hostilidad(g, r), 0, B.hostilMax) : 0;   // al empezar los rivales solo hacen campaña propia: los golpes llegan cuando se abre Rivales
   if (rnd() < pHostil) {
     const z = pick(conControl, z => Math.pow(z.pop, 0.7) * (0.3 + presencia(g, z.id)[r.id]) * (1 + 4 * z.control), rnd);
     const def = z && pick(accionesPosibles(g, z, r), a => a.peso[r.id], rnd);
@@ -168,7 +169,7 @@ function elegir(g, r, bot, rnd) {
 // Un golpe pasa de planeado a ejecución: efecto inmediato y/o efecto vigente en la zona
 function iniciarHostil(g, r, a) {
   const def = defAccion(g, a), z = g.zonas[a.zona];
-  a.fase = 'en_curso';
+  a.fase = 'en_curso'; g.hecho?.('golpes');
   if (def.trustAhora) z.trust = clamp(z.trust + def.trustAhora, 0, 100);
   if (def.dias > 0) z.efectos.push({ rival: r.id, accion: def.id, hasta: a.fin });
   if (def.captacion) { captacionRival(g, r.id); return; }   // el resultado (éxito o rechazo) lo cuenta el plantel

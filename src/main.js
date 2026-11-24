@@ -27,7 +27,7 @@ let CFG = null, PROV = null;
 async function boot() {
   const load = u => fetch(u).then(r => r.json()).catch(() => null);
   [PROV, CFG] = await Promise.all([load('data/provincias.json'), load('data/game.json')]);
-  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida'], ['organizacion', 'organizacion'], ['origenes', 'origenes'], ['elecciones', 'elecciones'], ['revelado', 'revelado'], ['calendario', 'calendario'], ['ofensivas', 'ofensivas'], ['movilidad', 'movilidad'], ['ayuda', 'ayuda']]) CFG[k] = await load(`data/${f}.json`);
+  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida'], ['organizacion', 'organizacion'], ['origenes', 'origenes'], ['elecciones', 'elecciones'], ['revelado', 'revelado'], ['calendario', 'calendario'], ['ofensivas', 'ofensivas'], ['movilidad', 'movilidad'], ['medios', 'medios'], ['ideologia', 'ideologia'], ['ayuda', 'ayuda']]) CFG[k] = await load(`data/${f}.json`);
   CFG.eventos.eventos.push(...(CFG.vida?.eventos ?? []));        // los eventos de vida los sortea el personaje, no el azar general
   CFG.glosario = await load('data/glosario.json');
   tooltips = initTooltips(CFG.glosario ?? {});
@@ -152,9 +152,11 @@ function showPicker() {
 }
 
 // ---------- Pantalla 2: fundación (nombre + principios) ----------
-function showFounding(provId, provName, st = { nombre: '', principios: [], trasfondo: CFG.trasfondos?.trasfondos.find(t => t.id === 'empleado_publico')?.id ?? CFG.trasfondos?.trasfondos[0]?.id, familia: 'soltero', jugadorNombre: '', error: '', modo: 'fundador', partidoBase: null, origen: 'abajo', perfil: 'economista', desprendeDe: null, provId }) {
+function showFounding(provId, provName, st = { nombre: '', principios: [], trasfondo: CFG.trasfondos?.trasfondos.find(t => t.id === 'empleado_publico')?.id ?? CFG.trasfondos?.trasfondos[0]?.id, familia: 'soltero', estilo: 'equilibrado', puntos: {}, jugadorNombre: '', error: '', modo: 'fundador', partidoBase: null, origen: 'abajo', perfil: 'economista', desprendeDe: null, provId }) {
   const panel = $('#panel');
+  const sc = []; for (let e = panel; e; e = e.parentElement) if (e.scrollTop) sc.push([e, e.scrollTop]);   // cada clic redibuja: se mantiene el scroll
   panel.innerHTML = renderFundacion(CFG, provName, st);
+  for (const [e, t] of sc) e.scrollTop = t;
   const name = $('#party-name') ?? { value: st.nombre }, yo = $('#player-name');
   yo.oninput = () => { st.jugadorNombre = yo.value; };
   if ($('#party-name')) name.oninput = () => { st.nombre = name.value; st.error = ''; $('#founding-error').textContent = ''; };
@@ -168,7 +170,13 @@ function showFounding(provId, provName, st = { nombre: '', principios: [], trasf
     st.nombre = name.value; st.jugadorNombre = yo.value; st.error = ''; st.familia = c.dataset.familia;
     showFounding(provId, provName, st);
   });
+  panel.querySelectorAll('[data-estilo]').forEach(c => c.onchange = () => { guardar(); st.estilo = c.dataset.estilo; showFounding(provId, provName, st); });
+  panel.querySelectorAll('[data-punto]').forEach(b => b.onclick = () => {
+    guardar(); st.puntos ??= {}; const id = b.dataset.punto; st.puntos[id] = Math.max(0, (st.puntos[id] ?? 0) + +b.dataset.delta);
+    showFounding(provId, provName, st);
+  });
   panel.querySelectorAll('[data-trasfondo]').forEach(c => c.onchange = () => {
+    st.puntos = {};
     st.nombre = name.value; st.jugadorNombre = yo.value; st.error = ''; st.trasfondo = c.dataset.trasfondo;
     showFounding(provId, provName, st);
   });
@@ -180,13 +188,13 @@ function showFounding(provId, provName, st = { nombre: '', principios: [], trasf
   });
   $('#found-confirm').onclick = () => {
     const unirse = st.modo === 'afiliado', base = unirse ? CFG.partidos.partidos.find(p => p.id === st.partidoBase) : null;
-    const err = unirse && !base ? 'Elegí el partido al que te sumás.' : validarFundacion(name.value, st.principios, CFG, st.trasfondo, st.familia, base?.id, unirse ? null : { origen: st.origen, perfil: st.perfil, desprendeDe: st.desprendeDe ?? CFG.partidos.partidos[0].id });
+    const err = unirse && !base ? 'Elegí el partido al que te sumás.' : validarFundacion(name.value, st.principios, CFG, st.trasfondo, st.familia, base?.id, unirse ? null : { origen: st.origen, perfil: st.perfil, desprendeDe: st.desprendeDe ?? CFG.partidos.partidos[0].id }, { estilo: st.estilo, puntos: st.puntos });
     if (err) { st.error = err; $('#founding-error').textContent = err; return; }
     startGame(provId, provName, null, unirse
-      ? { progresivo: true, nombre: base.nombre, principios: base.principios, modo: 'afiliado', partidoBase: base.id, trasfondo: st.trasfondo, familia: st.familia, jugadorNombre: limpiarNombrePersona(yo.value) }
-      : { progresivo: true, nombre: limpiarNombre(name.value), principios: st.principios, modo: 'fundador', origen: st.origen, perfil: st.perfil, desprendeDe: st.origen === 'desprendimiento' ? (st.desprendeDe ?? CFG.partidos.partidos[0].id) : null, trasfondo: st.trasfondo, familia: st.familia, jugadorNombre: limpiarNombrePersona(yo.value) });
+      ? { progresivo: true, nombre: base.nombre, principios: base.principios, modo: 'afiliado', partidoBase: base.id, trasfondo: st.trasfondo, familia: st.familia, estilo: st.estilo, puntos: st.puntos, jugadorNombre: limpiarNombrePersona(yo.value) }
+      : { progresivo: true, nombre: limpiarNombre(name.value), principios: st.principios, modo: 'fundador', origen: st.origen, perfil: st.perfil, desprendeDe: st.origen === 'desprendimiento' ? (st.desprendeDe ?? CFG.partidos.partidos[0].id) : null, trasfondo: st.trasfondo, familia: st.familia, estilo: st.estilo, puntos: st.puntos, jugadorNombre: limpiarNombrePersona(yo.value) });
   };
-  name.focus?.();
+  if (!st.yaVisto) { name.focus?.({ preventScroll: true }); st.yaVisto = true; }   // el foco inicial no debe volver a mover el scroll
 }
 
 // ---------- Pantalla 3: la capital, dividida en barrios ----------
@@ -310,8 +318,12 @@ function wirePanel() {
     const mb = e.target.closest('[data-mov-comprar]');
     if (mb && !mb.disabled) { const err = game.comprarMovilidad(mb.dataset.movComprar); if (err) toast(err); refreshAll(); return; }
     if (e.target.closest('[data-mov-cancelar]')) { const err = game.cancelarViaje(); if (err) toast(err); refreshAll(); return; }
+    const iv = e.target.closest('[data-inv]');
+    if (iv) { const err = iv.dataset.inv === 'aceptar' ? game.aceptarInvitacion(iv.dataset.tipo) : game.rechazarInvitacion(iv.dataset.tipo); if (err) toast(err); refreshAll(); return; }
+    const md = e.target.closest('[data-modalidad]');
+    if (md) { game.elegirModalidad(md.dataset.modalidad, md.dataset.mod); uiState.abiertas.add(md.dataset.modalidad); refreshAll(); return; }
     const b = e.target.closest('[data-start]');
-    if (b && !b.disabled && game.start(b.dataset.start, selected, b.dataset.pago ?? 'blanco', b.dataset.modo ?? 'personal')) refreshAll();
+    if (b && !b.disabled && game.start(b.dataset.start, selected, b.dataset.pago ?? 'blanco', b.dataset.modo ?? 'personal', { modalidad: game.modalidad(game.mission(b.dataset.start))?.id })) refreshAll();
   };
   $('#panel').addEventListener('click', onPanelClick);
   $('#vista').addEventListener('click', onPanelClick);

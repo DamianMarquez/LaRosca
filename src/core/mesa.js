@@ -1,5 +1,6 @@
 // Mesa de armado de listas y alianzas: ofertas por rondas entre la etapa de alianzas y el cierre de listas. Sin DOM.
 // Al cerrarse un trato se escribe en P.frentes / P.cupos, así el motor de votos no cambia.
+import * as ideologia from './ideologia.js';
 import { rng } from './city.js';
 import { rivales } from './rivals.js';
 import { relacion, cambiarRelacion } from './pactos.js';
@@ -139,7 +140,7 @@ function evaluar(g, p, rnd) {
 function formarBots(g, P) {
   const C = M(g).bots, r = rng(`${g.prov.id}:${P.anio}:mesa`), rs = rivales(g), pares = [];
   for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
-    const af = rs[i].principios.filter(x => rs[j].principios.includes(x)).length;
+    const af = rs[i].principios.filter(x => rs[j].principios.includes(x)).length + (g.cfg.ideologia ? (0.5 - ideologia.distancia(g, ideologia.vectorRival(g, rs[i]), ideologia.vectorRival(g, rs[j]))) * g.cfg.ideologia.mesaPorAfinidad : 0);   // los opuestos no se alían
     if (af >= C.afinidadMin) pares.push({ a: rs[i].id, b: rs[j].id, af: af + r() * 0.9 });
   }
   pares.sort((x, y) => y.af - x.af);

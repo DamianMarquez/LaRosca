@@ -1,0 +1,15 @@
+{
+  "nota": "Ideología: cada principio ubica en 4 ejes (-1..1). La distancia (0..1) entre vos y un rival decide su hostilidad, la relación inicial y su afinidad. opuesto: distancia desde la que son opuestos naturales; afin: hasta la que son afines. hostilPorDistancia: probabilidad extra (de golpear) por cada punto de distancia sobre 0.5. atención: la fama y ayudar a la comunidad vuelven visible al partido y atraen golpes.",
+  "opuesto": 0.5,
+  "afin": 0.2,
+  "hostilPorDistancia": 0.1,
+  "relacionPorDistancia": 40,
+  "mesaPorAfinidad": 2,
+  "atencion": {
+    "porFama": 0.6,
+    "porComunidad": 5,
+    "topeComunidad": 40,
+    "hostilMax": 0.12,
+    "misionComunitaria": "m_comunidad"
+  }
+}

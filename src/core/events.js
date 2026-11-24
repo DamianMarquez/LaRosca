@@ -1,5 +1,7 @@
 // Motor de eventos: sorteo diario, condiciones y aplicación de efectos. Sin DOM.
 import * as personaje from './personaje.js';
+import { cumpleConds } from './revelado.js';
+import { chequeo } from './medios.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -14,12 +16,12 @@ export function sortear(g, rnd = Math.random) {
   if (!E || g.pending) return null;
   const esc = E.eventos.find(e => e.tipo === 'escandalo');
   if (esc && g.exposure > 0 && rnd() < probEscandalo(g.exposure, E.base.probEscandaloMax)) return esc;
-  const prog = !!g.guia?.progresivo, inicio = prog && g.day < (E.base.encuentrosHasta ?? 0);      // al principio, encuentros sencillos y más seguidos
+  const prog = !!g.guia?.progresivo, inicio = prog && !g.ve('vista.partido');      // al principio (hasta que se abre el Partido), encuentros sencillos y más seguidos
   const enfria = inicio ? E.base.encuentroEnfriamiento : E.base.enfriamientoDias, prob = inicio ? E.base.encuentroProb : E.base.probDiaria;
   if (g.day - g.ultimoEvento < enfria || rnd() >= prob) return null;
   const vistos = g.guia?.encuentros ?? [];
-  const elegibles = E.eventos.filter(e => e.tipo !== 'escandalo' && e.tipo !== 'vida' && g.day >= (e.minDia ?? 0) && g.player.rank >= (e.minRango ?? 0)
-    && (e.encuentro ? prog && !vistos.includes(e.id) && g.day <= (e.maxDia ?? 1e9) && !(e.antes && g.ve(e.antes)) : !(inicio && !(prog && g.day >= (E.base.eventosFuertesDesde ?? 0)))));
+  const elegibles = E.eventos.filter(e => e.tipo !== 'escandalo' && e.tipo !== 'vida' && e.tipo !== 'medio' && cumpleConds(g, e.cuando) && g.player.rank >= (e.minRango ?? 0)
+    && (e.encuentro ? prog && !vistos.includes(e.id) && !(e.antes && g.ve(e.antes)) : !inicio));
   const total = elegibles.reduce((s, e) => s + (e.peso ?? 1), 0);
   let r = rnd() * total;
   for (const e of elegibles) { r -= e.peso ?? 1; if (r <= 0) return e; }
@@ -44,9 +46,11 @@ export function aplicar(g, ef = {}, evento = null) {
   if (ef.exposureSet !== undefined) g.exposure = clamp(ef.exposureSet, 0, 100);
   if (ef.trustAll) {
     // Un trasfondo como el de abogado amortigua lo que un escándalo le cuesta a tu reputación
-    const v = ef.trustAll < 0 && evento?.tipo === 'escandalo' ? ef.trustAll * (g.trasfondo?.escandaloMult ?? 1) * personaje.vulnerabilidad(g) : ef.trustAll;
+    const v = ef.trustAll < 0 && evento?.tipo === 'escandalo' ? ef.trustAll * (g.trasfondo?.escandaloMult ?? 1) * personaje.estiloDe(g).escandaloMult * personaje.vulnerabilidad(g) : ef.trustAll;
     for (const z of Object.values(g.zonas)) z.trust = clamp(z.trust + v, 0, 100);
   }
+  if (ef.fama) personaje.ganarFama(g, ef.fama);
+  if (ef.controversia && g.org) g.org.controversia = clamp(g.org.controversia + ef.controversia, 0, 100);
   if (ef.delay) for (const j of g.jobs) j.end += ef.delay;
 }
 
@@ -58,6 +62,12 @@ export function resolver(g, evento, idx, rnd = Math.random) {
   g.player.money -= c.money ?? 0;
   g.player.black -= c.black ?? 0;
   let texto = op.resultado ?? '', ok = true;
+  if (op.chequeo) {
+    ok = rnd() < chequeo(g, evento, op).p;
+    const r = ok ? op.chequeo.ok : op.chequeo.fail;
+    texto = r.texto;
+    aplicar(g, r.efectos, evento);
+  }
   if (op.azar) {
     ok = rnd() < op.azar.p;
     const r = ok ? op.azar.ok : op.azar.fail;

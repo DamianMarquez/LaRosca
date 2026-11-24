@@ -3,6 +3,8 @@
   "xpNivel": [0, 30, 90, 200],
   "entrenamiento": {"exito": 10, "fallo": 4},
   "puntosPorAscenso": 2,
+  "puntosCreacion": 3,
+  "baseMax": 3,
   "maximo": 5,
   "ramas": [
     {"id": "oratoria", "nombre": "Oratoria", "texto": "Hablar en público y convencer.", "entrena": ["volantes", "pintadas", "reunion"],

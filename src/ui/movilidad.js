@@ -38,7 +38,7 @@ export function renderMovilidad(g) {
     <small class="muted">${M.preferido ? 'Medio preferido: ' + esc(C.medios.find(m => m.id === M.preferido).nombre) + '. ' : 'Sin preferencia: se elige el más rápido que no salga caro. '}Tocá un medio para fijarlo como preferido.</small>`;
   const futuros = C.medios.filter(m => m.disponible === false).map(m => `<span class="chip lock" data-tip-texto="Llega con el mapa ${m.alcance === 'nacional' ? 'nacional' : 'interurbano'}.">${m.icono} ${esc(m.nombre)}</span>`).join('');
   const mejoras = C.mejoras.map(x => {
-    const lock = mov.motivoCompra(g, x.id), tengo = tiene(x.id), lejos = g.guia?.progresivo && g.day < (x.minDia ?? 0) - 10;
+    const lock = mov.motivoCompra(g, x.id), tengo = tiene(x.id), lejos = false;
     if (lejos && !tengo) return '';
     return `<div class="mejora ${tengo ? 'on' : ''}"><div><b>${tengo ? '✔ ' : ''}${esc(x.nombre)}</b><p class="muted">${esc(x.texto)}</p></div>
       <button data-mov-comprar="${esc(x.id)}" ${lock ? 'disabled' : ''}>${tengo ? 'Tenés' : lock ? esc(lock) : `Comprar ${money(x.costo)}`}</button></div>`;

@@ -18,13 +18,13 @@
     {"id": "avion", "nombre": "Avión", "icono": "✈️", "kmh": 700, "costoFijo": 400, "costoKm": 0.6, "fatigaKm": 0.002, "espera": 2.5, "alcance": "nacional", "disponible": false, "costoMax": 2000}
   ],
   "mejoras": [
-    {"id": "bici", "nombre": "Comprar una bici", "texto": "Para barrios cercanos: sin costo por viaje y sin esperar el colectivo.", "costo": 2500, "da": "bici", "minDia": 0},
-    {"id": "abono", "nombre": "Abono de transporte", "texto": "El colectivo te sale 40% menos.", "costo": 2000, "mult": {"colectivo": {"costo": 0.6}}, "minDia": 10},
-    {"id": "app_remis", "nombre": "App de remises", "texto": "Los remises llegan más rápido y sale más barato el kilómetro.", "costo": 2500, "mult": {"remis": {"espera": 0.4, "costo": 0.85}}, "minDia": 15},
-    {"id": "carnet", "nombre": "Carnet de conducir", "texto": "Habilita la moto y el auto.", "costo": 4000, "minDia": 20},
-    {"id": "moto", "nombre": "Comprar una moto", "texto": "Rápida y barata para el barrio. Pide carnet.", "costo": 20000, "da": "moto", "requiere": ["carnet"], "minDia": 30},
-    {"id": "auto", "nombre": "Comprar un auto usado", "texto": "Cómodo y rápido, pero con nafta y cochera. Pide carnet.", "costo": 90000, "da": "auto", "requiere": ["carnet"], "minDia": 45},
-    {"id": "chofer", "nombre": "Chofer de campaña", "texto": "Viajás descansado: casi no hay desgaste en el auto y ganás velocidad.", "costo": 70000, "mult": {"auto": {"fatiga": 0.1, "vel": 1.1}, "remis": {"fatiga": 0.5}}, "requiere": ["auto"], "minRank": 3, "minDia": 90},
-    {"id": "flota", "nombre": "Flota partidaria", "texto": "Autos del partido: todos los viajes salen 30% más baratos y 15% más rápidos.", "costo": 250000, "mult": {"*": {"costo": 0.7, "vel": 1.15}}, "requiere": ["chofer"], "minRank": 5, "minDia": 180}
+    {"id": "bici", "nombre": "Comprar una bici", "texto": "Para barrios cercanos: sin costo por viaje y sin esperar el colectivo.", "costo": 2500, "da": "bici"},
+    {"id": "abono", "nombre": "Abono de transporte", "texto": "El colectivo te sale 40% menos.", "costo": 2000, "mult": {"colectivo": {"costo": 0.6}}, "requiereHechos": [{"tipo": "hecho", "clave": "viajes", "n": 2}]},
+    {"id": "app_remis", "nombre": "App de remises", "texto": "Los remises llegan más rápido y sale más barato el kilómetro.", "costo": 2500, "mult": {"remis": {"espera": 0.4, "costo": 0.85}}, "requiereHechos": [{"tipo": "hecho", "clave": "viajes", "n": 3}]},
+    {"id": "carnet", "nombre": "Carnet de conducir", "texto": "Habilita la moto y el auto.", "costo": 4000, "requiereHechos": [{"tipo": "hecho", "clave": "viajes", "n": 3}]},
+    {"id": "moto", "nombre": "Comprar una moto", "texto": "Rápida y barata para el barrio. Pide carnet.", "costo": 20000, "da": "moto", "requiere": ["carnet"], "requiereHechos": [{"tipo": "hecho", "clave": "viajes", "n": 5}]},
+    {"id": "auto", "nombre": "Comprar un auto usado", "texto": "Cómodo y rápido, pero con nafta y cochera. Pide carnet.", "costo": 90000, "da": "auto", "requiere": ["carnet"], "requiereHechos": [{"tipo": "hecho", "clave": "viajes", "n": 8}]},
+    {"id": "chofer", "nombre": "Chofer de campaña", "texto": "Viajás descansado: casi no hay desgaste en el auto y ganás velocidad.", "costo": 70000, "mult": {"auto": {"fatiga": 0.1, "vel": 1.1}, "remis": {"fatiga": 0.5}}, "requiere": ["auto"], "minRank": 3},
+    {"id": "flota", "nombre": "Flota partidaria", "texto": "Autos del partido: todos los viajes salen 30% más baratos y 15% más rápidos.", "costo": 250000, "mult": {"*": {"costo": 0.7, "vel": 1.15}}, "requiere": ["chofer"], "minRank": 5}
   ]
 }

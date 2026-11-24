@@ -1,13 +1,11 @@
 {
-  "nota": "efectos: money, black (dinero), exposure (riesgo de escándalo, 0..100), exposureSet, trustAll (confianza en todos los barrios), xp, delay (días de demora a las misiones en curso). Una opción puede llevar 'costo' {money, black} y/o 'azar' {p, ok:{texto,efectos}, fail:{texto,efectos}}. Un evento con 'encuentro': true solo sale con el modo progresivo, una vez por partida, mientras no se haya revelado el elemento 'antes' y hasta 'maxDia'.",
+  "nota": "efectos: money, black (dinero), exposure (riesgo de escándalo, 0..100), exposureSet, trustAll (confianza en todos los barrios), xp, delay (días de demora a las misiones en curso). Una opción puede llevar 'costo' {money, black} y/o 'azar' {p, ok:{texto,efectos}, fail:{texto,efectos}}. Un evento con 'encuentro': true solo sale con el modo progresivo, una vez por partida, mientras no se haya revelado el elemento 'antes' y hasta 'maxDia'. 'cuando': condiciones (mismo formato que data/revelado.json) para que el evento pueda salir; reemplaza a los pisos de días. Sin modo progresivo los eventos fuertes salen siempre; con modo progresivo recién cuando se abrió la vista del partido.",
   "base": {
     "probDiaria": 0.045,
     "enfriamientoDias": 10,
     "probEscandaloMax": 0.12,
-    "encuentrosHasta": 60,
     "encuentroProb": 0.24,
-    "encuentroEnfriamiento": 4,
-    "eventosFuertesDesde": 35
+    "encuentroEnfriamiento": 4
   },
   "eventos": [
     {
@@ -15,8 +13,6 @@
       "encuentro": true,
       "antes": "vista.yo",
       "titulo": "Un vecino te frena en la calle",
-      "minDia": 2,
-      "maxDia": 70,
       "peso": 2,
       "texto": "Un vecino te corta el paso: «Ustedes aparecen cada cuatro años. ¿Qué van a hacer distinto?». Lo que respondas se va a comentar en la cuadra. (Así funciona la confianza: se gana con cada gesto.)",
       "opciones": [
@@ -45,6 +41,12 @@
             }
           }
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 1
+        }
       ]
     },
     {
@@ -52,8 +54,6 @@
       "encuentro": true,
       "antes": "zona.recaudacion",
       "titulo": "Un comerciante ofrece ayuda",
-      "minDia": 4,
-      "maxDia": 70,
       "peso": 2,
       "texto": "Un comerciante de la esquina te ofrece prestarte el mostrador para dejar volantes y dice que si hace falta, «colabora con algo». (Sumar apoyos y fondos es parte del juego.)",
       "opciones": [
@@ -81,6 +81,12 @@
             }
           }
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 2
+        }
       ]
     },
     {
@@ -88,8 +94,6 @@
       "encuentro": true,
       "antes": "tab.datos",
       "titulo": "Llueve el día del acto",
-      "minDia": 6,
-      "maxDia": 70,
       "peso": 2,
       "texto": "Se largó a llover justo cuando ibas a salir. Las misiones en la calle se complican. (Los imprevistos demoran lo que ya empezaste.)",
       "opciones": [
@@ -118,6 +122,12 @@
             }
           }
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 3
+        }
       ]
     },
     {
@@ -125,8 +135,6 @@
       "encuentro": true,
       "antes": "hud.equipo",
       "titulo": "Un joven quiere sumarse",
-      "minDia": 8,
-      "maxDia": 70,
       "peso": 2,
       "texto": "Un chico del barrio te pregunta cómo puede dar una mano. No tiene experiencia pero sí ganas. (Con el tiempo vas a tener un equipo propio.)",
       "opciones": [
@@ -143,6 +151,12 @@
           "efectos": {},
           "resultado": "Quedaron en hablar más adelante."
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 4
+        }
       ]
     },
     {
@@ -150,8 +164,6 @@
       "encuentro": true,
       "antes": "org.notoriedad",
       "titulo": "Un periodista te pregunta",
-      "minDia": 11,
-      "maxDia": 70,
       "peso": 2,
       "texto": "Un cronista de la radio local te frena para una nota rápida: «¿Quién sos y qué querés para el barrio?». (Más adelante, los medios serán parte del juego.)",
       "opciones": [
@@ -168,6 +180,12 @@
           "efectos": {},
           "resultado": "Seguiste de largo. Quizá otra vez."
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 5
+        }
       ]
     },
     {
@@ -175,8 +193,6 @@
       "encuentro": true,
       "antes": "tab.rivales",
       "titulo": "Alguien de otro partido te saluda",
-      "minDia": 14,
-      "maxDia": 70,
       "peso": 2,
       "texto": "Un militante de otro partido te cruza en la plaza y te da la mano: «Ya nos vamos a ver las caras». (Hay más gente compitiendo por el mismo barrio.)",
       "opciones": [
@@ -194,6 +210,12 @@
           },
           "resultado": "Le dejaste claro que este barrio ya tiene quién lo trabaje."
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 5
+        }
       ]
     },
     {
@@ -201,8 +223,6 @@
       "encuentro": true,
       "antes": "org.comites",
       "titulo": "Te invitan a un mate de la comisión vecinal",
-      "minDia": 18,
-      "maxDia": 70,
       "peso": 2,
       "texto": "La comisión vecinal quiere conocerte. Hay mate, facturas y mucha charla sobre la plaza. (Más adelante vas a poder abrir sedes en los barrios.)",
       "opciones": [
@@ -223,6 +243,12 @@
           },
           "resultado": "Charlaron lo justo. Nada más."
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "control",
+          "n": 0.05
+        }
       ]
     },
     {
@@ -230,8 +256,6 @@
       "encuentro": true,
       "antes": "tab.rivales",
       "titulo": "Te rompen un cartel",
-      "minDia": 22,
-      "maxDia": 70,
       "peso": 2,
       "texto": "Aparece un cartel tuyo rasgado en una pared. Nadie sabe quién fue. (Así se ve la presión de otros que quieren el barrio.)",
       "opciones": [
@@ -250,6 +274,12 @@
           "efectos": {},
           "resultado": "Decidiste no perder tiempo con eso."
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 7
+        }
       ]
     },
     {
@@ -257,8 +287,6 @@
       "encuentro": true,
       "antes": "vista.yo",
       "titulo": "Un día largo",
-      "minDia": 26,
-      "maxDia": 70,
       "peso": 2,
       "texto": "Llevás varios días a full y la voz ya no te sale igual. (Tu desgaste cuenta: si te pasás, el rendimiento cae.)",
       "opciones": [
@@ -276,12 +304,17 @@
           },
           "resultado": "Seguiste. Se acumula el cansancio."
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 3
+        }
       ]
     },
     {
       "id": "aporte_empresario",
       "titulo": "Un empresario ofrece ayuda",
-      "minDia": 12,
       "peso": 2,
       "texto": "Un empresario del barrio se acerca: quiere «colaborar con la causa» con un sobre de efectivo, sin recibo ni preguntas.",
       "opciones": [
@@ -300,12 +333,17 @@
           },
           "resultado": "Lo rechazaste. Corrió la voz de que sos alguien derecho."
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 6
+        }
       ]
     },
     {
       "id": "local_vecino",
       "titulo": "Un vecino ofrece su salón",
-      "minDia": 5,
       "peso": 2,
       "texto": "Una vecina ofrece prestar su salón para reuniones. Hay que pagar la luz y arreglar el techo.",
       "opciones": [
@@ -325,12 +363,17 @@
           "efectos": {},
           "resultado": "Dejaste pasar la oferta."
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 3
+        }
       ]
     },
     {
       "id": "temporal",
       "titulo": "Temporal en la ciudad",
-      "minDia": 8,
       "peso": 2,
       "texto": "Un temporal azota la ciudad. Las actividades en la calle se complican.",
       "opciones": [
@@ -360,12 +403,17 @@
             }
           }
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 4
+        }
       ]
     },
     {
       "id": "rival_ataca",
       "titulo": "Ataque en redes",
-      "minDia": 20,
       "peso": 2,
       "texto": "Un rival difunde en redes que tu agrupación «no representa a nadie». Se empieza a compartir.",
       "opciones": [
@@ -420,12 +468,16 @@
             }
           }
         }
+      ],
+      "cuando": [
+        {
+          "tipo": "accionRival"
+        }
       ]
     },
     {
       "id": "veterano_cuestiona",
       "titulo": "Un veterano te cuestiona",
-      "minDia": 25,
       "minRango": 1,
       "peso": 1,
       "texto": "Un militante veterano cuestiona frente a todos que alguien con tan poca trayectoria quiera dar órdenes.",
@@ -454,6 +506,12 @@
             "xp": 1
           },
           "resultado": "Aprendiste de su experiencia y bajó la tensión."
+        }
+      ],
+      "cuando": [
+        {
+          "tipo": "misiones",
+          "n": 8
         }
       ]
     },
@@ -510,6 +568,260 @@
             "xp": 1
           },
           "resultado": "Diste la cara. Costó caro, pero cortaste el problema de raíz."
+        }
+      ]
+    },
+    {
+      "id": "med_entrevista",
+      "tipo": "medio",
+      "medio": "entrevista",
+      "titulo": "Entrevista en la radio",
+      "texto": "Te invitaron a una entrevista en vivo. Te van a preguntar por el partido, tus propuestas y de dónde sale la plata. ¿Cómo la encarás?",
+      "opciones": [
+        {
+          "label": "Hablar de propuestas concretas",
+          "chequeo": {
+            "habilidad": "finanzas",
+            "base": 50,
+            "etiquetas": {
+              "academico": 10,
+              "datos": 10,
+              "letrado": 6
+            },
+            "ok": {
+              "texto": "Sonaste claro y preparado: te empezaron a reconocer.",
+              "efectos": {
+                "fama": 6,
+                "trustAll": 1
+              }
+            },
+            "fail": {
+              "texto": "Te perdiste entre números y sonaste frío.",
+              "efectos": {
+                "fama": 1
+              }
+            }
+          }
+        },
+        {
+          "label": "Contar tu historia personal",
+          "chequeo": {
+            "habilidad": "oratoria",
+            "base": 55,
+            "etiquetas": {
+              "mediatico": 8,
+              "comunidad": 8,
+              "calle": 5
+            },
+            "ok": {
+              "texto": "Conectaste con la audiencia: muchos se identificaron.",
+              "efectos": {
+                "fama": 7,
+                "trustAll": 1
+              }
+            },
+            "fail": {
+              "texto": "Quedó como un discurso armado, nada nuevo.",
+              "efectos": {
+                "fama": 1
+              }
+            }
+          }
+        },
+        {
+          "label": "Meterte con el gobierno",
+          "chequeo": {
+            "habilidad": "oratoria",
+            "base": 40,
+            "etiquetas": {
+              "mediatico": 6,
+              "letrado": 6
+            },
+            "ok": {
+              "texto": "La frase se viralizó: fama alta, pero te marcaron.",
+              "efectos": {
+                "fama": 10,
+                "controversia": 6,
+                "exposure": 2
+              }
+            },
+            "fail": {
+              "texto": "Te contestaron con datos y quedaste mal parado.",
+              "efectos": {
+                "fama": -2,
+                "controversia": 4,
+                "exposure": 3
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "med_debate",
+      "tipo": "medio",
+      "medio": "debate",
+      "titulo": "Debate con otros candidatos",
+      "texto": "Subís a un debate abierto. Hay cámaras y público. Un rival va a ir directo a tus puntos débiles.",
+      "opciones": [
+        {
+          "label": "Ir al choque y marcar diferencias",
+          "chequeo": {
+            "habilidad": "oratoria",
+            "base": 42,
+            "etiquetas": {
+              "letrado": 10,
+              "mediatico": 8
+            },
+            "ok": {
+              "texto": "Ganaste el cruce y la gente lo comentó.",
+              "efectos": {
+                "fama": 9,
+                "controversia": 5,
+                "exposure": 1
+              }
+            },
+            "fail": {
+              "texto": "Te sacaron de eje: parecías agresivo.",
+              "efectos": {
+                "fama": -2,
+                "controversia": 5,
+                "exposure": 2
+              }
+            }
+          }
+        },
+        {
+          "label": "Responder con datos y propuestas",
+          "chequeo": {
+            "habilidad": "finanzas",
+            "base": 50,
+            "etiquetas": {
+              "academico": 10,
+              "datos": 10,
+              "letrado": 6
+            },
+            "ok": {
+              "texto": "Mostraste que sabés: los más informados te siguen.",
+              "efectos": {
+                "fama": 6,
+                "controversia": 1,
+                "trustAll": 1
+              }
+            },
+            "fail": {
+              "texto": "Nadie escuchó tanto número.",
+              "efectos": {
+                "fama": 1
+              }
+            }
+          }
+        },
+        {
+          "label": "Llevar al barrio al centro del debate",
+          "chequeo": {
+            "habilidad": "negociacion",
+            "base": 52,
+            "etiquetas": {
+              "comunidad": 10,
+              "obrero": 8,
+              "calle": 8
+            },
+            "ok": {
+              "texto": "El debate se centró en problemas reales y te dio identidad.",
+              "efectos": {
+                "fama": 6,
+                "trustAll": 2
+              }
+            },
+            "fail": {
+              "texto": "Sonó a lugar común.",
+              "efectos": {
+                "fama": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "med_emboscada",
+      "tipo": "medio",
+      "medio": "emboscada",
+      "titulo": "Emboscada en la calle",
+      "texto": "Un movilero con una cámara te frena y te hace una pregunta que claramente armó un rival: sobre tu pasado, tu financiamiento y tus aliados.",
+      "opciones": [
+        {
+          "label": "Responder con firmeza",
+          "chequeo": {
+            "habilidad": "oratoria",
+            "base": 38,
+            "etiquetas": {
+              "letrado": 10,
+              "mediatico": 10
+            },
+            "ok": {
+              "texto": "Respondiste sin titubear: salió a favor.",
+              "efectos": {
+                "fama": 6,
+                "controversia": 2
+              }
+            },
+            "fail": {
+              "texto": "Se te notó el nerviosismo y se viralizó.",
+              "efectos": {
+                "fama": -4,
+                "controversia": 6,
+                "exposure": 4
+              }
+            }
+          }
+        },
+        {
+          "label": "Esquivar con un chiste",
+          "chequeo": {
+            "habilidad": "calle",
+            "base": 45,
+            "etiquetas": {
+              "calle": 10,
+              "obrero": 6,
+              "comunidad": 6
+            },
+            "ok": {
+              "texto": "Desarmaste el clima y quedaste simpático.",
+              "efectos": {
+                "fama": 3
+              }
+            },
+            "fail": {
+              "texto": "El chiste cayó mal.",
+              "efectos": {
+                "fama": -2,
+                "controversia": 3,
+                "exposure": 2
+              }
+            }
+          }
+        },
+        {
+          "label": "No contestar y seguir caminando",
+          "chequeo": {
+            "habilidad": "organizacion",
+            "base": 60,
+            "etiquetas": {},
+            "ok": {
+              "texto": "Pasó sin pena ni gloria.",
+              "efectos": {}
+            },
+            "fail": {
+              "texto": "Dijeron que escondés algo.",
+              "efectos": {
+                "fama": -1,
+                "controversia": 2,
+                "exposure": 1
+              }
+            }
+          }
         }
       ]
     }
