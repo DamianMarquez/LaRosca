@@ -11,6 +11,9 @@ import * as pactos from './pactos.js';
 import * as personaje from './personaje.js';
 import * as elecciones from './elecciones.js';
 import * as organizacion from './organizacion.js';
+import * as calendario from './calendario.js';
+import * as ofensivas from './ofensivas.js';
+import * as mesa from './mesa.js';
 import * as revelado from './revelado.js';
 import { Clock } from './clock.js';
 import { SCHEMA } from './save.js';
@@ -33,6 +36,7 @@ export class Game {
     this.jugador = personaje.iniciar(this, partido);   // habilidades, familia, trabajo y desgaste del personaje
     this.player = { rank: 0, xp: 0, money: this.trasfondo?.dineroInicial ?? cfg.start.money, black: cfg.start.black ?? 0 };
     this.economia = eco.estadoInicial();   // historial de cierres mensuales y números rojos
+    this.rencores = {};                    // rencor de cada rival hacia vos (sube cuando lo atacás)
     this.favores = [];                     // deudas con quienes te dieron plata sin recibo
     this.exposure = 0;    // 0..100: riesgo de escándalo por uso de dinero opaco
     this.pending = null;  // evento esperando decisión del jugador
@@ -106,6 +110,9 @@ export class Game {
   pedirLugar(cid) { return elecciones.pedirLugar(this, cid); }
   proponerFrente(rid) { return elecciones.proponerFrente(this, rid); }
   encargarEncuesta() { return elecciones.encargarEncuesta(this); }
+  ofrecerMesa(rid, t) { return mesa.ofrecer(this, rid, t); }
+  responderMesa(id, acepta) { return mesa.responder(this, id, acepta); }
+  retirarMesa(id) { return mesa.retirar(this, id); }
   proponerCupo(cid, host, lugares, pago) { return elecciones.proponerCupo(this, cid, host, lugares, pago); }
   armarCupo(cid) { return elecciones.armarCupo(this, cid); }
   alternarCupo(cid, qid) { return elecciones.alternarCupo(this, cid, qid); }
@@ -141,7 +148,7 @@ export class Game {
   note(text, kind = 'info') { this.log.unshift({ day: this.day, text, kind }); this.log.length = Math.min(this.log.length, 60); }
   emit(ev) { this.listeners.forEach(f => f(ev)); }
 
-  mission(id) { return this.cfg.missions.find(m => m.id === id); }
+  mission(id) { return this.cfg.missions.find(m => m.id === id) ?? ofensivas.defOf(this, id); }
 
   // Principios fundacionales del partido (catálogo en data/principios.json)
   get principios() {
@@ -198,6 +205,7 @@ export class Game {
     if (ref && m.categoria !== 'finanzas') factors.push([`Referente del barrio (${ref.nombre})`, Math.round(this.cfg.plantel.referente.chancePorCap * ref.capacidad / 100)]);
     for (const a of pactos.apoyosZona(this, z.id, rid => presencia(this, z.id)[rid])) factors.push([`Apoyo de ${this.rival(a.rival).nombre} (pacto)`, a.puntos]);
     factors.push(...personaje.factores(this, m, modo));
+    factors.push(...calendario.factores(this, m));
     const tc = this.trasfondo?.chance?.[m.id];
     if (tc) factors.push([`Trasfondo (${this.trasfondo.nombre})`, tc]);
     const [desde, hasta] = ventana ?? [this.day, this.day + this.dias(m)];
@@ -226,6 +234,7 @@ export class Game {
     if (modo !== 'delegada' && this.jugador.descanso) return 'Estás descansando';
     if (modo !== 'delegada' && this.org?.medios) return 'Estás en una actividad mediática';
     if (this.player.rank < m.minRank) return 'Requiere rango: ' + this.rangos[m.minRank];
+    if (this.guia?.progresivo && this.day < (m.minDia ?? 0)) return `Disponible desde el día ${m.minDia}`;
     if (modo === 'delegada') {
       if (!m.delegable) return 'No se puede delegar';
       if (this.equipo === 0) return 'Requiere rango: ' + this.rangos[this.cfg.delegacion.rangoMin];
@@ -242,7 +251,7 @@ export class Game {
     return null;
   }
 
-  start(missionId, zoneId, pago = 'blanco', modo = 'personal') {
+  start(missionId, zoneId, pago = 'blanco', modo = 'personal', extra = null) {
     const m = this.mission(missionId);
     if (this.canStart(m, zoneId, pago, modo)) return false;
     if (pago === 'negro') {
@@ -250,7 +259,7 @@ export class Game {
       this.exposure = clamp(this.exposure + Math.round(m.negro.expo * this.modsPrincipios(m).expoMult), 0, 100);
       linea.alUsarNegro(this);
     } else this.player.money -= m.costo;
-    this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + this.dias(m), pago, modo });
+    this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + this.dias(m), pago, modo, ...(extra?.rival ? { rival: extra.rival } : {}) });
     this.note(`${modo === 'delegada' ? 'Delegaste' : 'Empezaste'} «${m.nombre}» en ${this.zonas[zoneId].nombre}${pago === 'negro' ? ' con dinero negro' : ''}.`);
     return true;
   }
@@ -270,10 +279,13 @@ export class Game {
     plantel.tick(this);
     escalafon.tick(this);
     pactos.tick(this);
+    ofensivas.tick(this);
     personaje.tick(this);
     organizacion.tick(this);
     elecciones.tick(this);
+    mesa.tick(this);
     revelado.tick(this);
+    calendario.tick(this);
     const ev = sortear(this);
     if (ev) {
       this.pending = ev;
@@ -299,6 +311,7 @@ export class Game {
     if (!r) return null;
     this.pending = null;
     this.ultimoEvento = this.day;
+    if (ev.encuentro) revelado.registrarEncuentro(this, ev.id);
     this.note(r.texto, r.ok ? 'ok' : 'bad');
     this.checkPromotion();
     return r;
@@ -320,13 +333,15 @@ export class Game {
 
   _resolver(j) {
     const m = this.mission(j.mission), z = this.zonas[j.zone], pr = this.modsPrincipios(m);
-    const ok = Math.random() * 100 < this.chance(m, z, j.pago, j.modo ?? 'personal', [j.start, j.end]).c;
+    const prob = m.categoria === 'ofensiva' ? ofensivas.chance(this, m, j.zone, j.rival).c : this.chance(m, z, j.pago, j.modo ?? 'personal', [j.start, j.end]).c;
+    const ok = Math.random() * 100 < prob;
     this._ok = ok;
     revelado.hecho(this, 'misiones');
     if (m.categoria === 'finanzas' && ok && !m.ilegal) revelado.hecho(this, 'recaudo');
     linea.alResolver(this, j, ok);
     elecciones.alResolver(this, j, ok);
     personaje.alResolver(this, m, ok);
+    if (m.categoria === 'ofensiva') { ofensivas.resolver(this, j, m, z, ok); this.checkPromotion(); return; }
     if (m.categoria === 'finanzas') { this.resolverFinanzas(m, z, pr, ok); this.checkPromotion(); return; }
     if (ok) {
       const al = this.alcance(m, z);
@@ -380,7 +395,7 @@ export class Game {
     return {
       schemaVersion: SCHEMA, prov: this.prov, partido: this.partido, day: this.day, exposure: this.exposure, ultimoEvento: this.ultimoEvento,
       player: this.player, jobs: this.jobs, log: this.log, pending: this.pending?.id ?? null,
-      bots: this.bots, historialRivales: this.historialRivales, linea: this.linea, economia: this.economia, favores: this.favores, jugador: this.jugador, guia: this.guia, elecciones: this.elecciones, org: this.org ?? undefined, plantel: this.plantel, rivalesPlantel: this.rivalesPlantel, alianzas: this.alianzas,
+      bots: this.bots, rencores: this.rencores, historialRivales: this.historialRivales, linea: this.linea, economia: this.economia, favores: this.favores, jugador: this.jugador, guia: this.guia, elecciones: this.elecciones, org: this.org ?? undefined, plantel: this.plantel, rivalesPlantel: this.rivalesPlantel, alianzas: this.alianzas,
       zonas: Object.fromEntries(Object.entries(this.zonas).map(([id, z]) => [id, { control: +z.control.toFixed(5), trust: +z.trust.toFixed(3), efectos: z.efectos, rivalPres: z.rivalPres }])),
     };
   }
@@ -400,7 +415,7 @@ export class Game {
     g.day = Math.floor(d.day);
     g.exposure = clamp(d.exposure, 0, 100);
     g.ultimoEvento = isFinite(d.ultimoEvento) ? d.ultimoEvento : g.day;
-    g.jobs = d.jobs.filter(j => g.zonas[j.zone]).map(j => ({ mission: j.mission, zone: j.zone, start: j.start, end: j.end, pago: j.pago === 'negro' ? 'negro' : 'blanco', modo: j.modo === 'delegada' ? 'delegada' : 'personal' }));
+    g.jobs = d.jobs.filter(j => g.zonas[j.zone]).map(j => ({ mission: j.mission, zone: j.zone, start: j.start, end: j.end, pago: j.pago === 'negro' ? 'negro' : 'blanco', modo: j.modo === 'delegada' ? 'delegada' : 'personal', ...(typeof j.rival === 'string' ? { rival: j.rival } : {}) }));
     g.log = d.log.slice(0, 60).map(e => ({ day: Number(e.day) || 0, text: String(e.text ?? ''), kind: ['ok', 'bad', 'promo', 'info', 'rival', 'linea'].includes(e.kind) ? e.kind : 'info' }));
     g.pending = d.pending ? (cfg.eventos?.eventos.find(e => e.id === d.pending) ?? null) : null;
     // Campos opcionales (las partidas anteriores no los traen: quedan con sus valores iniciales)
@@ -410,6 +425,7 @@ export class Game {
     g.linea = linea.sanear(g, d.linea);
     g.economia = eco.sanear(g, d.economia);
     g.favores = eco.sanearFavores(g, d.favores);
+    g.rencores = ofensivas.sanear(g, d.rencores);
     g.plantel = plantel.sanear(g, d.plantel);
     g.rivalesPlantel = plantel.sanearRivales(g, d.rivalesPlantel, rivales(g));
     g.alianzas = pactos.sanear(g, d.alianzas);

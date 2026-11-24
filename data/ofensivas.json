@@ -1,0 +1,310 @@
+{
+ "nota": "Ofensivas del jugador contra un rival en el barrio elegido. Son 'misiones' (ocupan la acción personal y se resuelven igual) con categoria 'ofensiva'. efecto: presencia (resta presencia del rival en el barrio), rencor (sube el rencor del rival), relacion, exposicion, fama, trustZona (confianza del barrio), campana (bono de campaña electoral). rebote: si falla, p de que se vuelva en contra (trust: confianza en todo el barrio, expo: exposición). requiere: fama mínima y/o fases electorales. El rencor alimenta los golpes de los rivales.",
+ "rencor": {
+  "max": 100,
+  "decaeDia": 0.15,
+  "hostilPorPunto": 0.003,
+  "rompePacto": 75,
+  "fallaMitad": 0.5,
+  "umbrales": {
+   "medio": 30,
+   "alto": 60
+  }
+ },
+ "presenciaMin": 0.04,
+ "presenciaDificultad": 35,
+ "acciones": [
+  {
+   "id": "tapar_pintadas",
+   "nombre": "Tapar sus pintadas",
+   "grupo": "sabotaje",
+   "texto": "Cubrís las pintadas del rival con las tuyas.",
+   "categoria": "ofensiva",
+   "ofensiva": true,
+   "dias": 3,
+   "costo": 500,
+   "base": 55,
+   "minRank": 0,
+   "alcance": 0,
+   "gana": {
+    "xp": 1,
+    "trust": 1
+   },
+   "falla": {
+    "trust": -1
+   },
+   "efecto": {
+    "presencia": -0.03,
+    "rencor": 6,
+    "relacion": -3
+   }
+  },
+  {
+   "id": "arrancar_afiches",
+   "nombre": "Arrancar sus afiches",
+   "grupo": "sabotaje",
+   "texto": "Salís de noche a sacar y tapar su cartelería.",
+   "categoria": "ofensiva",
+   "ofensiva": true,
+   "dias": 2,
+   "costo": 200,
+   "base": 50,
+   "minRank": 0,
+   "alcance": 0,
+   "gana": {
+    "xp": 1,
+    "trust": 1
+   },
+   "falla": {
+    "trust": -1
+   },
+   "efecto": {
+    "presencia": -0.02,
+    "rencor": 5,
+    "relacion": -2
+   },
+   "rebote": {
+    "p": 0.15,
+    "trust": -3,
+    "expo": 0
+   }
+  },
+  {
+   "id": "copar_acto",
+   "nombre": "Copar su acto",
+   "grupo": "sabotaje",
+   "texto": "Llenás su acto de tu gente para que parezca tuyo.",
+   "categoria": "ofensiva",
+   "ofensiva": true,
+   "dias": 4,
+   "costo": 900,
+   "base": 45,
+   "minRank": 1,
+   "alcance": 0,
+   "gana": {
+    "xp": 1,
+    "trust": 1
+   },
+   "falla": {
+    "trust": -1
+   },
+   "efecto": {
+    "presencia": -0.05,
+    "rencor": 10,
+    "relacion": -6,
+    "trustZona": 1
+   }
+  },
+  {
+   "id": "preguntas_incomodas",
+   "nombre": "Preguntas incómodas",
+   "grupo": "sabotaje",
+   "texto": "Mandás gente a su reunión con preguntas que lo ponen en aprietos.",
+   "categoria": "ofensiva",
+   "ofensiva": true,
+   "dias": 3,
+   "costo": 300,
+   "base": 50,
+   "minRank": 1,
+   "alcance": 0,
+   "gana": {
+    "xp": 1,
+    "trust": 1
+   },
+   "falla": {
+    "trust": -1
+   },
+   "efecto": {
+    "presencia": -0.03,
+    "rencor": 7,
+    "relacion": -3
+   }
+  },
+  {
+   "id": "denuncia_publica",
+   "nombre": "Denuncia pública",
+   "grupo": "desprestigio",
+   "texto": "Hacés pública una denuncia contra el rival.",
+   "categoria": "ofensiva",
+   "ofensiva": true,
+   "dias": 3,
+   "costo": 800,
+   "base": 50,
+   "minRank": 2,
+   "alcance": 0,
+   "gana": {
+    "xp": 1,
+    "trust": 1
+   },
+   "falla": {
+    "trust": -1
+   },
+   "efecto": {
+    "presencia": -0.06,
+    "rencor": 14,
+    "relacion": -12,
+    "exposicion": 6
+   },
+   "rebote": {
+    "p": 0.35,
+    "trust": -5,
+    "expo": 8
+   }
+  },
+  {
+   "id": "campana_redes",
+   "nombre": "Campaña sucia en redes",
+   "grupo": "desprestigio",
+   "texto": "Cuentas, memes y rumores contra el rival en el barrio.",
+   "categoria": "ofensiva",
+   "ofensiva": true,
+   "dias": 5,
+   "costo": 1200,
+   "base": 55,
+   "minRank": 2,
+   "alcance": 0,
+   "gana": {
+    "xp": 1,
+    "trust": 1
+   },
+   "falla": {
+    "trust": -1
+   },
+   "efecto": {
+    "presencia": -0.08,
+    "rencor": 18,
+    "relacion": -14,
+    "exposicion": 10
+   },
+   "rebote": {
+    "p": 0.45,
+    "trust": -6,
+    "expo": 10
+   }
+  },
+  {
+   "id": "filtracion",
+   "nombre": "Filtrar un dato comprometedor",
+   "grupo": "desprestigio",
+   "texto": "Un dato incómodo llega a la prensa. Si se sabe quién fue, sale caro.",
+   "categoria": "ofensiva",
+   "ofensiva": true,
+   "dias": 4,
+   "costo": 1500,
+   "base": 45,
+   "minRank": 3,
+   "alcance": 0,
+   "gana": {
+    "xp": 1,
+    "trust": 1
+   },
+   "falla": {
+    "trust": -1
+   },
+   "efecto": {
+    "presencia": -0.1,
+    "rencor": 22,
+    "relacion": -18,
+    "exposicion": 12
+   },
+   "rebote": {
+    "p": 0.5,
+    "trust": -8,
+    "expo": 14
+   }
+  },
+  {
+   "id": "seducir_referente",
+   "nombre": "Seducir a un referente rival",
+   "grupo": "captacion",
+   "texto": "Tratás de que un cuadro del rival se pase a tu partido.",
+   "categoria": "ofensiva",
+   "ofensiva": true,
+   "dias": 6,
+   "costo": 2000,
+   "base": 35,
+   "minRank": 2,
+   "alcance": 0,
+   "gana": {
+    "xp": 1,
+    "trust": 1
+   },
+   "falla": {
+    "trust": -1
+   },
+   "efecto": {
+    "rencor": 25,
+    "relacion": -15
+   },
+   "captacion": true,
+   "rebote": {
+    "p": 0.25,
+    "trust": -2,
+    "expo": 0
+   }
+  },
+  {
+   "id": "cruce_medios",
+   "nombre": "Cruce en los medios",
+   "grupo": "medios",
+   "texto": "Salís a contestarle y marcarle la cancha en la radio y la tele local.",
+   "categoria": "ofensiva",
+   "ofensiva": true,
+   "dias": 2,
+   "costo": 0,
+   "base": 45,
+   "minRank": 1,
+   "alcance": 0,
+   "gana": {
+    "xp": 1,
+    "trust": 1
+   },
+   "falla": {
+    "trust": -1
+   },
+   "efecto": {
+    "presencia": -0.04,
+    "rencor": 8,
+    "relacion": -4,
+    "fama": 3
+   },
+   "requiere": {
+    "fama": 10
+   }
+  },
+  {
+   "id": "debate",
+   "nombre": "Debate público",
+   "grupo": "medios",
+   "texto": "Un debate frente a frente: gana quien está mejor preparado.",
+   "categoria": "ofensiva",
+   "ofensiva": true,
+   "dias": 1,
+   "costo": 400,
+   "base": 40,
+   "minRank": 2,
+   "alcance": 0,
+   "gana": {
+    "xp": 1,
+    "trust": 1
+   },
+   "falla": {
+    "trust": -1
+   },
+   "efecto": {
+    "presencia": -0.07,
+    "rencor": 10,
+    "relacion": -5,
+    "fama": 4,
+    "campana": 0.02
+   },
+   "requiere": {
+    "fama": 15,
+    "fases": [
+     "campana",
+     "paso"
+    ]
+   }
+  }
+ ]
+}

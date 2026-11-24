@@ -110,6 +110,7 @@ function faseObjetivo(g, P) {
   if (d > 0) return 'veda';
   return 'elegido';
 }
+export const presenciaDe = (g, zonaId, rid) => presencia(g, zonaId)[rid] ?? 0;
 export const diasHastaGeneral = g => (g.elecciones.proceso ? g.elecciones.proceso.fechas.general - g.day : null);
 export const diasParaCierre = g => (g.elecciones.proceso ? g.elecciones.proceso.fechas.paso - K(g).cierreListasAntesPaso - g.day : null);
 
@@ -546,6 +547,8 @@ export function tick(g) {
 }
 
 // ---------- Restauración segura ----------
+export let sanearMesa = (g, raw) => null;      // lo registra mesa.js (evita un import circular)
+export const registrarMesa = f => { sanearMesa = f; };
 export function sanear(g, raw) {
   const base = iniciar();
   if (!g.cfg.elecciones || !raw || typeof raw !== 'object') return base;
@@ -579,6 +582,7 @@ export function sanear(g, raw) {
     np.encuestas = Array.isArray(p.encuestas) ? p.encuestas.filter(e => e && cids.has(e.contienda) && fin(e.dia)).slice(-5).map(e => ({ dia: e.dia, contienda: e.contienda, pct: pctMap(e.pct), margen: num(e.margen, 0, 0.5, 0.03), origen: e.origen === 'PASO' ? 'PASO' : 'Encuesta' })) : [];
     if (p.campana && typeof p.campana === 'object') for (const [z, v] of Object.entries(p.campana)) if (g.zonas[z] && fin(v)) np.campana[z] = clamp(v, 0, K(g).modelo.campanaMax);
     if (Array.isArray(p.resultados)) np.resultados = p.resultados.filter(r => r && cids.has(r.contienda)).map(r => ({ contienda: r.contienda, pct: pctMap(r.pct), bancas: intMap(r.bancas), ganador: ids.has(r.ganador) ? r.ganador : null, participacion: num(r.participacion, 0, 1), frente: ids.has(r.frente) ? r.frente : null, cupo: r.cupo && ids.has(r.cupo.host) && fin(r.cupo.m) ? { host: r.cupo.host, m: clamp(Math.floor(r.cupo.m), 0, 9) } : null }));
+    if (p.mesa) np.mesa = sanearMesa(g, p.mesa);
     out.proceso = np;
   }
   return out;

@@ -13,41 +13,200 @@
     ]
   },
   "primerMes": [
-    { "id": "lanzar", "texto": "Lanzá tu primera misión en un barrio", "cond": { "tipo": "lanzo" }, "donde": { "vista": "mapa", "tab": "zona" } },
-    { "id": "terminar", "texto": "Esperá a que termine y mirá el resultado", "cond": { "tipo": "hecho", "clave": "misiones", "n": 1 } },
-    { "id": "recaudar", "texto": "Recaudá fondos con una misión de Recaudación", "cond": { "tipo": "hecho", "clave": "recaudo", "n": 1 }, "donde": { "vista": "mapa", "tab": "zona" } },
-    { "id": "rivales", "texto": "Mirá qué hacen los rivales", "cond": { "tipo": "hecho", "clave": "vio_rivales", "n": 1 }, "donde": { "vista": "mapa", "tab": "rivales" } },
-    { "id": "datos", "texto": "Revisá tus cuentas en Datos → Finanzas", "cond": { "tipo": "hecho", "clave": "vio_datos", "n": 1 }, "donde": { "vista": "mapa", "tab": "datos" } },
-    { "id": "yo", "texto": "Mirá cómo estás vos (desgaste y habilidades)", "cond": { "tipo": "hecho", "clave": "vio_yo", "n": 1 }, "donde": { "vista": "yo" } },
-    { "id": "partido", "texto": "Conocé a la gente de tu partido", "cond": { "tipo": "hecho", "clave": "vio_partido", "n": 1 }, "donde": { "vista": "partido" } }
+    {
+      "id": "lanzar",
+      "texto": "Lanzá tu primera misión en un barrio",
+      "cond": {
+        "tipo": "lanzo"
+      },
+      "donde": {
+        "vista": "mapa",
+        "tab": "zona"
+      }
+    },
+    {
+      "id": "terminar",
+      "texto": "Esperá a que termine y mirá el resultado",
+      "cond": {
+        "tipo": "hecho",
+        "clave": "misiones",
+        "n": 1
+      }
+    },
+    {
+      "id": "encuentro",
+      "texto": "Resolvé un encuentro de barrio (aparecen solos)",
+      "cond": {
+        "tipo": "hecho",
+        "clave": "encuentros",
+        "n": 1
+      }
+    },
+    {
+      "id": "recaudar",
+      "texto": "Recaudá fondos con una misión de Recaudación",
+      "cond": {
+        "tipo": "hecho",
+        "clave": "recaudo",
+        "n": 1
+      },
+      "donde": {
+        "vista": "mapa",
+        "tab": "zona"
+      }
+    },
+    {
+      "id": "rivales",
+      "texto": "Mirá qué hacen los rivales",
+      "cond": {
+        "tipo": "hecho",
+        "clave": "vio_rivales",
+        "n": 1
+      },
+      "donde": {
+        "vista": "mapa",
+        "tab": "rivales"
+      }
+    },
+    {
+      "id": "datos",
+      "texto": "Revisá tus cuentas en Datos → Finanzas",
+      "cond": {
+        "tipo": "hecho",
+        "clave": "vio_datos",
+        "n": 1
+      },
+      "donde": {
+        "vista": "mapa",
+        "tab": "datos"
+      }
+    },
+    {
+      "id": "yo",
+      "texto": "Mirá cómo estás vos (desgaste y habilidades)",
+      "cond": {
+        "tipo": "hecho",
+        "clave": "vio_yo",
+        "n": 1
+      },
+      "donde": {
+        "vista": "yo"
+      }
+    },
+    {
+      "id": "partido",
+      "texto": "Conocé a la gente de tu partido",
+      "cond": {
+        "tipo": "hecho",
+        "clave": "vio_partido",
+        "n": 1
+      },
+      "donde": {
+        "vista": "partido"
+      }
+    }
   ],
   "conceptos": [
-    { "titulo": "Control y confianza", "texto": "El **control** es cuánto del barrio es tuyo; la **confianza**, cuánto te creen. Las misiones exitosas suben las dos. Los rivales te las van quitando si no te movés." },
-    { "titulo": "Chance de éxito", "texto": "Cada misión muestra su chance. Con el «…» ves **por qué** sale ese número: tus habilidades, tu equipo, los rivales, la densidad del barrio y tu cansancio." },
-    { "titulo": "Tiempo y acciones", "texto": "Sos una sola persona: **una acción personal a la vez**. Con más rango tenés un equipo que puede hacer misiones por vos, con menos chance. El tiempo corre solo cuando lo ponés en marcha y se pausa cuando termina algo importante." },
-    { "titulo": "Dinero blanco, negro y exposición", "texto": "El **dinero blanco** es el declarado. El **negro** rinde más y rápido, pero sube la **exposición**: cuanto más alta, más chance de un escándalo. Además deja **deudas de favor** que hay que pagar." },
-    { "titulo": "Los rivales", "texto": "Los otros partidos hacen campaña, te tapan pintadas, te quitan cuadros o te llevan terreno. A veces te avisan antes (un **rumor** o algo **confirmado**) y podés adelantarte o pactar con ellos." },
-    { "titulo": "Tu gente y la delegación", "texto": "Los **afiliados** son la base. Las personas con nombre (**cuadros**) ocupan cargos y referentes. Cada órgano lo manejás vos (rinde según tu habilidad, pero te cansa) o lo **delegás** (rinde según su capacidad, pero depende de su lealtad)." },
-    { "titulo": "Subir en el partido", "modo": "afiliado", "texto": "Para ascender hay que cumplir requisitos visibles: experiencia, afiliados, barrios con control, buena relación con tu líder y que haya un puesto libre. Cuando los cumplas, pedí el ascenso desde Partido." },
-    { "titulo": "Estado legal del partido", "modo": "fundador", "texto": "Tu partido crece por etapas legales: **agrupación**, **personería**, **reconocimiento de distrito**, provincial y nacional. Cada una pide afiliados, autoridades con nombre y comités, y se **tramita** (cuesta plata y tarda)." },
-    { "titulo": "Elecciones", "texto": "Cada dos años hay elecciones, alternando legislativas y ejecutivas. Hay etapas: convocatoria, alianzas, listas, campaña, votación y asunción. Si ganás bancas, tenés cargos, ingresos y más alcance." },
-    { "titulo": "Notoriedad", "modo": "fundador", "texto": "Tu **fama** da votos de opinión sin necesidad de territorio y poder de negociación, pero se enfría si no te mostrás y no reemplaza a los comités y fiscales." }
+    {
+      "titulo": "Control y confianza",
+      "texto": "El **control** es cuánto del barrio es tuyo; la **confianza**, cuánto te creen. Las misiones exitosas suben las dos. Los rivales te las van quitando si no te movés."
+    },
+    {
+      "titulo": "Chance de éxito",
+      "texto": "Cada misión muestra su chance. Con el «…» ves **por qué** sale ese número: tus habilidades, tu equipo, los rivales, la densidad del barrio y tu cansancio."
+    },
+    {
+      "titulo": "Tiempo y acciones",
+      "texto": "Sos una sola persona: **una acción personal a la vez**. Con más rango tenés un equipo que puede hacer misiones por vos, con menos chance. El tiempo corre solo cuando lo ponés en marcha y se pausa cuando termina algo importante."
+    },
+    {
+      "titulo": "Dinero blanco, negro y exposición",
+      "texto": "El **dinero blanco** es el declarado. El **negro** rinde más y rápido, pero sube la **exposición**: cuanto más alta, más chance de un escándalo. Además deja **deudas de favor** que hay que pagar."
+    },
+    {
+      "titulo": "Los rivales",
+      "texto": "Los otros partidos hacen campaña, te tapan pintadas, te quitan cuadros o te llevan terreno. A veces te avisan antes (un **rumor** o algo **confirmado**) y podés adelantarte o pactar con ellos."
+    },
+    {
+      "titulo": "Tu gente y la delegación",
+      "texto": "Los **afiliados** son la base. Las personas con nombre (**cuadros**) ocupan cargos y referentes. Cada órgano lo manejás vos (rinde según tu habilidad, pero te cansa) o lo **delegás** (rinde según su capacidad, pero depende de su lealtad)."
+    },
+    {
+      "titulo": "Subir en el partido",
+      "modo": "afiliado",
+      "texto": "Para ascender hay que cumplir requisitos visibles: experiencia, afiliados, barrios con control, buena relación con tu líder y que haya un puesto libre. Cuando los cumplas, pedí el ascenso desde Partido."
+    },
+    {
+      "titulo": "Estado legal del partido",
+      "modo": "fundador",
+      "texto": "Tu partido crece por etapas legales: **agrupación**, **personería**, **reconocimiento de distrito**, provincial y nacional. Cada una pide afiliados, autoridades con nombre y comités, y se **tramita** (cuesta plata y tarda)."
+    },
+    {
+      "titulo": "Elecciones",
+      "texto": "Cada dos años hay elecciones, alternando legislativas y ejecutivas. Hay etapas: convocatoria, alianzas, listas, campaña, votación y asunción. Si ganás bancas, tenés cargos, ingresos y más alcance."
+    },
+    {
+      "titulo": "Notoriedad",
+      "modo": "fundador",
+      "texto": "Tu **fama** da votos de opinión sin necesidad de territorio y poder de negociación, pero se enfría si no te mostrás y no reemplaza a los comités y fiscales."
+    }
   ],
   "tour": {
     "comun": [
-      { "ancla": ".mapa-wrap", "titulo": "El mapa", "texto": "Esta es tu ciudad, dividida en barrios. Tocá uno para ver sus datos y lanzar misiones." },
-      { "ancla": ".panel", "titulo": "Tus misiones", "texto": "Acá decidís qué hacer en el barrio elegido. Empezá por la que dice ★ Recomendada: te muestra su chance, su costo y cuánto dura." },
-      { "ancla": "#stats", "titulo": "Tus números", "texto": "Arriba ves tu dinero y tus afiliados. Al principio hay poco a propósito: a medida que crezcas se irán sumando más datos y secciones." },
-      { "ancla": ".clock", "titulo": "El tiempo", "texto": "Las misiones avanzan con el tiempo. Ponelo a correr con ▶ o con la barra espaciadora, y pausalo cuando quieras pensar." }
+      {
+        "ancla": ".mapa-wrap",
+        "titulo": "El mapa",
+        "texto": "Esta es tu ciudad, dividida en barrios. Tocá uno para ver sus datos y lanzar misiones."
+      },
+      {
+        "ancla": ".panel",
+        "titulo": "Tus misiones",
+        "texto": "Acá decidís qué hacer en el barrio elegido. Empezá por la que dice ★ Recomendada: te muestra su chance, su costo y cuánto dura."
+      },
+      {
+        "ancla": "#stats",
+        "titulo": "Tus números",
+        "texto": "Arriba ves tu dinero y tus afiliados. Al principio hay poco a propósito: a medida que crezcas se irán sumando más datos y secciones."
+      },
+      {
+        "ancla": ".clock",
+        "titulo": "El tiempo",
+        "texto": "Las misiones avanzan con el tiempo. Ponelo a correr con ▶ o con la barra espaciadora, y pausalo cuando quieras pensar."
+      }
     ],
-    "final": { "titulo": "Se va abriendo", "texto": "Cada vez que se abra algo nuevo, el juego se pausa y te muestra qué es y cómo usarlo. Si querés ver todo desde el principio, apagá el «Modo progresivo» en el menú Partida. La ayuda (?) tiene la hoja de ruta." }
+    "final": {
+      "titulo": "Se va abriendo",
+      "texto": "Cada vez que se abra algo nuevo, el juego se pausa y te muestra qué es y cómo usarlo. Si querés ver todo desde el principio, apagá el «Modo progresivo» en el menú Partida. La ayuda (?) tiene la hoja de ruta."
+    }
   },
   "guias": {
-    "vista:yo": { "titulo": "Yo: tu personaje", "texto": "Acá ves tu desgaste, tus habilidades, tu trabajo y tu familia. Si el desgaste sube, descansá. Las habilidades se entrenan haciendo misiones afines." },
-    "vista:partido": { "titulo": "Partido", "texto": "Acá está la gente de tu partido: un resumen, las personas con sus capacidades y lealtades, y cómo se organizan. Mirá quién está en riesgo de irse." },
-    "vista:organizacion": { "titulo": "Organización", "texto": "Tu partido como organización: el estado legal con lo que falta para el próximo reconocimiento, las autoridades, los comités y tu notoriedad. Empezá por «Estado legal»." },
-    "vista:elecciones": { "titulo": "Elecciones", "texto": "El calendario electoral: qué etapa es, qué se decide ahora y qué cargos están en juego. Las decisiones importantes se pausan solas." },
-    "tab:rivales": { "titulo": "Rivales", "texto": "Los otros partidos: dónde tienen presencia y qué hacen. Si ves un aviso de choque, podés adelantarte. También podés proponerles pactos." },
-    "tab:datos": { "titulo": "Datos y finanzas", "texto": "Tus cuentas: qué entra y qué sale por mes, tus deudas y los datos de la provincia. Si el saldo es negativo, recaudá." }
+    "vista:yo": {
+      "titulo": "Yo: tu personaje",
+      "texto": "Acá ves tu desgaste, tus habilidades, tu trabajo y tu familia. Si el desgaste sube, descansá. Las habilidades se entrenan haciendo misiones afines."
+    },
+    "vista:partido": {
+      "titulo": "Partido",
+      "texto": "Acá está la gente de tu partido: un resumen, las personas con sus capacidades y lealtades, y cómo se organizan. Mirá quién está en riesgo de irse."
+    },
+    "vista:organizacion": {
+      "titulo": "Organización",
+      "texto": "Tu partido como organización: el estado legal con lo que falta para el próximo reconocimiento, las autoridades, los comités y tu notoriedad. Empezá por «Estado legal»."
+    },
+    "vista:elecciones": {
+      "titulo": "Elecciones",
+      "texto": "El calendario electoral: qué etapa es, qué se decide ahora y qué cargos están en juego. Las decisiones importantes se pausan solas."
+    },
+    "tab:rivales": {
+      "titulo": "Rivales",
+      "texto": "Los otros partidos: dónde tienen presencia y qué hacen. Si ves un aviso de choque, podés adelantarte. También podés proponerles pactos."
+    },
+    "tab:datos": {
+      "titulo": "Datos y finanzas",
+      "texto": "Tus cuentas: qué entra y qué sale por mes, tus deudas y los datos de la provincia. Si el saldo es negativo, recaudá."
+    },
+    "vista:calendario": {
+      "titulo": "Calendario",
+      "texto": "Todo el año en un vistazo: elecciones y sus etapas, fechas institucionales, feriados con oportunidad de acto y hitos de tu partido. Usá los filtros por tipo."
+    }
   }
 }

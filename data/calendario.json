@@ -1,0 +1,246 @@
+{
+ "nota": "Hitos del año. 'cat': electoral (derivado de data/elecciones.json, no se escribe acá), institucional, simbolica, partido (derivados de la organización). 'ventana': durante 'dias' desde la fecha, las misiones listadas rinden +'exito' puntos. 'avisoDias': cuánto antes se avisa en el registro.",
+ "avisoDias": 7,
+ "categorias": {
+  "electoral": {
+   "nombre": "Elecciones",
+   "color": "#e8b448"
+  },
+  "institucional": {
+   "nombre": "Institucional",
+   "color": "#6fa8dc"
+  },
+  "simbolica": {
+   "nombre": "Feriados y fechas",
+   "color": "#7fd1a0"
+  },
+  "partido": {
+   "nombre": "Mi partido",
+   "color": "#c08ae8"
+  }
+ },
+ "hitos": [
+  {
+   "id": "receso",
+   "nombre": "Receso de verano",
+   "mes": 1,
+   "dia": 2,
+   "cat": "institucional",
+   "texto": "Enero: baja la actividad política y se frena el Congreso. Buen momento para organizarte."
+  },
+  {
+   "id": "sesiones",
+   "nombre": "Apertura de sesiones",
+   "mes": 3,
+   "dia": 1,
+   "cat": "institucional",
+   "texto": "Arranca el año legislativo: discurso presidencial y agenda del año."
+  },
+  {
+   "id": "memoria",
+   "nombre": "Día de la Memoria",
+   "mes": 3,
+   "dia": 24,
+   "cat": "simbolica",
+   "texto": "Feriado de fuerte carga simbólica. Un acto sobrio mueve a la comunidad.",
+   "ventana": {
+    "dias": 3,
+    "misiones": [
+     "reunion",
+     "comunidad"
+    ],
+    "exito": 6,
+    "texto": "Hay clima de acto: reuniones y acciones comunitarias rinden más"
+   }
+  },
+  {
+   "id": "malvinas",
+   "nombre": "Día de Malvinas",
+   "mes": 4,
+   "dia": 2,
+   "cat": "simbolica",
+   "texto": "Homenaje a los veteranos; actos barriales en las plazas.",
+   "ventana": {
+    "dias": 3,
+    "misiones": [
+     "reunion",
+     "comunidad"
+    ],
+    "exito": 5,
+    "texto": "Hay clima de acto: reuniones y acciones comunitarias rinden más"
+   }
+  },
+  {
+   "id": "trabajo",
+   "nombre": "Día del Trabajador",
+   "mes": 5,
+   "dia": 1,
+   "cat": "simbolica",
+   "texto": "Movilizaciones sindicales y actos. Tema de agenda: empleo.",
+   "ventana": {
+    "dias": 3,
+    "misiones": [
+     "reunion",
+     "comunidad"
+    ],
+    "exito": 5,
+    "texto": "Hay clima de acto: reuniones y acciones comunitarias rinden más"
+   }
+  },
+  {
+   "id": "mayo",
+   "nombre": "25 de Mayo",
+   "mes": 5,
+   "dia": 25,
+   "cat": "simbolica",
+   "texto": "Fiesta patria: tedeum, locro y plaza llena.",
+   "ventana": {
+    "dias": 3,
+    "misiones": [
+     "reunion",
+     "comunidad"
+    ],
+    "exito": 6,
+    "texto": "Hay clima de acto: reuniones y acciones comunitarias rinden más"
+   }
+  },
+  {
+   "id": "bandera",
+   "nombre": "Día de la Bandera",
+   "mes": 6,
+   "dia": 20,
+   "cat": "simbolica",
+   "texto": "Acto patriótico; las escuelas y clubes se movilizan.",
+   "ventana": {
+    "dias": 3,
+    "misiones": [
+     "reunion",
+     "comunidad"
+    ],
+    "exito": 4,
+    "texto": "Hay clima de acto: reuniones y acciones comunitarias rinden más"
+   }
+  },
+  {
+   "id": "aguinaldo_j",
+   "nombre": "Aguinaldo de mitad de año",
+   "mes": 6,
+   "dia": 30,
+   "cat": "institucional",
+   "texto": "Los comercios venden más y la gente tiene un poco más de plata: buen momento para colectas.",
+   "ventana": {
+    "dias": 8,
+    "misiones": [
+     "colecta",
+     "rifa",
+     "aporte_comerciante"
+    ],
+    "exito": 6,
+    "texto": "Con el aguinaldo, las colectas y rifas rinden más"
+   }
+  },
+  {
+   "id": "independencia",
+   "nombre": "9 de Julio",
+   "mes": 7,
+   "dia": 9,
+   "cat": "simbolica",
+   "texto": "Día de la Independencia: acto central y fiesta en la plaza.",
+   "ventana": {
+    "dias": 3,
+    "misiones": [
+     "reunion",
+     "comunidad"
+    ],
+    "exito": 6,
+    "texto": "Hay clima de acto: reuniones y acciones comunitarias rinden más"
+   }
+  },
+  {
+   "id": "sanmartin",
+   "nombre": "Paso a la inmortalidad de San Martín",
+   "mes": 8,
+   "dia": 17,
+   "cat": "simbolica",
+   "texto": "Homenaje al Libertador; actos escolares y de entidades.",
+   "ventana": {
+    "dias": 3,
+    "misiones": [
+     "reunion",
+     "comunidad"
+    ],
+    "exito": 3,
+    "texto": "Hay clima de acto: reuniones y acciones comunitarias rinden más"
+   }
+  },
+  {
+   "id": "presupuesto",
+   "nombre": "Presupuesto en el Congreso",
+   "mes": 9,
+   "dia": 15,
+   "cat": "institucional",
+   "texto": "Se discute el presupuesto del año siguiente: tema de debate para las bancas."
+  },
+  {
+   "id": "lealtad",
+   "nombre": "Día de la Lealtad",
+   "mes": 10,
+   "dia": 17,
+   "cat": "simbolica",
+   "texto": "Fecha clave del peronismo: movilización y actos.",
+   "ventana": {
+    "dias": 3,
+    "misiones": [
+     "reunion",
+     "comunidad"
+    ],
+    "exito": 5,
+    "texto": "Hay clima de acto: reuniones y acciones comunitarias rinden más"
+   }
+  },
+  {
+   "id": "aguinaldo_d",
+   "nombre": "Aguinaldo de diciembre",
+   "mes": 12,
+   "dia": 18,
+   "cat": "institucional",
+   "texto": "Fin de año: el comercio mueve y hay más plata disponible.",
+   "ventana": {
+    "dias": 8,
+    "misiones": [
+     "colecta",
+     "rifa",
+     "aporte_comerciante",
+     "cena"
+    ],
+    "exito": 6,
+    "texto": "Con el aguinaldo, las colectas y cenas rinden más"
+   }
+  },
+  {
+   "id": "democracia",
+   "nombre": "Día de la Democracia",
+   "mes": 12,
+   "dia": 10,
+   "cat": "simbolica",
+   "texto": "Aniversario de la vuelta a la democracia (1983): fecha de actos.",
+   "ventana": {
+    "dias": 3,
+    "misiones": [
+     "reunion",
+     "comunidad"
+    ],
+    "exito": 5,
+    "texto": "Hay clima de acto: reuniones y acciones comunitarias rinden más"
+   }
+  },
+  {
+   "id": "navidad",
+   "nombre": "Fiestas de fin de año",
+   "mes": 12,
+   "dia": 24,
+   "cat": "institucional",
+   "texto": "Navidad y Año Nuevo: la actividad política se detiene unos días."
+  }
+ ]
+}

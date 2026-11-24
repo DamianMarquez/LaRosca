@@ -72,7 +72,7 @@ export function validate(d, cfg) {
   if (d.linea !== undefined && !obj(d.linea)) return 'Datos de la línea partidaria inválidos.';
   if (!Array.isArray(d.jobs) || !Array.isArray(d.log)) return 'Misiones o historial inválidos.';
   for (const j of d.jobs) {
-    if (!j || !cfg.missions.some(m => m.id === j.mission) || typeof j.zone !== 'string' || !isNum(j.start) || !isNum(j.end)) return 'Misiones inválidas.';
+    if (!j || !(cfg.missions.some(m => m.id === j.mission) || cfg.ofensivas?.acciones.some(m => m.id === j.mission)) || typeof j.zone !== 'string' || !isNum(j.start) || !isNum(j.end)) return 'Misiones inválidas.';
   }
   return null;
 }

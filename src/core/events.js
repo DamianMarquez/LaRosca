@@ -14,8 +14,12 @@ export function sortear(g, rnd = Math.random) {
   if (!E || g.pending) return null;
   const esc = E.eventos.find(e => e.tipo === 'escandalo');
   if (esc && g.exposure > 0 && rnd() < probEscandalo(g.exposure, E.base.probEscandaloMax)) return esc;
-  if (g.day - g.ultimoEvento < E.base.enfriamientoDias || rnd() >= E.base.probDiaria) return null;
-  const elegibles = E.eventos.filter(e => e.tipo !== 'escandalo' && e.tipo !== 'vida' && g.day >= (e.minDia ?? 0) && g.player.rank >= (e.minRango ?? 0));
+  const prog = !!g.guia?.progresivo, inicio = prog && g.day < (E.base.encuentrosHasta ?? 0);      // al principio, encuentros sencillos y más seguidos
+  const enfria = inicio ? E.base.encuentroEnfriamiento : E.base.enfriamientoDias, prob = inicio ? E.base.encuentroProb : E.base.probDiaria;
+  if (g.day - g.ultimoEvento < enfria || rnd() >= prob) return null;
+  const vistos = g.guia?.encuentros ?? [];
+  const elegibles = E.eventos.filter(e => e.tipo !== 'escandalo' && e.tipo !== 'vida' && g.day >= (e.minDia ?? 0) && g.player.rank >= (e.minRango ?? 0)
+    && (e.encuentro ? prog && !vistos.includes(e.id) && g.day <= (e.maxDia ?? 1e9) && !(e.antes && g.ve(e.antes)) : !(inicio && !(prog && g.day >= (E.base.eventosFuertesDesde ?? 0)))));
   const total = elegibles.reduce((s, e) => s + (e.peso ?? 1), 0);
   let r = rnd() * total;
   for (const e of elegibles) { r -= e.peso ?? 1; if (r <= 0) return e; }

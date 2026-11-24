@@ -71,3 +71,13 @@ Los scripts que los generan son `scripts/build-*.{mjs,py}`; algunos requieren de
 ## Balance
 
 Duraciones, costos, alcances, probabilidades, gastos y requisitos de ascenso son valores provisionales de prototipo, en `data/*.json` (`game`, `economia`, `trasfondos`, `plantel`, `escalafon`, `rivales`, `pactos`, `linea`, `eventos`, `organizacion`, `origenes`, `elecciones`, `revelado`, `ayuda`).
+
+
+## Ritmo del modo progresivo
+Las capas se abren escalonadas (primera misión → Yo ~día 7 → Rivales ~día 14-21 → Recaudación ~día 28 → Fin de mes → Presencia ~día 35 → Partido ~día 45 → Estructura ~día 75 → Pactos ~día 100 → Dinero ilegal ~día 120 → Elecciones desde ~día 90). Hay un cooldown de 7 días entre avisos mayores (`cooldownDias` en `data/revelado.json`). En los primeros 60 días aparecen *encuentros de barrio* (eventos con `encuentro: true` en `data/eventos.json`) que anticipan cada mecánica. Botones: principal dorado, secundario gris azulado, ghost de texto, `danger` y `negro` (variables en `:root`).
+
+## Horas, calendario, ofensivas y mesa de alianzas
+- **Horas del día:** el reloj muestra hora y franja con un arco de sol (`src/core/hora.js`); el mapa se oscurece de noche (`#luz`). Es solo visual.
+- **Calendario anual** (`data/calendario.json`, `src/core/calendario.js`, vista Calendario): elecciones (derivadas de `data/elecciones.json`), fechas institucionales, feriados con oportunidad de acto (ventanas con bono a ciertas misiones) y hitos del partido. Se abre ~día 40 en modo progresivo.
+- **Ofensivas** (`data/ofensivas.json`, `src/core/ofensivas.js`): «Atacar…» desde la ficha del rival o el barrio. Sabotaje, desprestigio (con rebote), robar un cuadro y medios/debates. Cada golpe sube el **rencor** del rival, que lo vuelve más agresivo y puede romper pactos. Se abre ~día 60.
+- **Mesa de armado** (`data/elecciones.json` → `mesa`, `src/core/mesa.js`, Elecciones): ofertas de frente, cupo o apoyo con respuesta en días, contraofertas, acuerdos que pueden romperse hasta el cierre de listas y alianzas entre los demás partidos. Reemplaza la tirada única de frentes y cupos.

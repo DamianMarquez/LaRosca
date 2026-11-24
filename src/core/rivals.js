@@ -4,6 +4,7 @@ import { rng } from './city.js';
 import { captacionRival } from './plantel.js';
 import * as personaje from './personaje.js';
 import { noAgresion, apoyoEn } from './pactos.js';
+import { hostilExtra } from './ofensivas.js';
 
 export const rivales = g => (g.cfg.partidos?.partidos ?? []).filter(p => p.id !== 'otros' && p.id !== g.partidoBase);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -50,7 +51,7 @@ function presenciaBase(g, zonaId) {
 // Presencia vigente: la dinámica (si las campañas la movieron) o la base
 export const presencia = (g, zonaId) => g.zonas[zonaId].rivalPres ?? presenciaBase(g, zonaId);
 
-function sumarPresencia(g, zonaId, rivalId, delta) {
+export function sumarPresencia(g, zonaId, rivalId, delta) {
   const p = { ...presencia(g, zonaId) };
   p[rivalId] = Math.max(0.01, p[rivalId] + delta);
   const sum = Object.values(p).reduce((a, b) => a + b, 0);
@@ -147,7 +148,7 @@ function elegir(g, r, bot, rnd) {
   const conControl = zonas.filter(z => z.control >= B.controlMin && presencia(g, z.id)[r.id] >= B.presenciaMin);
   const pop = zonas.reduce((s, z) => s + z.pop, 0) || 1;
   const amenazaGlobal = zonas.reduce((s, z) => s + z.pop * z.control, 0) / pop;
-  const pHostil = conControl.length && !noAgresion(g, r.id) && !(!!g.guia?.progresivo && !g.guia.revelado.includes('tab.rivales')) ? clamp(B.hostilBase + B.hostilPorAmenaza * amenazaGlobal, 0, B.hostilMax) : 0;   // al empezar los rivales solo hacen campaña propia: los golpes llegan cuando se abre Rivales
+  const pHostil = conControl.length && !noAgresion(g, r.id) && !(!!g.guia?.progresivo && !g.guia.revelado.includes('tab.rivales')) ? clamp(B.hostilBase + B.hostilPorAmenaza * amenazaGlobal + hostilExtra(g, r.id), 0, B.hostilMax) : 0;   // al empezar los rivales solo hacen campaña propia: los golpes llegan cuando se abre Rivales
   if (rnd() < pHostil) {
     const z = pick(conControl, z => Math.pow(z.pop, 0.7) * (0.3 + presencia(g, z.id)[r.id]) * (1 + 4 * z.control), rnd);
     const def = z && pick(accionesPosibles(g, z, r), a => a.peso[r.id], rnd);

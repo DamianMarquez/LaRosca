@@ -3,6 +3,7 @@ import { agenda, certeza } from './rivals.js';
 import { contiendaDef, puedePresentar } from './elecciones.js';
 import { requisitos as organizacionReq } from './organizacion.js';
 import { proximos } from './revelado.js';
+import { proximos as proximosHitos } from './calendario.js';
 const alcanceOk = (g, id) => { const c = contiendaDef(g, id); return !!c && puedePresentar(g, c); };
 
 const ORDEN = { urgente: 0, alerta: 1, oportunidad: 2, info: 3 };
@@ -37,6 +38,7 @@ export function consejos(g) {
     const p = proximos(g, 1)[0], f = p?.progreso.find(x => !x.ok);
     if (p) add('proximo', 'info', `Próximo en abrirse: ${p.titulo}${f ? ` (${f.texto}: ${Number(f.actual).toLocaleString('es-AR')}/${Number(f.meta).toLocaleString('es-AR')})` : ''}.`, 'ayuda');
   }
+  if (g.ve('vista.calendario')) { const h = proximosHitos(g, 1, 21)[0]; if (h) add('hito', 'info', `Próximo hito: ${h.nombre} (${h.dia - g.day <= 0 ? 'hoy' : `en ${h.dia - g.day} d`}).`, 'calendario'); }
   if (g.carga.n >= 2 && g.jugador.desgaste >= 40) add('delegar', 'info', `Manejás ${g.carga.n} cargos vos mismo: delegá alguno para ganar tiempo y bajar el desgaste.`, 'partido');
   if (g.org) {
     const oq = organizacionReq(g);

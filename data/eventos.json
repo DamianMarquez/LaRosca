@@ -1,66 +1,516 @@
 {
-  "nota": "efectos: money, black (dinero), exposure (riesgo de escándalo, 0..100), exposureSet, trustAll (confianza en todos los barrios), xp, delay (días de demora a las misiones en curso). Una opción puede llevar 'costo' {money, black} y/o 'azar' {p, ok:{texto,efectos}, fail:{texto,efectos}}.",
-  "base": {"probDiaria": 0.045, "enfriamientoDias": 10, "probEscandaloMax": 0.12},
+  "nota": "efectos: money, black (dinero), exposure (riesgo de escándalo, 0..100), exposureSet, trustAll (confianza en todos los barrios), xp, delay (días de demora a las misiones en curso). Una opción puede llevar 'costo' {money, black} y/o 'azar' {p, ok:{texto,efectos}, fail:{texto,efectos}}. Un evento con 'encuentro': true solo sale con el modo progresivo, una vez por partida, mientras no se haya revelado el elemento 'antes' y hasta 'maxDia'.",
+  "base": {
+    "probDiaria": 0.045,
+    "enfriamientoDias": 10,
+    "probEscandaloMax": 0.12,
+    "encuentrosHasta": 60,
+    "encuentroProb": 0.24,
+    "encuentroEnfriamiento": 4,
+    "eventosFuertesDesde": 35
+  },
   "eventos": [
     {
-      "id": "aporte_empresario", "titulo": "Un empresario ofrece ayuda", "minDia": 12, "peso": 2,
+      "id": "enc_vecino_frena",
+      "encuentro": true,
+      "antes": "vista.yo",
+      "titulo": "Un vecino te frena en la calle",
+      "minDia": 2,
+      "maxDia": 70,
+      "peso": 2,
+      "texto": "Un vecino te corta el paso: «Ustedes aparecen cada cuatro años. ¿Qué van a hacer distinto?». Lo que respondas se va a comentar en la cuadra. (Así funciona la confianza: se gana con cada gesto.)",
+      "opciones": [
+        {
+          "label": "Escucharlo con paciencia",
+          "efectos": {
+            "trustAll": 2
+          },
+          "resultado": "Charlaron un buen rato. Se fue conforme y lo contó en el barrio: ganaste confianza."
+        },
+        {
+          "label": "Prometerle lo que pide",
+          "azar": {
+            "p": 0.4,
+            "ok": {
+              "texto": "Le gustó. Pero ahora tenés una promesa que cumplir.",
+              "efectos": {
+                "trustAll": 3
+              }
+            },
+            "fail": {
+              "texto": "No te creyó: sonó a discurso armado.",
+              "efectos": {
+                "trustAll": -1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "enc_comerciante",
+      "encuentro": true,
+      "antes": "zona.recaudacion",
+      "titulo": "Un comerciante ofrece ayuda",
+      "minDia": 4,
+      "maxDia": 70,
+      "peso": 2,
+      "texto": "Un comerciante de la esquina te ofrece prestarte el mostrador para dejar volantes y dice que si hace falta, «colabora con algo». (Sumar apoyos y fondos es parte del juego.)",
+      "opciones": [
+        {
+          "label": "Aceptar el mostrador",
+          "efectos": {
+            "trustAll": 1,
+            "xp": 1
+          },
+          "resultado": "Quedó un punto fijo con tus volantes. Más gente te vio."
+        },
+        {
+          "label": "Aceptar y pedirle un aporte",
+          "azar": {
+            "p": 0.6,
+            "ok": {
+              "texto": "Dejó un aporte chico para la causa.",
+              "efectos": {
+                "money": 500
+              }
+            },
+            "fail": {
+              "texto": "Se incomodó y retiró la oferta.",
+              "efectos": {}
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "enc_lluvia",
+      "encuentro": true,
+      "antes": "tab.datos",
+      "titulo": "Llueve el día del acto",
+      "minDia": 6,
+      "maxDia": 70,
+      "peso": 2,
+      "texto": "Se largó a llover justo cuando ibas a salir. Las misiones en la calle se complican. (Los imprevistos demoran lo que ya empezaste.)",
+      "opciones": [
+        {
+          "label": "Suspender y esperar",
+          "efectos": {
+            "delay": 1
+          },
+          "resultado": "Esperaste a que pare. Se corrió un día lo que estaba en marcha."
+        },
+        {
+          "label": "Salir igual",
+          "azar": {
+            "p": 0.55,
+            "ok": {
+              "texto": "La gente valoró que fueras con la lluvia.",
+              "efectos": {
+                "trustAll": 1
+              }
+            },
+            "fail": {
+              "texto": "Mucho esfuerzo y poca gente.",
+              "efectos": {
+                "trustAll": -1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "enc_joven",
+      "encuentro": true,
+      "antes": "hud.equipo",
+      "titulo": "Un joven quiere sumarse",
+      "minDia": 8,
+      "maxDia": 70,
+      "peso": 2,
+      "texto": "Un chico del barrio te pregunta cómo puede dar una mano. No tiene experiencia pero sí ganas. (Con el tiempo vas a tener un equipo propio.)",
+      "opciones": [
+        {
+          "label": "Darle una tarea simple",
+          "efectos": {
+            "xp": 1,
+            "trustAll": 1
+          },
+          "resultado": "Repartió volantes con entusiasmo y trajo a dos amigos."
+        },
+        {
+          "label": "Decirle que vuelva más adelante",
+          "efectos": {},
+          "resultado": "Quedaron en hablar más adelante."
+        }
+      ]
+    },
+    {
+      "id": "enc_periodista",
+      "encuentro": true,
+      "antes": "org.notoriedad",
+      "titulo": "Un periodista te pregunta",
+      "minDia": 11,
+      "maxDia": 70,
+      "peso": 2,
+      "texto": "Un cronista de la radio local te frena para una nota rápida: «¿Quién sos y qué querés para el barrio?». (Más adelante, los medios serán parte del juego.)",
+      "opciones": [
+        {
+          "label": "Responder con calma",
+          "efectos": {
+            "trustAll": 1,
+            "xp": 1
+          },
+          "resultado": "Salió una nota corta y amable. Algo de gente empezó a reconocerte."
+        },
+        {
+          "label": "Evitarlo",
+          "efectos": {},
+          "resultado": "Seguiste de largo. Quizá otra vez."
+        }
+      ]
+    },
+    {
+      "id": "enc_saludo",
+      "encuentro": true,
+      "antes": "tab.rivales",
+      "titulo": "Alguien de otro partido te saluda",
+      "minDia": 14,
+      "maxDia": 70,
+      "peso": 2,
+      "texto": "Un militante de otro partido te cruza en la plaza y te da la mano: «Ya nos vamos a ver las caras». (Hay más gente compitiendo por el mismo barrio.)",
+      "opciones": [
+        {
+          "label": "Saludarlo con respeto",
+          "efectos": {
+            "trustAll": 1
+          },
+          "resultado": "Fue cordial. Quedó una relación de respeto."
+        },
+        {
+          "label": "Marcar el terreno",
+          "efectos": {
+            "xp": 1
+          },
+          "resultado": "Le dejaste claro que este barrio ya tiene quién lo trabaje."
+        }
+      ]
+    },
+    {
+      "id": "enc_comision",
+      "encuentro": true,
+      "antes": "org.comites",
+      "titulo": "Te invitan a un mate de la comisión vecinal",
+      "minDia": 18,
+      "maxDia": 70,
+      "peso": 2,
+      "texto": "La comisión vecinal quiere conocerte. Hay mate, facturas y mucha charla sobre la plaza. (Más adelante vas a poder abrir sedes en los barrios.)",
+      "opciones": [
+        {
+          "label": "Ir con algo para compartir",
+          "costo": {
+            "money": 150
+          },
+          "efectos": {
+            "trustAll": 3
+          },
+          "resultado": "Te recibieron muy bien. Quedaste en volver."
+        },
+        {
+          "label": "Ir con las manos vacías",
+          "efectos": {
+            "trustAll": 1
+          },
+          "resultado": "Charlaron lo justo. Nada más."
+        }
+      ]
+    },
+    {
+      "id": "enc_cartel",
+      "encuentro": true,
+      "antes": "tab.rivales",
+      "titulo": "Te rompen un cartel",
+      "minDia": 22,
+      "maxDia": 70,
+      "peso": 2,
+      "texto": "Aparece un cartel tuyo rasgado en una pared. Nadie sabe quién fue. (Así se ve la presión de otros que quieren el barrio.)",
+      "opciones": [
+        {
+          "label": "Reponerlo",
+          "costo": {
+            "money": 200
+          },
+          "efectos": {
+            "trustAll": 1
+          },
+          "resultado": "Pegaste uno nuevo. Quedó mejor que antes."
+        },
+        {
+          "label": "Dejarlo y seguir",
+          "efectos": {},
+          "resultado": "Decidiste no perder tiempo con eso."
+        }
+      ]
+    },
+    {
+      "id": "enc_cansancio",
+      "encuentro": true,
+      "antes": "vista.yo",
+      "titulo": "Un día largo",
+      "minDia": 26,
+      "maxDia": 70,
+      "peso": 2,
+      "texto": "Llevás varios días a full y la voz ya no te sale igual. (Tu desgaste cuenta: si te pasás, el rendimiento cae.)",
+      "opciones": [
+        {
+          "label": "Tomarte la tarde",
+          "efectos": {
+            "desgaste": -8
+          },
+          "resultado": "Descansaste y volviste con más ganas."
+        },
+        {
+          "label": "Seguir a ritmo",
+          "efectos": {
+            "xp": 1
+          },
+          "resultado": "Seguiste. Se acumula el cansancio."
+        }
+      ]
+    },
+    {
+      "id": "aporte_empresario",
+      "titulo": "Un empresario ofrece ayuda",
+      "minDia": 12,
+      "peso": 2,
       "texto": "Un empresario del barrio se acerca: quiere «colaborar con la causa» con un sobre de efectivo, sin recibo ni preguntas.",
       "opciones": [
-        {"label": "Aceptar el sobre", "efectos": {"black": 4000, "exposure": 12}, "resultado": "Aceptaste el dinero en efectivo. Útil, pero ahora hay alguien que sabe que lo hiciste."},
-        {"label": "Rechazarlo con cortesía", "efectos": {"trustAll": 1}, "resultado": "Lo rechazaste. Corrió la voz de que sos alguien derecho."}
+        {
+          "label": "Aceptar el sobre",
+          "efectos": {
+            "black": 4000,
+            "exposure": 12
+          },
+          "resultado": "Aceptaste el dinero en efectivo. Útil, pero ahora hay alguien que sabe que lo hiciste."
+        },
+        {
+          "label": "Rechazarlo con cortesía",
+          "efectos": {
+            "trustAll": 1
+          },
+          "resultado": "Lo rechazaste. Corrió la voz de que sos alguien derecho."
+        }
       ]
     },
     {
-      "id": "local_vecino", "titulo": "Un vecino ofrece su salón", "minDia": 5, "peso": 2,
+      "id": "local_vecino",
+      "titulo": "Un vecino ofrece su salón",
+      "minDia": 5,
+      "peso": 2,
       "texto": "Una vecina ofrece prestar su salón para reuniones. Hay que pagar la luz y arreglar el techo.",
       "opciones": [
-        {"label": "Aceptar y encargarte del salón", "costo": {"money": 300}, "efectos": {"trustAll": 3, "xp": 1}, "resultado": "El salón se volvió punto de encuentro del barrio."},
-        {"label": "Agradecer y declinar", "efectos": {}, "resultado": "Dejaste pasar la oferta."}
+        {
+          "label": "Aceptar y encargarte del salón",
+          "costo": {
+            "money": 300
+          },
+          "efectos": {
+            "trustAll": 3,
+            "xp": 1
+          },
+          "resultado": "El salón se volvió punto de encuentro del barrio."
+        },
+        {
+          "label": "Agradecer y declinar",
+          "efectos": {},
+          "resultado": "Dejaste pasar la oferta."
+        }
       ]
     },
     {
-      "id": "temporal", "titulo": "Temporal en la ciudad", "minDia": 8, "peso": 2,
+      "id": "temporal",
+      "titulo": "Temporal en la ciudad",
+      "minDia": 8,
+      "peso": 2,
       "texto": "Un temporal azota la ciudad. Las actividades en la calle se complican.",
       "opciones": [
-        {"label": "Suspender y esperar", "efectos": {"delay": 2}, "resultado": "Las misiones en curso se demoraron dos días."},
-        {"label": "Seguir igual", "azar": {"p": 0.5,
-          "ok": {"texto": "Salió bien: la gente valoró que no te frenara la lluvia.", "efectos": {"trustAll": 1}},
-          "fail": {"texto": "Salió mal: se mojó el material y el esfuerzo no rindió.", "efectos": {"money": -500, "trustAll": -2}}}}
+        {
+          "label": "Suspender y esperar",
+          "efectos": {
+            "delay": 2
+          },
+          "resultado": "Las misiones en curso se demoraron dos días."
+        },
+        {
+          "label": "Seguir igual",
+          "azar": {
+            "p": 0.5,
+            "ok": {
+              "texto": "Salió bien: la gente valoró que no te frenara la lluvia.",
+              "efectos": {
+                "trustAll": 1
+              }
+            },
+            "fail": {
+              "texto": "Salió mal: se mojó el material y el esfuerzo no rindió.",
+              "efectos": {
+                "money": -500,
+                "trustAll": -2
+              }
+            }
+          }
+        }
       ]
     },
     {
-      "id": "rival_ataca", "titulo": "Ataque en redes", "minDia": 20, "peso": 2,
+      "id": "rival_ataca",
+      "titulo": "Ataque en redes",
+      "minDia": 20,
+      "peso": 2,
       "texto": "Un rival difunde en redes que tu agrupación «no representa a nadie». Se empieza a compartir.",
       "opciones": [
-        {"label": "Ignorarlo", "efectos": {"trustAll": -2}, "resultado": "Lo ignoraste, pero el mensaje se instaló."},
-        {"label": "Responder con un comunicado", "costo": {"money": 500}, "azar": {"p": 0.6,
-          "ok": {"texto": "El comunicado fue claro y tuvo buena recepción.", "efectos": {"trustAll": 2}},
-          "fail": {"texto": "El comunicado empeoró las cosas: parecía a la defensiva.", "efectos": {"trustAll": -3}}}},
-        {"label": "Contraatacar con cuentas falsas pagas", "costo": {"black": 800}, "azar": {"p": 0.5,
-          "ok": {"texto": "La campaña sucia funcionó y nadie lo notó.", "efectos": {"trustAll": 3, "exposure": 8}},
-          "fail": {"texto": "Descubrieron las cuentas falsas.", "efectos": {"trustAll": -5, "exposure": 18}}}}
+        {
+          "label": "Ignorarlo",
+          "efectos": {
+            "trustAll": -2
+          },
+          "resultado": "Lo ignoraste, pero el mensaje se instaló."
+        },
+        {
+          "label": "Responder con un comunicado",
+          "costo": {
+            "money": 500
+          },
+          "azar": {
+            "p": 0.6,
+            "ok": {
+              "texto": "El comunicado fue claro y tuvo buena recepción.",
+              "efectos": {
+                "trustAll": 2
+              }
+            },
+            "fail": {
+              "texto": "El comunicado empeoró las cosas: parecía a la defensiva.",
+              "efectos": {
+                "trustAll": -3
+              }
+            }
+          }
+        },
+        {
+          "label": "Contraatacar con cuentas falsas pagas",
+          "costo": {
+            "black": 800
+          },
+          "azar": {
+            "p": 0.5,
+            "ok": {
+              "texto": "La campaña sucia funcionó y nadie lo notó.",
+              "efectos": {
+                "trustAll": 3,
+                "exposure": 8
+              }
+            },
+            "fail": {
+              "texto": "Descubrieron las cuentas falsas.",
+              "efectos": {
+                "trustAll": -5,
+                "exposure": 18
+              }
+            }
+          }
+        }
       ]
     },
     {
-      "id": "veterano_cuestiona", "titulo": "Un veterano te cuestiona", "minDia": 25, "minRango": 1, "peso": 1,
+      "id": "veterano_cuestiona",
+      "titulo": "Un veterano te cuestiona",
+      "minDia": 25,
+      "minRango": 1,
+      "peso": 1,
       "texto": "Un militante veterano cuestiona frente a todos que alguien con tan poca trayectoria quiera dar órdenes.",
       "opciones": [
-        {"label": "Debatir de frente", "azar": {"p": 0.6,
-          "ok": {"texto": "Tu respuesta convenció a la mayoría.", "efectos": {"xp": 2}},
-          "fail": {"texto": "Saliste desairado del debate.", "efectos": {"trustAll": -2}}}},
-        {"label": "Ceder y escucharlo", "efectos": {"xp": 1}, "resultado": "Aprendiste de su experiencia y bajó la tensión."}
+        {
+          "label": "Debatir de frente",
+          "azar": {
+            "p": 0.6,
+            "ok": {
+              "texto": "Tu respuesta convenció a la mayoría.",
+              "efectos": {
+                "xp": 2
+              }
+            },
+            "fail": {
+              "texto": "Saliste desairado del debate.",
+              "efectos": {
+                "trustAll": -2
+              }
+            }
+          }
+        },
+        {
+          "label": "Ceder y escucharlo",
+          "efectos": {
+            "xp": 1
+          },
+          "resultado": "Aprendiste de su experiencia y bajó la tensión."
+        }
       ]
     },
     {
-      "id": "escandalo_filtracion", "titulo": "Se filtra una operación con dinero opaco", "tipo": "escandalo",
+      "id": "escandalo_filtracion",
+      "titulo": "Se filtra una operación con dinero opaco",
+      "tipo": "escandalo",
       "texto": "Un periodista consigue pruebas de movimientos de dinero sin registrar en tu agrupación. Pide tu versión antes de publicar.",
       "opciones": [
-        {"label": "Negarlo todo", "azar": {"p": 0.4,
-          "ok": {"texto": "La nota se cayó por falta de pruebas.", "efectos": {"exposure": -20}},
-          "fail": {"texto": "Publicaron con pruebas y tu negativa quedó como una mentira.", "efectos": {"trustAll": -12, "exposure": 5}}}},
-        {"label": "Pagar para que no se publique (dinero negro)", "costo": {"black": 2500}, "efectos": {"exposure": -35}, "resultado": "La nota nunca salió. Pero ahora alguien tiene tu secreto y lo sabe."},
-        {"label": "Pagar para que no se publique (dinero blanco)", "costo": {"money": 3000}, "efectos": {"exposure": -35}, "resultado": "Pagaste con fondos declarados para evitar la publicación."},
-        {"label": "Asumirlo públicamente", "efectos": {"trustAll": -8, "exposureSet": 10, "xp": 1}, "resultado": "Diste la cara. Costó caro, pero cortaste el problema de raíz."}
+        {
+          "label": "Negarlo todo",
+          "azar": {
+            "p": 0.4,
+            "ok": {
+              "texto": "La nota se cayó por falta de pruebas.",
+              "efectos": {
+                "exposure": -20
+              }
+            },
+            "fail": {
+              "texto": "Publicaron con pruebas y tu negativa quedó como una mentira.",
+              "efectos": {
+                "trustAll": -12,
+                "exposure": 5
+              }
+            }
+          }
+        },
+        {
+          "label": "Pagar para que no se publique (dinero negro)",
+          "costo": {
+            "black": 2500
+          },
+          "efectos": {
+            "exposure": -35
+          },
+          "resultado": "La nota nunca salió. Pero ahora alguien tiene tu secreto y lo sabe."
+        },
+        {
+          "label": "Pagar para que no se publique (dinero blanco)",
+          "costo": {
+            "money": 3000
+          },
+          "efectos": {
+            "exposure": -35
+          },
+          "resultado": "Pagaste con fondos declarados para evitar la publicación."
+        },
+        {
+          "label": "Asumirlo públicamente",
+          "efectos": {
+            "trustAll": -8,
+            "exposureSet": 10,
+            "xp": 1
+          },
+          "resultado": "Diste la cara. Costó caro, pero cortaste el problema de raíz."
+        }
       ]
     }
   ]

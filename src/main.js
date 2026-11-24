@@ -1,4 +1,7 @@
 import { Clock } from './core/clock.js';
+import { horaDe, noche, restante } from './core/hora.js';
+import * as ofensivas from './core/ofensivas.js';
+import * as el from './core/elecciones.js';
 import { Game } from './core/game.js';
 import { fitView } from './core/city.js';
 import { GameMap } from './map/map.js';
@@ -22,7 +25,7 @@ let CFG = null, PROV = null;
 async function boot() {
   const load = u => fetch(u).then(r => r.json()).catch(() => null);
   [PROV, CFG] = await Promise.all([load('data/provincias.json'), load('data/game.json')]);
-  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida'], ['organizacion', 'organizacion'], ['origenes', 'origenes'], ['elecciones', 'elecciones'], ['revelado', 'revelado'], ['ayuda', 'ayuda']]) CFG[k] = await load(`data/${f}.json`);
+  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida'], ['organizacion', 'organizacion'], ['origenes', 'origenes'], ['elecciones', 'elecciones'], ['revelado', 'revelado'], ['calendario', 'calendario'], ['ofensivas', 'ofensivas'], ['ayuda', 'ayuda']]) CFG[k] = await load(`data/${f}.json`);
   CFG.eventos.eventos.push(...(CFG.vida?.eventos ?? []));        // los eventos de vida los sortea el personaje, no el azar general
   CFG.glosario = await load('data/glosario.json');
   tooltips = initTooltips(CFG.glosario ?? {});
@@ -228,6 +231,16 @@ function wirePanel() {
     if (act('[data-el-lugar]', b => game.pedirLugar(b.dataset.elLugar))) return;
     if (act('[data-el-frente]', b => game.proponerFrente(b.dataset.elFrente))) return;
     if (act('[data-el-encuesta]', () => game.encargarEncuesta())) return;
+    const mAb = e.target.closest('[data-mesa-abrir]'); if (mAb) { uiState.mesaForm.rid = uiState.mesaForm.rid === mAb.dataset.mesaAbrir ? null : mAb.dataset.mesaAbrir; refreshAll(); return; }
+    const mSet = e.target.closest('[data-mesa-set]'); if (mSet) { const [k, v] = mSet.dataset.mesaSet.split('|'); const F = uiState.mesaForm; if (k === 'dinero') F.dinero = v === '1'; else if (k === 'lugares') F.lugares = +v; else F[k] = v; if (k === 'tipo') F.cid = null; refreshAll(); return; }
+    if (act('[data-mesa-enviar]', b => { const F = uiState.mesaForm, conts = el.contiendasDe(game, game.elecciones.proceso.tipo).filter(c => el.cupoElegible(game, c) && !game.elecciones.proceso.cupos[c.id]); const err = game.ofrecerMesa(b.dataset.mesaEnviar, { tipo: F.tipo, cid: F.cid ?? conts[0]?.id, lugares: F.lugares, pago: F.pago, cabeza: F.cabeza, dinero: F.dinero }); if (!err) F.rid = null; return err; })) return;
+    if (act('[data-mesa-resp]', b => { const [id, v] = b.dataset.mesaResp.split('|'); return game.responderMesa(+id, v === '1'); })) return;
+    if (act('[data-mesa-retirar]', b => game.retirarMesa(+b.dataset.mesaRetirar))) return;
+        const ofM = e.target.closest('[data-of-menu]'); if (ofM) { uiState.ofRival = uiState.ofRival === ofM.dataset.ofMenu ? null : ofM.dataset.ofMenu; refreshAll(); return; }
+    const ofL = e.target.closest('[data-of-lanzar]'); if (ofL) { const err = ofensivas.lanzar(game, ofL.dataset.rival, selected, ofL.dataset.ofLanzar); if (err) { toast?.(err); } else uiState.ofRival = null; refreshAll(); return; }
+    const calA = e.target.closest('[data-cal-anio]'); if (calA) { uiState.calAnio = +calA.dataset.calAnio; refreshAll(); return; }
+    const calC = e.target.closest('[data-cal-cat]'); if (calC) { uiState.calCats[calC.dataset.calCat] = uiState.calCats[calC.dataset.calCat] === false; refreshAll(); return; }
+    const calI = e.target.closest('[data-cal-ir]'); if (calI) { try { irA(JSON.parse(calI.dataset.calIr)); } catch { /* dato inválido */ } return; }
     const osub = e.target.closest('[data-osub]');
     if (osub) { uiState.osub = osub.dataset.osub; refreshAll(); return; }
     if (act('[data-org-tramite]', () => game.iniciarTramite())) return;
@@ -254,7 +267,7 @@ function wirePanel() {
     if (ir && !ir.disabled) {
       if (ir.dataset.ir === 'ayuda') { mostrarAyuda('progreso'); return; }
       if (ir.dataset.sub) uiState.datosSub = ir.dataset.sub;
-      if (['partido', 'yo', 'organizacion', 'elecciones'].includes(ir.dataset.ir)) { if (ir.dataset.ir === 'partido') uiState.psub = 'resumen'; cambiarVista(ir.dataset.ir); } else { tab = ir.dataset.ir; cambiarVista('mapa'); }
+      if (['partido', 'yo', 'organizacion', 'elecciones', 'calendario'].includes(ir.dataset.ir)) { if (ir.dataset.ir === 'partido') uiState.psub = 'resumen'; cambiarVista(ir.dataset.ir); } else { tab = ir.dataset.ir; cambiarVista('mapa'); }
       return;
     }
     const gok = e.target.closest('[data-guia-ok]');
@@ -345,7 +358,7 @@ function sincronizarRevelado() {
   // lo que no está disponible no se puede mostrar: vuelve a lo básico
   if (!vistasDe(game).some(([id]) => id === vista)) vista = 'mapa';
   if (!game.ve({ rivales: 'tab.rivales', datos: 'tab.datos' }[tab] ?? 'mision.base')) tab = 'zona';
-  const vio = vista === 'mapa' ? { rivales: 'vio_rivales', datos: 'vio_datos' }[tab] : { yo: 'vio_yo', partido: 'vio_partido', organizacion: 'vio_org', elecciones: 'vio_elecciones' }[vista];
+  const vio = vista === 'mapa' ? { rivales: 'vio_rivales', datos: 'vio_datos' }[tab] : { yo: 'vio_yo', partido: 'vio_partido', organizacion: 'vio_org', elecciones: 'vio_elecciones', calendario: 'vio_calendario' }[vista];
   if (vio) game.vio(vio);
   game.marcarVisto(vista === 'mapa' ? { vista, tab } : vista === 'partido' ? { vista, sub: uiState.psub } : vista === 'organizacion' ? { vista, sub: uiState.osub } : { vista });
 }
@@ -355,6 +368,7 @@ function refreshAll() {
   sincronizarRevelado();
   const panel = $('#panel'), top = panel.scrollTop;
   $('#date').textContent = Clock.format(clock.day);
+  pintarHora();
   map.paint(id => game.zonas[id].control);
   map.setBusy(new Set(game.jobs.map(j => j.zone)));
   map.setProgress(progresoMapa(game, clock.day, clock.acc));   // también en cada cambio, no solo por fotograma
@@ -388,11 +402,24 @@ function showEvent() {
 }
 
 // Actualización fluida del avance entre días (panel y mapa)
+// Hora del día: texto, arco de sol y oscuridad del mapa (sin re-render)
+function pintarHora(f = clock.acc) {
+  const H = horaDe(f), n = noche(f), box = $('#hora');
+  $('#hora-txt').textContent = H.texto; $('#franja').textContent = H.franja;
+  const ang = Math.PI * Math.min(1, Math.max(0, (H.h + H.m / 60 - 5) / 16)), a = $('#astro');   // arco de 5 h a 21 h; de noche queda abajo a la izquierda
+  const visible = H.h >= 5 && H.h < 21;
+  a.setAttribute('cx', visible ? (22 - 19 * Math.cos(ang)).toFixed(1) : 3); a.setAttribute('cy', visible ? (22 - 19 * Math.sin(ang)).toFixed(1) : 22);
+  box.classList.toggle('noche', !visible || n > 0.6);
+  const luz = $('#luz'); luz.style.setProperty('--noche', n.toFixed(2)); luz.classList.toggle('alba', H.h >= 5 && H.h < 8 || H.h >= 18 && H.h < 21);
+}
+
 function refreshLive() {
   const f = clock.acc;
+  pintarHora(f);
   game.jobs.forEach((j, i) => {
     const frac = Math.min(1, Math.max(0, (clock.day - j.start + f) / (j.end - j.start)));
     document.querySelectorAll(`[data-job-bar="${i}"]`).forEach(bar => { bar.style.width = (frac * 100).toFixed(1) + '%'; });
+    document.querySelectorAll(`[data-job-eta="${i}"]`).forEach(t => { t.textContent = restante(Math.max(0, j.end - clock.day - f)); });
     document.querySelectorAll(`[data-job-pct="${i}"]`).forEach(txt => { txt.textContent = Math.round(frac * 100) + '%'; });
   });
   map.setProgress(progresoMapa(game, clock.day, f));

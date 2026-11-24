@@ -249,5 +249,51 @@
     },
     "maxIntentos": 2,
     "desplazamiento": 3
+  },
+  "mesa": {
+    "nota": "Mesa de armado de frentes, cupos y apoyos entre la etapa de alianzas y el cierre de listas. Cada propuesta tarda 'respuesta' días en contestarse: el socio acepta, contraoferta (pide más) o rechaza. Los acuerdos pueden romperse hasta el cierre de listas.",
+    "maxActivas": 3,
+    "maxRondas": 2,
+    "respuesta": [
+      2,
+      4
+    ],
+    "contraVence": 3,
+    "contraProb": 0.35,
+    "avisoCierre": 3,
+    "frente": {
+      "relacionMin": 40,
+      "base": 0.2,
+      "porRelacion": 0.0167,
+      "porFama": 0.003,
+      "contacto": 0.15,
+      "cedeCabeza": 0.12,
+      "dinero": 0.08,
+      "dineroPor": 0.5
+    },
+    "apoyo": {
+      "base": 0.35,
+      "porRelacion": 0.007,
+      "relacionGana": 8,
+      "campana": 0.012
+    },
+    "penalRencor": 0.004,
+    "ruptura": {
+      "base": 0.004,
+      "porRencor": 0.02,
+      "porMalaRelacion": 0.01,
+      "relacion": -10,
+      "trust": -2
+    },
+    "contra": {
+      "dineroPorLugar": 0.6,
+      "dineroFrente": 2500,
+      "dineroApoyo": 1500
+    },
+    "bots": {
+      "max": 2,
+      "prob": 0.65,
+      "afinidadMin": 1
+    }
   }
 }

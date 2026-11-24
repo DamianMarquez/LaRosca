@@ -13,6 +13,7 @@
     <div class="brand"><span class="brand-mark">LR</span><span class="brand-txt"> LA ROSCA</span></div>
     <div class="clock" id="clock" role="group" aria-label="Tiempo">
       <span id="date" aria-live="off">—</span>
+      <span class="hora" id="hora" aria-hidden="true"><svg viewBox="0 0 44 24" width="44" height="24"><path d="M3 22 A19 19 0 0 1 41 22" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="2 3"/><circle id="astro" r="3.4" cx="3" cy="22"/></svg><b id="hora-txt">06:00</b><small id="franja">mañana</small></span>
       <button data-speed="0" aria-label="Pausa" data-tip-texto="Pausa (Espacio o 0)">⏸</button>
       <button data-speed="1" aria-label="Velocidad normal" data-tip-texto="Velocidad normal (1)">▶</button>
       <button data-speed="2" aria-label="Velocidad doble" data-tip-texto="Doble velocidad (2)">▶▶</button>
@@ -41,6 +42,7 @@
   <main class="stage">
     <div class="mapa-wrap">
       <svg id="map" aria-label="Mapa de Argentina"></svg>
+      <div class="luz" id="luz" aria-hidden="true"></div>
       <div class="leyenda" id="leyenda" aria-hidden="true"><span>Control</span><i class="grad"></i><span>0 → 100%</span><span class="rm"><i></i> rival actuando</span></div>
       <div class="maphover" id="maphover" role="status" hidden></div>
     </div>

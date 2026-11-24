@@ -292,3 +292,14 @@ export function sanearRivales(g, raw, rivales) {
   }
   return base;
 }
+
+// Un cuadro rival (el más desencantado, que no sea el líder) se pasa a tu partido sin costo ni tirada; devuelve la persona o null
+export function robarCuadro(g, rivalId) {
+  const lista = g.rivalesPlantel[rivalId] ?? [], x = lista.filter(m => m.rol !== 'Líder').sort((a, b) => a.lealtad - b.lealtad)[0];
+  if (!x) return null;
+  g.rivalesPlantel[rivalId] = lista.filter(m => m !== x);
+  g.plantel.miembros.push({ id: `m${g.plantel.sig++}`, nombre: x.nombre, capacidad: x.capacidad, lealtad: clamp(x.lealtad, 40, 85), ambicion: x.ambicion, principios: x.principios, origen: 'captado', cargo: null, desde: g.day });
+  const nuevo = persona(g, rng(`${g.prov.id}:${g.day}:reemplazo:${rivalId}`), { cap: [30, 70], origen: 'rival' });
+  g.rivalesPlantel[rivalId].push({ ...nuevo, rol: 'Cuadro' });
+  return x;
+}

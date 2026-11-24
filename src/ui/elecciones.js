@@ -3,10 +3,14 @@ import * as el from '../core/elecciones.js';
 import { rivales } from '../core/rivals.js';
 import { relacion } from '../core/pactos.js';
 import { Clock } from '../core/clock.js';
+import * as mesa from '../core/mesa.js';
+import * as of from '../core/ofensivas.js';
+import { uiState } from './ui.js';
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('es-AR');
 const pc = v => (v * 100).toFixed(1).replace('.', ',') + '%';
+const diasTxt = n => (n <= 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} d`);
 const approx5 = v => '~' + Math.round(v * 20) * 5 + '%';
 
 const AYUDA = {
@@ -68,12 +72,47 @@ function contiendaCard(g, P, c) {
   return `<div class="cont"><div class="cont-h"><b>${esc(c.titulo)}</b>${estado}</div><small class="muted">${esc(sub)}</small>${cuerpo}</div>`;
 }
 
+// Mesa de armado: ofertas por rondas con cada partido (frente, cupo o apoyo), con plazos, contraofertas y tablero de listas
+const ESTADO_CLS = { libre: '', pendiente: 'warn', contraoferta: 'warn', aceptada: 'ok', rechazada: 'bad', vencida: '', rota: 'bad', retirada: '', otro: '' };
+function mesaForm(g, P, r) {
+  const F = uiState.mesaForm, C = g.cfg.elecciones, conts = el.contiendasDe(g, P.tipo).filter(c => el.cupoElegible(g, c) && !P.cupos[c.id]);
+  const tipos = [['frente', 'Frente'], ['cupo', 'Cupo en su lista'], ['apoyo', 'Apoyo mutuo']];
+  const t = { tipo: F.tipo, cid: F.cid ?? conts[0]?.id ?? null, lugares: F.lugares, pago: F.pago, cabeza: F.cabeza, dinero: F.dinero };
+  const mot = mesa.motivo(g, r.id, t), p = mesa.prob(g, r.id, t), costo = mesa.costoDinero(g, t);
+  const seg = (campo, opciones, val) => `<div class="seg">${opciones.map(([id, n]) => `<button class="${String(val) === String(id) ? 'on' : ''}" data-mesa-set="${campo}|${esc(id)}">${esc(n)}</button>`).join('')}</div>`;
+  const extra = F.tipo === 'frente' ? `<label class="mf">Cabeza de lista ${seg('cabeza', [['yo', 'Yo'], ['socio', 'Que encabece el socio']], F.cabeza)}</label><label class="mf">Aporte de dinero ${seg('dinero', [['0', 'No'], ['1', `Sí · ${money(el.costoCupo(g, 1))}`]], F.dinero ? '1' : '0')}</label>`
+    : F.tipo === 'cupo' ? (conts.length ? `<label class="mf">Cargo ${seg('cid', conts.map(c => [c.id, c.titulo]), t.cid)}</label><label class="mf">Lugares ${seg('lugares', Array.from({ length: Math.max(1, el.maxLugares(g, el.contiendaDef(g, t.cid) ?? conts[0])) }, (_, i) => [i + 1, String(i + 1)]), F.lugares)}</label><label class="mf">A cambio de ${seg('pago', [['dinero', `Dinero · ${money(el.costoCupo(g, F.lugares))}`], ['apoyo', 'Apoyo'], ['bloque', 'Bloque']], F.pago)}</label>` : '<small class="muted">No hay cargos con cupo disponibles.</small>') : '<small class="muted">Se apoyan mutuamente en campaña sin compartir lista: mejora la relación y suma campaña donde tienen presencia.</small>';
+  return `<div class="mesa-form"><div class="mf-tipos">${seg('tipo', tipos, F.tipo)}</div>${extra}
+    <div class="btns"><button class="primary" data-mesa-enviar="${esc(r.id)}" ${mot ? 'disabled' : ''}>Enviar propuesta</button><span class="muted small-p">${mot ? esc(mot) : `Chance estimada ${approx5(p)}${costo ? ` · cuesta ${money(costo)}` : ''}`}</span></div></div>`;
+}
+function mesaFila(g, P, r) {
+  const E = mesa.estadoDe(g, r.id), l = mesa.deRival(g, r.id), ult = l[l.length - 1], rel = Math.round(relacion(g, r.id)), ren = of.nivelRencor(g, r.id);
+  const abierto = uiState.mesaForm.rid === r.id, ocupado = !!mesa.aliadoDeOtro(g, r.id);
+  let detalle = '';
+  if (ult?.estado === 'pendiente') detalle = `<small>Ofreciste ${esc(mesa.descripcion(g, ult))}. Responde ${esc(diasTxt(ult.responde - g.day))}.</small> <button class="ghost" data-mesa-retirar="${ult.id}">Retirar</button>`;
+  else if (ult?.estado === 'contraoferta') detalle = `<div class="contra"><small><b>Contraoferta:</b> pide ${esc(mesa.textoContra(g, ult))}. Vence ${esc(diasTxt(ult.vence - g.day))}.</small><div class="btns"><button class="primary" data-mesa-resp="${ult.id}|1">Aceptar</button><button class="danger" data-mesa-resp="${ult.id}|0">Rechazar</button></div></div>`;
+  else if (ult?.estado === 'aceptada') detalle = `<small>${esc(TIPO_TXT[ult.tipo])}: ${esc(mesa.descripcion(g, ult))}${ult.pagado ? ` · pagaste ${money(ult.pagado)}` : ''}. Puede romperse hasta el cierre.</small>`;
+  else if (ult) detalle = `<small class="muted">${esc(E.texto)}${ult.nota ? ` (${esc(ult.nota)})` : ''}.</small>`;
+  const puede = !ocupado && !['pendiente', 'contraoferta', 'aceptada'].includes(ult?.estado);
+  return `<div class="mesa-fila"><div class="mesa-top"><span class="dot" style="background:${r.color}"></span><b>${esc(r.nombre)}</b><span class="tag ${ESTADO_CLS[E.id] ?? ''}">${esc(E.texto)}</span><small class="muted">relación ${rel}${ren !== 'ninguno' ? ` · rencor ${ren}` : ''}</small>${puede ? `<button class="ghost" data-mesa-abrir="${esc(r.id)}" aria-expanded="${abierto}">${abierto ? 'Cerrar' : 'Negociar…'}</button>` : ''}</div>${detalle}${abierto && puede ? mesaForm(g, P, r) : ''}</div>`;
+}
+const TIPO_TXT = { frente: 'Frente', cupo: 'Cupo', apoyo: 'Apoyo' };
+function tablero(g, P) {
+  return el.contiendasDe(g, P.tipo).map(c => {
+    const st = P.contiendas[c.id], cu = P.cupos[c.id];
+    const e = cu ? `cupo con ${esc(el.nombrePartido(g, cu.host))} (${cu.lugares} lugar${cu.lugares === 1 ? '' : 'es'}${cu.lista.length ? `, ${cu.lista.length} cargado${cu.lista.length === 1 ? '' : 's'}` : ', sin cargar'})` : st.estado === 'presentada' ? `lista propia presentada (${st.lista.length})` : st.estado === 'no_presenta' ? 'no te presentás' : el.puedePresentar(g, c) ? (st.lista.length ? `lista armada (${st.lista.length}), sin presentar` : 'sin lista') : `sin reconocimiento de ${esc(c.requiere.alcance)}`;
+    return `<li><b>${esc(c.titulo)}</b><small class="muted"> ${e}</small></li>`;
+  }).join('');
+}
 function frentes(g, P) {
-  if (g.modo !== 'fundador' || P.fase !== 'alianzas') return '';
-  const Kf = g.cfg.elecciones.frente;
-  if (P.frentes.length) return `<div class="card"><h3>Frente</h3><p class="small-p">Competís en frente con <b>${esc(el.nombrePartido(g, P.frentes[0].rival))}</b>: sus votos se suman y las bancas se reparten entre ambos.</p></div>`;
-  return `<div class="card"><h3>Frentes y alianzas</h3><p class="small-p muted">Un frente suma los votos de dos partidos. Necesitás una relación de al menos ${Kf.relacionMin}.</p>
-    ${rivales(g).map(r => { const rel = Math.round(relacion(g, r.id)); return `<div class="rival-line"><span class="dot" style="background:${r.color}"></span><span><b>${esc(r.nombre)}</b> <small class="muted">· relación ${rel}</small></span><button data-el-frente="${esc(r.id)}" ${rel < Kf.relacionMin ? 'disabled' : ''}>Proponer frente</button></div>`; }).join('')}</div>`;
+  if (!['alianzas', 'listas'].includes(P.fase)) return '';
+  const bots = mesa.botsFrentes(g), botsTxt = bots.length ? `<p class="small-p"><b>Entre ellos:</b> ${bots.map(f => `${esc(el.nombrePartido(g, f.a))} + ${esc(el.nombrePartido(g, f.b))}`).join(' · ')}.</p>` : '<p class="small-p muted">Por ahora los demás partidos van por separado.</p>';
+  if (g.modo !== 'fundador') return `<div class="card"><h3>Mesa política</h3><p class="small-p muted">Tu partido negocia sus alianzas y sus listas.</p>${botsTxt}</div>`;
+  const cierre = el.diasParaCierre(g), n = mesa.activas(g).length, max = g.cfg.elecciones.mesa.maxActivas;
+  return `<div class="card ancho-2 mesa"><div class="el-top"><div><h3>Mesa de armado de listas y alianzas</h3><p class="small-p">Ofrecé frentes, cupos o apoyos. Cada partido responde en unos días: acepta, <b>contraoferta</b> o rechaza. Un acuerdo puede romperse hasta el cierre de listas.</p></div>
+    <span class="tag ${cierre !== null && cierre <= 10 ? 'warn' : ''}">${cierre !== null && cierre > 0 ? `Cierra en ${cierre} d` : 'Mesa cerrada'} · ${n}/${max} abiertas</span></div>
+    ${botsTxt}${rivales(g).map(r => mesaFila(g, P, r)).join('')}
+    <h4 class="grp-t">Tablero de listas</h4><ul class="tablero">${tablero(g, P)}</ul></div>`;
 }
 
 function encuestas(g, P) {

@@ -18,15 +18,18 @@ const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const money = n => '$' + Math.round(n).toLocaleString('es-AR');
 const pct = v => Math.round(v * 100) + '%';
 const approx5 = v => '~' + Math.round(v * 20) * 5 + '%';          // estimaciones: nunca exactas
+import { restante } from '../core/hora.js';
+import * as of from '../core/ofensivas.js';
+import { renderCalendario } from './calendario.js';
 const jobFrac = (j, day, acc = 0) => Math.min(1, Math.max(0, (day - j.start + acc) / (j.end - j.start)));
 
 export const TABS = [['zona', 'Zona'], ['rivales', 'Rivales'], ['datos', 'Datos']];       // panel lateral (depende del mapa)
-export const vistasDe = g => [['mapa', 'Mapa'], ...(ve(g, 'vista.partido') ? [['partido', 'Partido']] : []), ...(g.org && ve(g, 'vista.organizacion') ? [['organizacion', 'Organización']] : []), ...(ve(g, 'vista.elecciones') ? [['elecciones', 'Elecciones']] : []), ...(ve(g, 'vista.yo') ? [['yo', 'Yo']] : [])];   // solapas generales (Organización: solo quien fundó)
+export const vistasDe = g => [['mapa', 'Mapa'], ...(ve(g, 'vista.partido') ? [['partido', 'Partido']] : []), ...(g.org && ve(g, 'vista.organizacion') ? [['organizacion', 'Organización']] : []), ...(ve(g, 'vista.elecciones') ? [['elecciones', 'Elecciones']] : []), ...(ve(g, 'vista.calendario') ? [['calendario', 'Calendario']] : []), ...(ve(g, 'vista.yo') ? [['yo', 'Yo']] : [])];   // solapas generales (Organización: solo quien fundó)
 export const partidoSubs = g => (g.modo === 'fundador' ? [['resumen', 'Resumen'], ['organigrama', 'Estructura'], ['personas', 'Personas'], ['principios', 'Principios']] : [['resumen', 'Resumen'], ['organigrama', 'Organigrama'], ['personas', 'Personas'], ['escalafon', 'Escalafón'], ['linea', 'Línea'], ['principios', 'Principios']])
   .filter(([id]) => ve(g, { organigrama: 'partido.estructura', escalafon: 'partido.escalafon', linea: 'partido.linea' }[id] ?? 'vista.partido'));
 
 // Estado de la interfaz que sobrevive a los refrescos (no es parte de la partida)
-export const uiState = { abiertas: new Set(), secs: { terr: true, recaud: false, ilegal: false, rivZona: false }, datosSub: 'finanzas', logFiltro: 'todo', logAbierto: false, osub: 'estado', ayudaSec: 'como', cupoPago: 'apoyo', psub: 'resumen', ficha: null, pfiltro: 'todos', pord: 'cargo', informe: [] };
+export const uiState = { abiertas: new Set(), secs: { terr: true, recaud: false, ilegal: false, rivZona: false }, datosSub: 'finanzas', logFiltro: 'todo', logAbierto: false, osub: 'estado', ofRival: null, mesaForm: { rid: null, tipo: 'frente', cid: null, lugares: 1, pago: 'apoyo', cabeza: 'yo', dinero: false }, calAnio: null, calCats: {}, ayudaSec: 'como', cupoPago: 'apoyo', psub: 'resumen', ficha: null, pfiltro: 'todos', pord: 'cargo', informe: [] };
 
 // ---------- Barra superior: tres grupos (rango · recursos · fuerza) con tooltips; lo que vale cero no se muestra ----------
 export function renderStats(g) {
@@ -146,7 +149,7 @@ export function renderAcciones(g, day) {
     const m = g.mission(j.mission), f = jobFrac(j, day);
     return `<div class="job" data-job-zone="${esc(j.zone)}">
       <div class="job-head"><b>${esc(m.nombre)}</b><span class="badge">${ico(j.modo === 'delegada' ? 'equipo' : 'persona')}${j.modo === 'delegada' ? 'Equipo' : 'Vos'}${j.pago === 'negro' ? ' · negro' : ''}</span></div>
-      <div class="job-sub">${esc(g.zonas[j.zone].nombre)} · termina en <span data-job-eta="${i}">${Math.max(0, j.end - day)}</span> d</div>
+      <div class="job-sub">${esc(g.zonas[j.zone].nombre)} · termina en <span data-job-eta="${i}">${restante(Math.max(0, j.end - day))}</span></div>
       <div class="bar big"><i data-job-bar="${i}" style="width:${(f * 100).toFixed(1)}%"></i><span data-job-pct="${i}">${Math.round(f * 100)}%</span></div></div>`;
   }).join('');
   const desc = g.jugador.descanso, free = g.freeSlots > 0;
@@ -176,7 +179,7 @@ export function renderVistas(g, vista) {
 }
 
 export function renderVista(g, vista, day) {
-  const cuerpo = vista === 'yo' ? `<div class="yo-vista">${renderYo(g)}</div>` : vista === 'elecciones' ? renderElecciones(g) : vista === 'organizacion' ? renderOrganizacion(g) : renderPartidoVista(g);
+  const cuerpo = vista === 'yo' ? `<div class="yo-vista">${renderYo(g)}</div>` : vista === 'elecciones' ? renderElecciones(g) : vista === 'calendario' ? renderCalendario(g, uiState) : vista === 'organizacion' ? renderOrganizacion(g) : renderPartidoVista(g);
   return `<div class="vista-in"><div class="vista-top">${renderAcciones(g, day)}</div>${cuerpo}</div>`;
 }
 
@@ -373,7 +376,7 @@ function renderZona(g, zoneId) {
   if (!zoneId) return '<p class="muted">Elegí un barrio en el mapa para ver sus datos, a los rivales que hay y lanzar misiones.</p>';
   const z = g.zonas[zoneId], ms = g.cfg.missions;
   const base = ve(g, 'mision.mas') ? null : ['volantes', 'visitas'];
-  const lejos = m => !!g.guia?.progresivo && m.minRank > g.player.rank + 1;       // las misiones que exigen mucho más rango no se muestran todavía
+  const lejos = m => !!g.guia?.progresivo && (m.minRank > g.player.rank + 1 || g.day < (m.minDia ?? 0) - 3);       // las misiones que exigen mucho más rango no se muestran todavía
   const grupo = (f) => ms.filter(m => f(m) && !lejos(m)), terr = grupo(m => m.categoria !== 'finanzas' && (!base || base.includes(m.id))), legal = grupo(m => m.categoria === 'finanzas' && !m.ilegal), ilegal = grupo(m => m.ilegal);
   const proxima = ms.filter(m => lejos(m) || (m.minRank > g.player.rank)).sort((a, b) => a.minRank - b.minRank)[0];
   const cards = (lista, rec) => lista.map(m => misionCard(g, m, z, zoneId, m.id === rec)).join('');
@@ -392,6 +395,26 @@ function negroBtn(g, m, z, zoneId) {
 }
 
 // Rivales en la zona: presencia, principios, estimación de reacciones y acciones vigentes
+// Menú «Atacar»: ofensivas contra un rival en el barrio elegido (sabotaje, desprestigio, captación, medios)
+const GRUPOS_OF = { sabotaje: 'Sabotaje de campaña', desprestigio: 'Desprestigio y operaciones', captacion: 'Robar gente', medios: 'Medios y debates' };
+function ofensivaMenu(g, rid, zoneId) {
+  if (!ve(g, 'zona.ofensiva')) return '';
+  if (!zoneId) return '<small class="muted">Elegí un barrio en el mapa para atacar.</small>';
+  const abierto = uiState.ofRival === rid, nivel = of.nivelRencor(g, rid), z = g.zonas[zoneId];
+  const rnc = nivel === 'ninguno' ? '' : ` <small class="muted">· rencor <b class="rc-${nivel}">${nivel}</b></small>`;
+  const btn = `<button class="ghost atacar" data-of-menu="${esc(rid)}" aria-expanded="${abierto}">⚔ Atacar…</button>`;
+  if (!abierto) return `<div class="of-fila">${btn}${rnc}</div>`;
+  const grupos = Object.entries(GRUPOS_OF).map(([id, titulo]) => {
+    const items = of.acciones(g).filter(a => a.grupo === id && (!g.guia?.progresivo || a.minRank <= g.player.rank + 1)).map(a => {
+      const mot = of.motivo(g, a, rid, zoneId), c = of.chance(g, a, zoneId, rid).c, exp = of.exposicionPrevista(a);
+      return `<div class="of-a ${mot ? 'lock' : ''}"><div><b>${esc(a.nombre)}</b><small class="muted"> ${esc(a.texto)}</small><br><small>${ico('objetivo')}${c}% · ${ico('reloj')}${g.dias(a)} d · ${ico('dinero')}${a.costo ? money(a.costo) : 'gratis'}${exp ? ` · exposición +${exp}` : ''}${a.rebote ? ' · riesgo de rebote' : ''}</small>${mot ? `<br><small class="of-mot">${esc(mot)}</small>` : ''}</div>
+        <button class="danger" data-of-lanzar="${esc(a.id)}" data-rival="${esc(rid)}" ${mot ? 'disabled' : ''}>Lanzar</button></div>`;
+    }).join('');
+    return items ? `<h5>${esc(titulo)}</h5>${items}` : '';
+  }).join('');
+  return `<div class="of-menu"><div class="of-fila">${btn}${rnc}</div><p class="muted small-p">En <b>${esc(z.nombre)}</b>. Cada golpe usa tu acción personal, enoja al rival y puede volverse en tu contra.</p>${grupos || '<p class="muted small-p">Todavía no tenés golpes disponibles.</p>'}</div>`;
+}
+
 function renderRivalesBody(g, z) {
   const pres = presencia(g, z.id), am = amenaza(g, z), cat = g.cfg.principios.principios;
   const activos = efectosActivos(g, z.id).map(e => {
@@ -408,7 +431,7 @@ function renderRivalesBody(g, z) {
     const react = d.prob30 > 0.01 && d.accion ? `<small class="react">Podría: ${esc(d.accion.nombre.toLowerCase())} · ${approx5(d.prob30)} en 30 d</small>` : '';
     return `<div class="rival"><div class="rival-top"><span class="dot" style="background:${r.color}"></span><span class="rn">${esc(r.nombre)}</span><span class="rp">${approx5(pres[r.id])}</span></div>
       <div class="bar thin"><i style="width:${(pres[r.id] * 100).toFixed(0)}%;background:${r.color}"></i></div>
-      <small class="muted detalle">${esc(ps)}</small>${react}</div>`;
+      <small class="muted detalle">${esc(ps)}</small>${react}${ofensivaMenu(g, r.id, z.id)}</div>`;
   }).join('');
   const nivelTxt = { ninguna: 'Todavía no te toman como amenaza: con poco control en el barrio, los rivales no reaccionan.', baja: 'Riesgo de reacción rival: <b>bajo</b>.', media: 'Riesgo de reacción rival: <b class="mid">medio</b>.', alta: 'Riesgo de reacción rival: <b class="hi">alto</b>.' }[am.nivel];
   return `<p class="muted small-p">${nivelTxt} <small>(estimación)</small></p>${enZona}${activos}${rows}`;
@@ -450,6 +473,7 @@ function renderTabRivales(g, zoneId) {
     return `<div class="rcard"><div class="rival-top"><span class="dot" style="background:${r.color}"></span><span class="rn">${esc(r.nombre)}</span><span class="rp" title="Presencia media en la ciudad (estimada)">${approx5(presenciaCiudad(g, r.id))}</span></div>
       <small class="muted detalle">${esc(r.espacio)} · ${esc(r.principios.map(id => cat.find(c => c.id === id)?.nombre).join(', '))}</small>
       <div class="rel-line"><small class="muted"><span tabindex="0" data-tip="relacion">Relación</span> contigo: <b>${esc(etiquetaRel(rel))}</b><span class="detalle"> (${rel})</span></small><span class="meter ${rel < 30 ? 'bad' : ''}"><i style="width:${rel}%"></i></span></div>${pactoHtml}${estado}
+      ${ofensivaMenu(g, r.id, zoneId)}
       <details class="cuadros detalle"><summary>Sus cuadros</summary>${cuadros}<small class="muted">Captar a alguien lo suma a tu plantel, pero el rival se entera del intento si falla.</small></details></div>`;
   }).join('');
   const feed = g.historialRivales.slice(0, 8).map(h => {
@@ -471,7 +495,7 @@ function renderLinea(g) {
   else {
     const quien = d.fuente === 'partido' ? 'Línea partidaria' : `${esc(l.nombre)}`;
     if (d.estado === 'propuesta') dir = `<div class="directive new"><small class="muted">${quien} baja línea · respondé en ${Math.max(0, d.venceRespuesta - g.day)} d</small><p>${esc(d.texto)}</p>
-      <div class="btns"><button class="primary" data-linea="aceptar">Aceptar</button><button data-linea="rechazar">Rechazar</button></div>
+      <div class="btns"><button class="primary" data-linea="aceptar">Aceptar</button><button class="danger" data-linea="rechazar">Rechazar</button></div>
       <small class="muted">Cumplirla sube tu relación con el líder y da recompensa; rechazarla o fallarla, la baja.</small></div>`;
     else { const pr = progresoDirectiva(g, d); dir = `<div class="directive"><small class="muted">${quien} · vence en ${Math.max(0, d.hasta - g.day)} d</small><p>${esc(d.texto)}</p><div class="bar big"><i style="width:${(pr.frac * 100).toFixed(0)}%"></i><span>${esc(pr.texto)}</span></div></div>`; }
   }

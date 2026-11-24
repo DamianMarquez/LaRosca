@@ -73,15 +73,16 @@ export function proximos(g, n = 3) {
 
 // ---------- Estado ----------
 export function iniciar(g, progresivo = false) {
-  const guia = { progresivo: !!progresivo, revelado: [], nuevo: [], hechos: { misiones: 0 }, dineroInicial: g.player.money };
+  const guia = { progresivo: !!progresivo, revelado: [], nuevo: [], hechos: { misiones: 0 }, dineroInicial: g.player.money, ultimoAviso: null, encuentros: [] };
   g.guia = guia;
   guia.revelado = catalogo(g).filter(e => cumpleElemento(g, e)).map(e => e.id);   // lo que ya está abierto al empezar no se anuncia
   return guia;
 }
 
 // Cuenta una acción hecha (para las condiciones y el checklist del primer mes)
-const CLAVES = ['misiones', 'recaudo', 'vio_rivales', 'vio_datos', 'vio_yo', 'vio_partido', 'vio_org', 'vio_elecciones'];
+const CLAVES = ['misiones', 'recaudo', 'vio_rivales', 'vio_datos', 'vio_yo', 'vio_partido', 'vio_org', 'vio_elecciones', 'vio_calendario', 'encuentros'];
 export function hecho(g, clave) { if (g.guia) g.guia.hechos[clave] = (g.guia.hechos[clave] ?? 0) + 1; }
+export function registrarEncuentro(g, id) { if (!g.guia) return; if (!g.guia.encuentros.includes(id)) g.guia.encuentros.push(id); hecho(g, 'encuentros'); }
 export function vio(g, clave) { if (g.guia && !g.guia.hechos[clave]) g.guia.hechos[clave] = 1; }
 
 // Checklist del primer mes: se tilda sola
@@ -93,10 +94,16 @@ export function primerMes(g, items) {
 // Revela lo que ahora cumple; anuncia los elementos con 'aviso' (una tarjeta por elemento) y marca "Nuevo"
 export function tick(g) {
   const G = g.guia; if (!G?.progresivo) return;
-  for (const e of catalogo(g)) {
+  const cd = g.cfg.revelado?.cooldownDias ?? 0, lista = catalogo(g);
+  for (const e of lista) {
     if (G.revelado.includes(e.id) || !cumpleElemento(g, e)) continue;
-    G.revelado.push(e.id);
-    if (!e.aviso) continue;
+    if (!e.aviso) {                                                // lo silencioso espera a que se abra algún aviso de su grupo
+      const grupo = lista.filter(x => x.grupo === e.grupo && x.aviso);
+      if (grupo.length && !grupo.some(x => G.revelado.includes(x.id))) continue;
+      G.revelado.push(e.id); continue;
+    }
+    if (G.ultimoAviso !== null && g.day - G.ultimoAviso < cd) continue;   // cooldown: de a un aviso mayor por vez
+    G.revelado.push(e.id); G.ultimoAviso = g.day;
     if (e.donde) G.nuevo.push(e.id);
     g.note(`Se abrió: ${e.titulo}.`, 'promo');
     g.informar({ tipo: 'desbloqueo', nombre: e.titulo, zona: null, zonaNombre: '', ok: null, texto: `${e.que} ${e.como}`, cambios: [], donde: e.donde ?? null, elemento: e.id });
@@ -132,6 +139,8 @@ export function sanear(g, raw) {
     revelado: Array.isArray(raw.revelado) ? [...new Set(raw.revelado.filter(id => ids.has(id)))] : [],
     nuevo: Array.isArray(raw.nuevo) ? [...new Set(raw.nuevo.filter(id => ids.has(id)))].slice(0, 30) : [],
     hechos: Object.fromEntries(CLAVES.map(k => [k, fin(raw.hechos?.[k]) ? Math.max(0, Math.floor(raw.hechos[k])) : 0])),
+    encuentros: Array.isArray(raw.encuentros) ? [...new Set(raw.encuentros.filter(x => typeof x === 'string'))].slice(0, 60) : [],
+    ultimoAviso: fin(raw.ultimoAviso) ? raw.ultimoAviso : null,
     dineroInicial: fin(raw.dineroInicial) ? raw.dineroInicial : g.cfg.start.money,
   };
 }

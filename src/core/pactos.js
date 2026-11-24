@@ -77,6 +77,9 @@ function terminar(g, p, motivo) {
   g.note(`Terminó el pacto de ${tipoDef(g, p.tipo).nombre.toLowerCase()} con ${g.rival(p.rival).nombre}${motivo ? ': ' + motivo : ''}.`, motivo ? 'bad' : 'info');
 }
 
+// Rompe todos los pactos con un rival (por rencor); devuelve cuántos
+export function quitarPactosCon(g, rid, motivo) { const l = g.alianzas.pactos.filter(p => p.rival === rid); for (const p of l) terminar(g, p, motivo); return l.length; }
+
 // Turno diario: vencen, la relación se aquieta y los aliados pueden traicionarte si crecés demasiado
 export function tick(g, rnd = Math.random) {
   for (const p of [...g.alianzas.pactos]) {

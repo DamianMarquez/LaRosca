@@ -272,7 +272,8 @@
         "bonus": 12,
         "expo": 10
       },
-      "delegable": true
+      "delegable": true,
+      "minDia": 10
     },
     {
       "id": "reunion",
@@ -296,7 +297,8 @@
         "bonus": 10,
         "expo": 8
       },
-      "delegable": true
+      "delegable": true,
+      "minDia": 20
     },
     {
       "id": "colecta",
