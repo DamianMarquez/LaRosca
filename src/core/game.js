@@ -14,6 +14,7 @@ import * as organizacion from './organizacion.js';
 import * as calendario from './calendario.js';
 import * as ofensivas from './ofensivas.js';
 import * as mesa from './mesa.js';
+import * as movilidad from './movilidad.js';
 import * as revelado from './revelado.js';
 import { Clock } from './clock.js';
 import { SCHEMA } from './save.js';
@@ -51,6 +52,8 @@ export class Game {
     this.org = organizacion.iniciar(this, partido);                // modo Fundar: origen, estado legal, comités y notoriedad (null si te sumaste a un partido)
     if (this.org) this.elecciones.cargos.push(...organizacion.cargosIniciales(this, Clock.dayOf(2029, 12, 10)));
     this.jobs = [];       // {mission, zone, start, end, pago, modo}
+    this.movilidad = movilidad.iniciar(this);                      // dónde estás, cómo viajás y qué mejoras de transporte tenés
+    this._acc = 0;                                                  // fracción del día en curso (la pone el reloj; ubica los viajes en el tiempo)
     this.log = [];        // {day, text, kind}
     this.day = 0;
     this.listeners = [];
@@ -76,7 +79,7 @@ export class Game {
   get slots() { return this.cfg.personalSlots[this.player.rank]; }
   get equipo() { return this.cfg.equipoSlots[this.player.rank] + personaje.equipoExtra(this); }
   usados(modo) { return this.jobs.filter(j => (j.modo ?? 'personal') === modo).length; }
-  get freeSlots() { return this.slots - this.usados('personal') - (this.jugador.descanso ? 1 : 0) - (this.org?.medios ? 1 : 0); }   // descansar o salir en los medios también ocupa tu acción
+  get freeSlots() { return this.slots - this.usados('personal') - (this.jugador.descanso ? 1 : 0) - (this.org?.medios ? 1 : 0) - (this.movilidad?.viaje ? 1 : 0); }   // descansar, salir en los medios o ir de viaje también ocupa tu acción
   get freeEquipo() { return this.equipo - this.usados('delegada'); }
   get modo() { return this.partido.modo; }
   get partidoBase() { return this.partido.partidoBase ?? null; }
@@ -233,6 +236,7 @@ export class Game {
     if (this.pending) return 'Resolvé el evento pendiente';
     if (modo !== 'delegada' && this.jugador.descanso) return 'Estás descansando';
     if (modo !== 'delegada' && this.org?.medios) return 'Estás en una actividad mediática';
+    if (modo !== 'delegada' && this.movilidad?.viaje) return 'Estás viajando';
     if (this.player.rank < m.minRank) return 'Requiere rango: ' + this.rangos[m.minRank];
     if (this.guia?.progresivo && this.day < (m.minDia ?? 0)) return `Disponible desde el día ${m.minDia}`;
     if (modo === 'delegada') {
@@ -259,6 +263,12 @@ export class Game {
       this.exposure = clamp(this.exposure + Math.round(m.negro.expo * this.modsPrincipios(m).expoMult), 0, 100);
       linea.alUsarNegro(this);
     } else this.player.money -= m.costo;
+    const plan = modo === 'delegada' ? null : movilidad.planear(this, zoneId, extra?.medio, m);   // el equipo no viaja; vos sí
+    if (plan) {                                                      // primero viajás; la acción arranca al llegar
+      movilidad.salir(this, plan, { mision: missionId, pago, ...(extra?.rival ? { rival: extra.rival } : {}) });
+      return true;
+    }
+    if (modo !== 'delegada') this.movilidad.ubicacion = zoneId;
     this.jobs.push({ mission: missionId, zone: zoneId, start: this.day, end: this.day + this.dias(m), pago, modo, ...(extra?.rival ? { rival: extra.rival } : {}) });
     this.note(`${modo === 'delegada' ? 'Delegaste' : 'Empezaste'} «${m.nombre}» en ${this.zonas[zoneId].nombre}${pago === 'negro' ? ' con dinero negro' : ''}.`);
     return true;
@@ -267,8 +277,12 @@ export class Game {
   // Avanza un día simulado
   advanceDay() {
     this.day++;
-    this._ocupadoHoy = this.jobs.some(j => (j.modo ?? 'personal') === 'personal') || !!this.org?.medios;   // el día cuenta como trabajado si empezó con una acción en curso
-    for (const j of this.jobs.filter(j => j.end <= this.day)) this.resolve(j);
+    this._acc = 0;
+    movilidad.tick(this, this.day);                                // si llegaste a destino, arranca la acción que esperaba
+    this._ocupadoHoy = this.jobs.some(j => (j.modo ?? 'personal') === 'personal') || !!this.org?.medios || !!this.movilidad?.viaje;   // el día cuenta como trabajado si empezó con una acción en curso
+    const terminadas = this.jobs.filter(j => j.end <= this.day);
+    for (const j of terminadas) this.resolve(j);
+    if (terminadas.some(j => (j.modo ?? 'personal') === 'personal')) movilidad.volver(this);   // terminó tu acción: volvés a casa
     this.jobs = this.jobs.filter(j => j.end > this.day);
     // Con el tiempo, la confianza se enfría lentamente hacia 20 si no hay actividad
     for (const z of Object.values(this.zonas)) z.trust += (20 - z.trust) * 0.002;
@@ -295,6 +309,17 @@ export class Game {
     }
   }
 
+  // Movilidad: avance del viaje con la fracción de día del reloj, cancelar, comprar mejoras y elegir medio preferido
+  viajeTick(acc) { this._acc = acc; return movilidad.tick(this, this.day + acc); }
+  posicionJugador(acc = this._acc) { return movilidad.posicion(this, this.day + acc); }
+  opcionesViaje(zoneId) { return movilidad.opciones(this, zoneId); }
+  get medios() { return movilidad.medios(this); }
+  get viajando() { return !!this.movilidad.viaje; }
+  mudarse(zoneId) { return movilidad.mudarse(this, zoneId); }
+  motivoMudanza(zoneId) { return movilidad.motivoMudanza(this, zoneId); }
+  cancelarViaje() { return movilidad.cancelar(this); }
+  comprarMovilidad(id) { return movilidad.comprar(this, id); }
+  elegirMedio(id) { movilidad.elegirPreferido(this, id); }
   // Aceptar o rechazar la directiva que baja el partido / tu líder
   responderDirectiva(aceptar) { return linea.responder(this, aceptar); }
 
@@ -395,7 +420,7 @@ export class Game {
     return {
       schemaVersion: SCHEMA, prov: this.prov, partido: this.partido, day: this.day, exposure: this.exposure, ultimoEvento: this.ultimoEvento,
       player: this.player, jobs: this.jobs, log: this.log, pending: this.pending?.id ?? null,
-      bots: this.bots, rencores: this.rencores, historialRivales: this.historialRivales, linea: this.linea, economia: this.economia, favores: this.favores, jugador: this.jugador, guia: this.guia, elecciones: this.elecciones, org: this.org ?? undefined, plantel: this.plantel, rivalesPlantel: this.rivalesPlantel, alianzas: this.alianzas,
+      bots: this.bots, rencores: this.rencores, historialRivales: this.historialRivales, linea: this.linea, economia: this.economia, favores: this.favores, jugador: this.jugador, movilidad: this.movilidad, guia: this.guia, elecciones: this.elecciones, org: this.org ?? undefined, plantel: this.plantel, rivalesPlantel: this.rivalesPlantel, alianzas: this.alianzas,
       zonas: Object.fromEntries(Object.entries(this.zonas).map(([id, z]) => [id, { control: +z.control.toFixed(5), trust: +z.trust.toFixed(3), efectos: z.efectos, rivalPres: z.rivalPres }])),
     };
   }
@@ -433,6 +458,7 @@ export class Game {
     g.org = organizacion.sanear(g, d.org);
     g.guia = revelado.sanear(g, d.guia);
     g.jugador = personaje.sanear(g, d.jugador, d.partido);
+    g.movilidad = movilidad.sanear(g, d.movilidad);
     return g;
   }
 }

@@ -41,6 +41,7 @@ export class GameMap {
     this.markLayer = document.createElementNS(NS, 'g');   // marcas de acciones rivales
     g.appendChild(this.markLayer);
     this.marks = new Map();
+    this.viajero = null;
     this.apply();
     this.bind();
   }
@@ -89,6 +90,37 @@ export class GameMap {
       n.t.setAttribute('fill', it.planeada ? it.color : '#10131a');
       n.t.textContent = it.inicial ?? '';
     }
+  }
+
+  // El jugador sobre el mapa: tu casa, tu posición y, si viajás, la ruta con rastro, el destino y una etiqueta. pos = salida de movilidad.posicion; etiqueta = texto sobre el personaje
+  setViajero(pos, etiqueta = '') {
+    if (!pos) { this.viajero?.g.remove(); this.viajero = null; return; }
+    const mk = (tag, cls) => { const e = document.createElementNS(NS, tag); e.setAttribute('class', cls); return e; };
+    if (!this.viajero) {
+      const g = mk('g', 'viajero'); g.setAttribute('pointer-events', 'none');
+      const o = { g, ruta: mk('line', 'v-ruta'), rastro: mk('line', 'v-rastro'), destino: mk('circle', 'v-destino'), casaD: mk('circle', 'v-casa-disco'), casaI: mk('text', 'v-casa-ico'), casaT: mk('text', 'v-casa-txt'), halo: mk('circle', 'v-halo'), disco: mk('circle', 'v-disco'), ico: mk('text', 'v-ico'), eti: mk('text', 'v-eti') };
+      for (const k of ['casaI', 'casaT', 'ico', 'eti']) o[k].setAttribute('text-anchor', 'middle');
+      g.append(o.ruta, o.rastro, o.destino, o.casaD, o.casaI, o.casaT, o.halo, o.disco, o.ico, o.eti); this.markLayer.after(g); this.viajero = o;
+    }
+    const u = this.vb[2] / 90, v = this.viajero, y = pos.y - u * 1.2, f = n => (+n).toFixed(2);
+    if (pos.casa) {                                                      // 🏠 casa: siempre visible
+      v.casaD.setAttribute('cx', pos.casa.x); v.casaD.setAttribute('cy', pos.casa.y - u * 1.2); v.casaD.setAttribute('r', f(u * 2.1)); v.casaD.setAttribute('stroke-width', f(u * 0.35));
+      v.casaI.setAttribute('x', pos.casa.x); v.casaI.setAttribute('y', f(pos.casa.y - u * 0.4)); v.casaI.style.fontSize = f(u * 2.4) + 'px'; v.casaI.textContent = '🏠';
+      v.casaT.setAttribute('x', pos.casa.x); v.casaT.setAttribute('y', f(pos.casa.y + u * 3.4)); v.casaT.style.fontSize = f(u * 1.8) + 'px'; v.casaT.textContent = 'Casa';
+    }
+    const viaj = !!pos.viajando;
+    for (const k of ['ruta', 'rastro', 'destino']) v[k].style.display = viaj ? '' : 'none';
+    v.halo.style.display = viaj ? '' : 'none'; v.eti.style.display = viaj && etiqueta ? '' : 'none';
+    v.g.classList.toggle('vuelta', viaj && pos.etapa === 'vuelta');
+    if (viaj) {
+      for (const [k, x1, y1, x2, y2] of [['ruta', pos.x0, pos.y0, pos.x1, pos.y1], ['rastro', pos.x0, pos.y0, pos.x, pos.y]]) { v[k].setAttribute('x1', f(x1)); v[k].setAttribute('y1', f(y1)); v[k].setAttribute('x2', f(x2)); v[k].setAttribute('y2', f(y2)); }
+      v.ruta.setAttribute('stroke-width', f(u * 0.45)); v.ruta.setAttribute('stroke-dasharray', `${f(u * 1.2)} ${f(u * 1)}`); v.rastro.setAttribute('stroke-width', f(u * 0.9));
+      v.destino.setAttribute('cx', pos.x1); v.destino.setAttribute('cy', pos.y1); v.destino.setAttribute('r', f(u * 3)); v.destino.setAttribute('stroke-width', f(u * 0.6));
+      v.halo.setAttribute('cx', pos.x); v.halo.setAttribute('cy', y); v.halo.setAttribute('r', f(u * 4.6));
+      v.eti.setAttribute('x', pos.x); v.eti.setAttribute('y', f(y - u * 5.4)); v.eti.style.fontSize = f(u * 2) + 'px'; v.eti.setAttribute('stroke-width', f(u * 0.5)); v.eti.textContent = etiqueta;
+    }
+    v.disco.setAttribute('cx', pos.x); v.disco.setAttribute('cy', y); v.disco.setAttribute('r', f(u * (viaj ? 3.2 : 2.4))); v.disco.setAttribute('stroke-width', f(u * 0.55));
+    v.ico.setAttribute('x', pos.x); v.ico.setAttribute('y', f(y + u * (viaj ? 1.2 : 0.9))); v.ico.style.fontSize = f(u * (viaj ? 3.8 : 2.8)) + 'px'; v.ico.textContent = pos.icono;
   }
 
   setBusy(ids) {

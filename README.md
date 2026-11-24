@@ -81,3 +81,14 @@ Las capas se abren escalonadas (primera misión → Yo ~día 7 → Rivales ~día
 - **Calendario anual** (`data/calendario.json`, `src/core/calendario.js`, vista Calendario): elecciones (derivadas de `data/elecciones.json`), fechas institucionales, feriados con oportunidad de acto (ventanas con bono a ciertas misiones) y hitos del partido. Se abre ~día 40 en modo progresivo.
 - **Ofensivas** (`data/ofensivas.json`, `src/core/ofensivas.js`): «Atacar…» desde la ficha del rival o el barrio. Sabotaje, desprestigio (con rebote), robar un cuadro y medios/debates. Cada golpe sube el **rencor** del rival, que lo vuelve más agresivo y puede romper pactos. Se abre ~día 60.
 - **Mesa de armado** (`data/elecciones.json` → `mesa`, `src/core/mesa.js`, Elecciones): ofertas de frente, cupo o apoyo con respuesta en días, contraofertas, acuerdos que pueden romperse hasta el cierre de listas y alianzas entre los demás partidos. Reemplaza la tirada única de frentes y cupos.
+
+## Movilidad
+
+Moverte entre barrios lleva tiempo y un pasaje simbólico. Tenés una **casa** (arranca en el Centro; podés mudarte desde la ficha del barrio donde estés). Al lanzar una acción **personal** en otra zona, tu figura sale de donde estás, recorre el mapa (marcador con el ícono del medio, rastro, destino y una etiqueta con el tiempo restante y la hora de llegada) y la acción **arranca al llegar**. Cuando termina, **volvés a casa automáticamente** y esa vuelta ocupa tu acción hasta que llegues. El equipo (acciones delegadas) no viaja. La ida se puede cancelar; la vuelta no.
+
+- **Medios** (`data/movilidad.json`): a pie, bici, colectivo, remis, moto y auto propio, con velocidad, espera, desgaste y tarifas bajas con tope por tramo. El viaje (ida + vuelta) cuesta siempre mucho menos que la acción: además del tope, nunca supera el 40% de lo que cuesta la acción. Si no elegís medio, se usa el más rápido que no salga caro; podés fijar uno preferido en «Yo → Movilidad» o elegir en cada zona.
+- **Rama de mejoras:** bici → abono → app de remises → carnet → moto → auto → chofer de campaña → flota partidaria.
+- **Ritmo:** `escalaViaje` (×8) dilata las horas reales para que el viaje se vea en pantalla; `rodeo` alarga las distancias rectas. Los kilómetros salen del área real de los barrios.
+- **Día y noche:** en el menú Partida, «Simular día y noche: no» deja el mapa siempre iluminado (las horas siguen pasando).
+- **Hacia lo nacional:** cada medio declara su `alcance`; micro, tren y avión ya están en los datos, bloqueados hasta que exista el mapa interurbano.
+- En modo progresivo, el panel de mejoras se abre hacia el día 30 (`yo.movilidad`).

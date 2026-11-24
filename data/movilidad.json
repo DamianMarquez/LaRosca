@@ -1,0 +1,30 @@
+{
+  "nota": "Movilidad: viajar entre zonas toma tiempo y plata. escalaViaje dilata las horas reales de un viaje para que se vea en pantalla (1 día de juego = 2 s a x1). rodeo: los caminos no son rectos. kmh/costoKm/fatigaKm por medio; espera: horas fijas de espera. alcance: 'urbano' | 'provincial' | 'nacional' (los no urbanos quedan bloqueados hasta que exista el mapa interurbano). Las mejoras dan un medio ('da') o multiplican ('mult': vel, costo, fatiga, espera) sobre un medio o sobre '*'. costoMax: tope por tramo; el viaje (ida+vuelta) además nunca supera topeRelativo × el costo de la acción que lo motiva. mudanza: costo y días de enfriamiento para cambiar de casa.",
+  "escalaViaje": 8,
+  "rodeo": 1.3,
+  "minDias": 0.02,
+  "fatigaMax": 6,
+  "topeRelativo": 0.4,
+  "mudanza": {"costo": 300, "dias": 60},
+  "medios": [
+    {"id": "pie", "nombre": "A pie", "icono": "🚶", "kmh": 4.5, "costoFijo": 0, "costoKm": 0, "fatigaKm": 0.12, "espera": 0, "alcance": "urbano", "costoMax": 0},
+    {"id": "bici", "nombre": "Bici", "icono": "🚲", "kmh": 14, "costoFijo": 0, "costoKm": 0, "fatigaKm": 0.08, "espera": 0.05, "alcance": "urbano", "costoMax": 0},
+    {"id": "colectivo", "nombre": "Colectivo", "icono": "🚌", "kmh": 17, "costoFijo": 8, "costoKm": 0, "fatigaKm": 0.03, "espera": 0.3, "alcance": "urbano", "costoMax": 8},
+    {"id": "remis", "nombre": "Remis", "icono": "🚕", "kmh": 30, "costoFijo": 20, "costoKm": 6, "fatigaKm": 0.005, "espera": 0.15, "alcance": "urbano", "costoMax": 45},
+    {"id": "moto", "nombre": "Moto", "icono": "🏍️", "kmh": 38, "costoFijo": 0, "costoKm": 1.2, "fatigaKm": 0.03, "espera": 0.03, "alcance": "urbano", "costoMax": 25},
+    {"id": "auto", "nombre": "Auto propio", "icono": "🚗", "kmh": 32, "costoFijo": 0, "costoKm": 2, "fatigaKm": 0.02, "espera": 0.05, "alcance": "urbano", "costoMax": 40},
+    {"id": "micro", "nombre": "Micro interurbano", "icono": "🚍", "kmh": 70, "costoFijo": 40, "costoKm": 0.5, "fatigaKm": 0.01, "espera": 0.8, "alcance": "provincial", "disponible": false, "costoMax": 120},
+    {"id": "tren", "nombre": "Tren", "icono": "🚆", "kmh": 90, "costoFijo": 30, "costoKm": 0.3, "fatigaKm": 0.01, "espera": 0.6, "alcance": "provincial", "disponible": false, "costoMax": 100},
+    {"id": "avion", "nombre": "Avión", "icono": "✈️", "kmh": 700, "costoFijo": 400, "costoKm": 0.6, "fatigaKm": 0.002, "espera": 2.5, "alcance": "nacional", "disponible": false, "costoMax": 2000}
+  ],
+  "mejoras": [
+    {"id": "bici", "nombre": "Comprar una bici", "texto": "Para barrios cercanos: sin costo por viaje y sin esperar el colectivo.", "costo": 2500, "da": "bici", "minDia": 0},
+    {"id": "abono", "nombre": "Abono de transporte", "texto": "El colectivo te sale 40% menos.", "costo": 2000, "mult": {"colectivo": {"costo": 0.6}}, "minDia": 10},
+    {"id": "app_remis", "nombre": "App de remises", "texto": "Los remises llegan más rápido y sale más barato el kilómetro.", "costo": 2500, "mult": {"remis": {"espera": 0.4, "costo": 0.85}}, "minDia": 15},
+    {"id": "carnet", "nombre": "Carnet de conducir", "texto": "Habilita la moto y el auto.", "costo": 4000, "minDia": 20},
+    {"id": "moto", "nombre": "Comprar una moto", "texto": "Rápida y barata para el barrio. Pide carnet.", "costo": 20000, "da": "moto", "requiere": ["carnet"], "minDia": 30},
+    {"id": "auto", "nombre": "Comprar un auto usado", "texto": "Cómodo y rápido, pero con nafta y cochera. Pide carnet.", "costo": 90000, "da": "auto", "requiere": ["carnet"], "minDia": 45},
+    {"id": "chofer", "nombre": "Chofer de campaña", "texto": "Viajás descansado: casi no hay desgaste en el auto y ganás velocidad.", "costo": 70000, "mult": {"auto": {"fatiga": 0.1, "vel": 1.1}, "remis": {"fatiga": 0.5}}, "requiere": ["auto"], "minRank": 3, "minDia": 90},
+    {"id": "flota", "nombre": "Flota partidaria", "texto": "Autos del partido: todos los viajes salen 30% más baratos y 15% más rápidos.", "costo": 250000, "mult": {"*": {"costo": 0.7, "vel": 1.15}}, "requiere": ["chofer"], "minRank": 5, "minDia": 180}
+  ]
+}

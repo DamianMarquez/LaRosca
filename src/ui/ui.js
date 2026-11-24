@@ -21,6 +21,7 @@ const approx5 = v => '~' + Math.round(v * 20) * 5 + '%';          // estimacione
 import { restante } from '../core/hora.js';
 import * as of from '../core/ofensivas.js';
 import { renderCalendario } from './calendario.js';
+import { renderViajeZona, renderViajeActivo, renderMovilidad } from './movilidad.js';
 const jobFrac = (j, day, acc = 0) => Math.min(1, Math.max(0, (day - j.start + acc) / (j.end - j.start)));
 
 export const TABS = [['zona', 'Zona'], ['rivales', 'Rivales'], ['datos', 'Datos']];       // panel lateral (depende del mapa)
@@ -152,12 +153,13 @@ export function renderAcciones(g, day) {
       <div class="job-sub">${esc(g.zonas[j.zone].nombre)} · termina en <span data-job-eta="${i}">${restante(Math.max(0, j.end - day))}</span></div>
       <div class="bar big"><i data-job-bar="${i}" style="width:${(f * 100).toFixed(1)}%"></i><span data-job-pct="${i}">${Math.round(f * 100)}%</span></div></div>`;
   }).join('');
+  const viaje = renderViajeActivo(g, day);
   const desc = g.jugador.descanso, free = g.freeSlots > 0;
   const descTxt = desc ? `<div class="job"><div class="job-head"><b>Descansando</b><span class="badge">${ico('persona')}Vos</span></div><div class="job-sub">Recuperás fuerzas · terminás en ${Math.max(0, desc.hasta - day)} d</div></div>` : '';
   const equipo = !ve(g, 'hud.equipo') ? '' : g.equipo > 0 ? `<span tabindex="0" data-tip="equipo">${ico('equipo')}Equipo ${g.freeEquipo}/${g.equipo}</span>` : `<span class="detalle" tabindex="0" data-tip="equipo">${ico('equipo')}Equipo desde ${esc(g.rangos[g.cfg.delegacion.rangoMin])}</span>`;
   return `<section class="actions"><div class="actions-head"><h3>En curso</h3>
-      <span class="slots"><span class="${free ? 'free' : 'busy-txt'}" tabindex="0" data-tip="accion">${ico('persona')}${desc ? 'Descansando' : free ? 'Libre' : 'Ocupado'}</span> ${equipo}</span></div>
-    ${descTxt}${jobs || (desc ? '' : '<p class="muted">Sin acciones en curso. Sos una sola persona: una acción personal a la vez.</p>')}</section>`;
+      <span class="slots"><span class="${free ? 'free' : 'busy-txt'}" tabindex="0" data-tip="accion">${ico('persona')}${desc ? 'Descansando' : viaje ? 'Viajando' : free ? 'Libre' : 'Ocupado'}</span> ${equipo}</span></div>
+    ${viaje}${descTxt}${jobs || (desc || viaje ? '' : '<p class="muted">Sin acciones en curso. Sos una sola persona: una acción personal a la vez.</p>')}</section>`;
 }
 
 // ---------- Pestañas ----------
@@ -179,7 +181,7 @@ export function renderVistas(g, vista) {
 }
 
 export function renderVista(g, vista, day) {
-  const cuerpo = vista === 'yo' ? `<div class="yo-vista">${renderYo(g)}</div>` : vista === 'elecciones' ? renderElecciones(g) : vista === 'calendario' ? renderCalendario(g, uiState) : vista === 'organizacion' ? renderOrganizacion(g) : renderPartidoVista(g);
+  const cuerpo = vista === 'yo' ? `<div class="yo-vista">${renderYo(g)}${ve(g, 'yo.movilidad') ? renderMovilidad(g) : ''}</div>` : vista === 'elecciones' ? renderElecciones(g) : vista === 'calendario' ? renderCalendario(g, uiState) : vista === 'organizacion' ? renderOrganizacion(g) : renderPartidoVista(g);
   return `<div class="vista-in"><div class="vista-top">${renderAcciones(g, day)}</div>${cuerpo}</div>`;
 }
 
@@ -297,7 +299,7 @@ export function renderInforme(lista) {
   const items = lista.map(i => `<div class="inf ${i.ok === null ? 'neutro' : i.ok ? 'ok' : 'mal'}"><div class="inf-h"><b>${i.ok === null ? '▸' : i.ok ? '✔' : '✖'} ${esc(i.nombre)}${i.modo === 'delegada' ? ' (equipo)' : ''}</b>${i.zonaNombre ? `<small class="muted">${esc(i.zonaNombre)}</small>` : ''}</div>
     <p>${esc(i.texto)}</p>${i.cambios?.length ? `<div class="cambios">${i.cambios.map(fmtCambio).join('')}</div>` : ''}${i.zona ? `<button data-informe-zona="${esc(i.zona)}">Ver zona</button>` : ''}${i.donde ? `<button class="primary" data-informe-ir="${esc(JSON.stringify(i.donde))}">Mostrame</button>` : ''}</div>`).join('');
   return `<aside class="informe" role="status" aria-live="polite"><h3>${lista.every(i => i.tipo === 'desbloqueo') ? (lista.length > 1 ? `Se abrieron ${lista.length} cosas nuevas` : 'Se abrió algo nuevo') : lista.some(i => i.tipo === 'desbloqueo') ? 'Novedades' : lista.every(i => i.tipo === 'eleccion') ? (lista.length > 1 ? `${lista.length} novedades electorales` : 'Novedad electoral') : lista.length > 1 ? `Terminaron ${lista.length} acciones` : 'Terminó una acción'}</h3>${items}
-    <div class="btns"><button class="primary" data-informe-continuar>Continuar</button></div><small class="muted">Juego en pausa · Espacio también continúa</small></aside>`;
+    <div class="btns"><button class="primary" data-informe-continuar>Continuar</button></div><small class="muted">Juego en pausa · Espacio o Enter cierran el aviso; después reanudás vos</small></aside>`;
 }
 
 // Franja "Ahora": lo más importante del momento. Rápido muestra solo la primera; Detallado, todas.
@@ -381,6 +383,7 @@ function renderZona(g, zoneId) {
   const proxima = ms.filter(m => lejos(m) || (m.minRank > g.player.rank)).sort((a, b) => a.minRank - b.minRank)[0];
   const cards = (lista, rec) => lista.map(m => misionCard(g, m, z, zoneId, m.id === rec)).join('');
   return `<h2>${esc(z.nombre)}</h2>
+    ${renderViajeZona(g, zoneId, ve(g, 'yo.movilidad'))}
     <p class="z-resumen"><span tabindex="0" data-tip="control">Control <b>${pct(z.control)}</b></span> · <span tabindex="0" data-tip="confianza">Confianza <b>${Math.round(z.trust)}</b></span> · ${z.pop.toLocaleString('es-AR')} hab.${z.popFuente ? '' : ' (est.)'}<span class="detalle muted"> · ${z.densidad ? z.densidad.toLocaleString('es-AR') + ' hab/km²' : ''}${g.electores(z) !== null ? ' · ~' + g.electores(z).toLocaleString('es-AR') + ' electores' : ''}</span></p>
     ${seccion('terr', 'Misiones', '', cards(terr, recomendada(g, terr, z, zoneId)), terr.length)}
     ${ve(g, 'zona.recaudacion') ? seccion('recaud', 'Recaudación', 'Plata para sostener el partido. Hacerlo ocupa tu única acción personal.', cards(legal, recomendada(g, legal, z, zoneId)), legal.length) : ''}

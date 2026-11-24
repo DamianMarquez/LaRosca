@@ -18,14 +18,16 @@ const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const clock = new Clock();
 let game = null, map = null, selected = null, tab = 'zona', vista = 'mapa', tooltips = null;
 const PAUSA_KEY = 'larosca.pausar';
-let pausarAlTerminar = true, velPrevia = 1;
+let pausarAlTerminar = true;
+const NOCHE_KEY = 'larosca.noche';
+let simularNoche = (() => { try { return localStorage.getItem(NOCHE_KEY) !== '0'; } catch { return true; } })();   // preferencia del navegador: 'no' deja el mapa siempre de día
 try { pausarAlTerminar = localStorage.getItem(PAUSA_KEY) !== '0'; } catch {}
 let CFG = null, PROV = null;
 
 async function boot() {
   const load = u => fetch(u).then(r => r.json()).catch(() => null);
   [PROV, CFG] = await Promise.all([load('data/provincias.json'), load('data/game.json')]);
-  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida'], ['organizacion', 'organizacion'], ['origenes', 'origenes'], ['elecciones', 'elecciones'], ['revelado', 'revelado'], ['calendario', 'calendario'], ['ofensivas', 'ofensivas'], ['ayuda', 'ayuda']]) CFG[k] = await load(`data/${f}.json`);
+  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida'], ['organizacion', 'organizacion'], ['origenes', 'origenes'], ['elecciones', 'elecciones'], ['revelado', 'revelado'], ['calendario', 'calendario'], ['ofensivas', 'ofensivas'], ['movilidad', 'movilidad'], ['ayuda', 'ayuda']]) CFG[k] = await load(`data/${f}.json`);
   CFG.eventos.eventos.push(...(CFG.vida?.eventos ?? []));        // los eventos de vida los sortea el personaje, no el azar general
   CFG.glosario = await load('data/glosario.json');
   tooltips = initTooltips(CFG.glosario ?? {});
@@ -41,6 +43,7 @@ async function boot() {
   (function loop(now) {
     if (!game?.pending) clock.tick((now - last) / 1000);   // el tiempo espera la decisión del jugador
     last = now;
+    if (game && game.viajeTick(clock.acc)) refreshAll();          // llegaste: arranca la acción que esperaba
     if (game) refreshLive();
     requestAnimationFrame(loop);
   })(last);
@@ -199,7 +202,6 @@ async function startGame(provId, provName, saved = null, partido = null) {
     if (game.log[0]?.kind === 'promo' || game.pending) setSpeed(0);   // pausa ante hitos y eventos
     const inf = game.informes?.splice(0) ?? [];
     if (inf.length && pausarAlTerminar) {                                 // terminó algo: pausa y muestra el resultado
-      if (clock.speed) velPrevia = clock.speed;
       setSpeed(0);
       uiState.informe = [...uiState.informe, ...inf].slice(-6);
     }
@@ -208,7 +210,7 @@ async function startGame(provId, provName, saved = null, partido = null) {
   const old = $('#map'), fresh = old.cloneNode(false);
   old.replaceWith(fresh);
   map = new GameMap(fresh, game.city, { onHover: hoverMapa, onSelect(id) { selected = id; if (id) tab = 'zona'; map.select(id); refreshAll(); } });
-  selected = null; tab = 'zona'; vista = 'mapa'; uiState.informe = []; uiState.ficha = null; velPrevia = 1;
+  selected = null; tab = 'zona'; vista = 'mapa'; uiState.informe = []; uiState.ficha = null;
   $('#vistas').hidden = !game.ve('ui.vistas');
   document.body.classList.add('playing');
   refreshAll();
@@ -301,6 +303,13 @@ function wirePanel() {
     if (fv && !fv.disabled) { if (game.pagarFavor(fv.dataset.favor, fv.dataset.con)) refreshAll(); return; }
     const ln = e.target.closest('[data-linea]');
     if (ln) { if (game.responderDirectiva(ln.dataset.linea === 'aceptar')) refreshAll(); return; }
+    const mm = e.target.closest('[data-mov-medio]');
+    if (mm && !mm.disabled) { game.elegirMedio(mm.dataset.movMedio === game.movilidad.preferido ? null : mm.dataset.movMedio); refreshAll(); return; }
+    const mu = e.target.closest('[data-mov-mudarse]');
+    if (mu && !mu.disabled) { const err = game.mudarse(mu.dataset.movMudarse); if (err) toast(err); refreshAll(); return; }
+    const mb = e.target.closest('[data-mov-comprar]');
+    if (mb && !mb.disabled) { const err = game.comprarMovilidad(mb.dataset.movComprar); if (err) toast(err); refreshAll(); return; }
+    if (e.target.closest('[data-mov-cancelar]')) { const err = game.cancelarViaje(); if (err) toast(err); refreshAll(); return; }
     const b = e.target.closest('[data-start]');
     if (b && !b.disabled && game.start(b.dataset.start, selected, b.dataset.pago ?? 'blanco', b.dataset.modo ?? 'personal')) refreshAll();
   };
@@ -341,8 +350,7 @@ function irA(d) {
 }
 function continuarInforme() {
   if (!uiState.informe.length) return;
-  uiState.informe = [];
-  setSpeed(velPrevia || 1);
+  uiState.informe = [];     // el juego sigue en pausa: reanuda el jugador
   refreshAll();
 }
 
@@ -404,13 +412,20 @@ function showEvent() {
 // Actualización fluida del avance entre días (panel y mapa)
 // Hora del día: texto, arco de sol y oscuridad del mapa (sin re-render)
 function pintarHora(f = clock.acc) {
-  const H = horaDe(f), n = noche(f), box = $('#hora');
+  const H = horaDe(f), n = simularNoche ? noche(f) : 0, box = $('#hora');
   $('#hora-txt').textContent = H.texto; $('#franja').textContent = H.franja;
   const ang = Math.PI * Math.min(1, Math.max(0, (H.h + H.m / 60 - 5) / 16)), a = $('#astro');   // arco de 5 h a 21 h; de noche queda abajo a la izquierda
   const visible = H.h >= 5 && H.h < 21;
   a.setAttribute('cx', visible ? (22 - 19 * Math.cos(ang)).toFixed(1) : 3); a.setAttribute('cy', visible ? (22 - 19 * Math.sin(ang)).toFixed(1) : 22);
-  box.classList.toggle('noche', !visible || n > 0.6);
-  const luz = $('#luz'); luz.style.setProperty('--noche', n.toFixed(2)); luz.classList.toggle('alba', H.h >= 5 && H.h < 8 || H.h >= 18 && H.h < 21);
+  box.classList.toggle('noche', simularNoche && (!visible || n > 0.6));
+  const luz = $('#luz'); luz.style.setProperty('--noche', n.toFixed(2)); luz.classList.toggle('alba', simularNoche && (H.h >= 5 && H.h < 8 || H.h >= 18 && H.h < 21));
+}
+
+// Texto sobre el personaje mientras viaja: hacia dónde, cuánto falta y a qué hora llega
+function etiquetaViaje(p) {
+  if (!p?.viajando) return '';
+  const llega = horaDe(p.llega - Math.floor(p.llega)).texto;
+  return `${p.etapa === 'vuelta' ? 'Volviendo a casa' : 'Yendo a ' + p.destino} · ${restante(p.restante)} · llega ${llega}`;
 }
 
 function refreshLive() {
@@ -423,6 +438,8 @@ function refreshLive() {
     document.querySelectorAll(`[data-job-pct="${i}"]`).forEach(txt => { txt.textContent = Math.round(frac * 100) + '%'; });
   });
   map.setProgress(progresoMapa(game, clock.day, f));
+  map.setViajero(game.posicionJugador(f), etiquetaViaje(game.posicionJugador(f)));
+  document.querySelectorAll('[data-viaje-bar]').forEach(bar => { const p = game.posicionJugador(f); if (p?.viajando) { bar.style.width = (p.frac * 100).toFixed(1) + '%'; const t = document.querySelector('[data-viaje-eta]'); if (t) t.textContent = restante(p.restante); } });
   map.setRivalMarks(game.ve('map.rivales') ? marcasRivales(game) : []);
 }
 
@@ -458,7 +475,7 @@ function hoverMapa(id, x, y) {
 function mostrarAyuda(sec = 'como') {
   const root = $('#ayuda-root'), glos = CFG.glosario ?? {};
   if (game && clock.speed) setSpeed(0);                       // mientras leés, el tiempo no corre
-  const atajos = [['Espacio', 'Pausa / seguir'], ['0 · 1 · 2 · 3', 'Pausa, x1, x2, x4'], ['Z · R · D', 'Panel del mapa: Zona, Rivales, Datos'], ['P · O · E · Y', 'Abrir o cerrar Partido, Organización, Elecciones o Yo'], ['Espacio / Enter', 'Continuar cuando termina una acción'], ['M', 'Cambiar Rápido / Detallado'], ['?', 'Esta ayuda'], ['Esc', 'Cerrar']];
+  const atajos = [['Espacio', 'Pausa / seguir'], ['0 · 1 · 2 · 3', 'Pausa, x1, x2, x4'], ['+ / −', 'Subir / bajar velocidad'], ['Z · R · D', 'Panel del mapa: Zona, Rivales, Datos'], ['P · O · E · Y', 'Abrir o cerrar Partido, Organización, Elecciones o Yo'], ['Espacio / Enter', 'Cerrar el aviso (el juego sigue en pausa)'], ['M', 'Cambiar Rápido / Detallado'], ['?', 'Esta ayuda'], ['Esc', 'Cerrar']];
   const pintar = s => {
     uiState.ayudaSec = s;
     const cuerpo = root.querySelector('.ayuda-cuerpo'), top = cuerpo?.scrollTop ?? 0;
@@ -481,6 +498,9 @@ function wireUI() {
   const bpr = $('#btn-progresivo'), pintaProg = () => { if (!game) { bpr.textContent = 'Modo progresivo: sí'; return; } bpr.textContent = `Modo progresivo: ${game.guia?.progresivo ? 'sí' : 'no (se ve todo)'}`; bpr.setAttribute('aria-checked', String(!!game.guia?.progresivo)); };
   bpr.onclick = () => { if (!game) return; game.setProgresivo(!game.guia.progresivo); pintaProg(); refreshAll(); };
   $('#menu-partida').addEventListener('toggle', pintaProg);
+  const bn = $('#btn-noche'), pintaNoche = () => { bn.textContent = `Simular día y noche: ${simularNoche ? 'sí' : 'no'}`; bn.setAttribute('aria-checked', String(simularNoche)); };
+  pintaNoche();
+  bn.onclick = () => { simularNoche = !simularNoche; try { localStorage.setItem(NOCHE_KEY, simularNoche ? '1' : '0'); } catch {} pintaNoche(); if (game) pintarHora(); };
   const bp = $('#btn-pausa'), pintaPausa = () => { bp.textContent = `Pausar con avisos: ${pausarAlTerminar ? 'sí' : 'no'}`; bp.setAttribute('aria-checked', String(pausarAlTerminar)); };
   pintaPausa();
   bp.onclick = () => { pausarAlTerminar = !pausarAlTerminar; try { localStorage.setItem(PAUSA_KEY, pausarAlTerminar ? '1' : '0'); } catch {} pintaPausa(); };
@@ -502,6 +522,7 @@ function wireUI() {
     if (k === 'escape') { $('#ayuda-root').innerHTML = ''; return; }
     if ((e.code === 'Space' || k === 'enter') && uiState.informe.length && !/BUTTON|SUMMARY/.test(e.target.tagName)) { e.preventDefault(); continuarInforme(); return; }
     if (e.code === 'Space' && !/BUTTON|SUMMARY/.test(e.target.tagName)) { e.preventDefault(); setSpeed(clock.speed ? 0 : 1); return; }
+    if ((k === '+' || k === '=' || k === '-') && game) { const v = [0, 1, 2, 4], i = v.indexOf(clock.speed); setSpeed(v[Math.min(3, Math.max(0, i + (k === '-' ? -1 : 1)))]); return; }
     if ({ 0: 0, 1: 1, 2: 2, 3: 4 }[k] !== undefined && game) { setSpeed({ 0: 0, 1: 1, 2: 2, 3: 4 }[k]); return; }
     if (k === 'm') { toggleModo(); return; }
     if (k === '?') { mostrarAyuda(uiState.ayudaSec ?? 'como'); return; }
