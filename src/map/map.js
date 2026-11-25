@@ -76,7 +76,7 @@ export class GameMap {
       let n = this.marks.get(it.key);
       if (!n) {
         const g = document.createElementNS(NS, 'g'), c = document.createElementNS(NS, 'circle'), t = document.createElementNS(NS, 'text');
-        g.setAttribute('class', 'rmark'); t.setAttribute('class', 'rmark-i'); t.setAttribute('text-anchor', 'middle');
+        g.setAttribute('class', 'rmark entra'); t.setAttribute('class', 'rmark-i'); t.setAttribute('text-anchor', 'middle');
         g.append(c, t); this.markLayer.appendChild(g);
         n = { g, c, t }; this.marks.set(it.key, n);
       }
@@ -132,6 +132,15 @@ export class GameMap {
     for (const [id, el] of this.paths) {
       const v = fn(id);
       el.style.setProperty('--control', v);
+    }
+  }
+
+  // Capa «preferencia»: fn(id) → { color, alpha } | null (sin dato). El CSS mezcla el color con el fondo (capa-pref en el body).
+  paintPartido(fn) {
+    for (const [id, el] of this.paths) {
+      const x = fn(id);
+      if (x) { el.style.setProperty('--fill', x.color); el.style.setProperty('--alpha', x.alpha); }
+      else { el.style.removeProperty('--fill'); el.style.setProperty('--alpha', 0); }
     }
   }
 

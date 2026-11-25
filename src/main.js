@@ -7,6 +7,9 @@ import { fitView } from './core/city.js';
 import { GameMap } from './map/map.js';
 import { validate, validarFundacion, limpiarNombre, resumen, SAVE_KEY, MAX_BYTES } from './core/save.js';
 import { limpiarNombrePersona } from './core/personaje.js';
+import { initDetalle } from './ui/detalle.js';
+import { animarNumeros, aplicarAnimaciones, reiniciarMov, salir, esNuevo, animacionesOn, setAnimaciones } from './ui/mov.js';
+import { liderZona, leyendaPreferencia } from './core/preferencia.js';
 import { vistasDe, renderPanel, renderVistas, renderVista, renderInforme, renderStats, renderLog, renderEvento, renderFundacion, progresoMapa, marcasRivales, uiState } from './ui/ui.js';
 import { initTooltips } from './ui/tooltip.js';
 import { aplicarModo, setModo, toggleModo } from './ui/modo.js';
@@ -19,6 +22,8 @@ const clock = new Clock();
 let game = null, map = null, selected = null, tab = 'zona', vista = 'mapa', tooltips = null;
 const PAUSA_KEY = 'larosca.pausar';
 let pausarAlTerminar = true;
+const CAPA_KEY = 'larosca.capa';
+let capa = (() => { try { return localStorage.getItem(CAPA_KEY) === 'pref' ? 'pref' : 'control'; } catch { return 'control'; } })();   // capa del mapa: control o preferencia (es del visor, no de la partida)
 const NOCHE_KEY = 'larosca.noche';
 let simularNoche = (() => { try { return localStorage.getItem(NOCHE_KEY) !== '0'; } catch { return true; } })();   // preferencia del navegador: 'no' deja el mapa siempre de día
 try { pausarAlTerminar = localStorage.getItem(PAUSA_KEY) !== '0'; } catch {}
@@ -27,11 +32,13 @@ let CFG = null, PROV = null;
 async function boot() {
   const load = u => fetch(u).then(r => r.json()).catch(() => null);
   [PROV, CFG] = await Promise.all([load('data/provincias.json'), load('data/game.json')]);
-  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida'], ['organizacion', 'organizacion'], ['origenes', 'origenes'], ['elecciones', 'elecciones'], ['revelado', 'revelado'], ['calendario', 'calendario'], ['ofensivas', 'ofensivas'], ['movilidad', 'movilidad'], ['medios', 'medios'], ['ideologia', 'ideologia'], ['ayuda', 'ayuda']]) CFG[k] = await load(`data/${f}.json`);
+  for (const [k, f] of [['datos', 'provincias-datos'], ['historicos', 'resultados-historicos'], ['partidos', 'partidos'], ['eventos', 'eventos'], ['principios', 'principios'], ['rivales', 'rivales'], ['linea', 'linea'], ['economia', 'economia'], ['trasfondos', 'trasfondos'], ['plantel', 'plantel'], ['escalafon', 'escalafon'], ['pactos', 'pactos'], ['habilidades', 'habilidades'], ['vida', 'vida'], ['organizacion', 'organizacion'], ['origenes', 'origenes'], ['elecciones', 'elecciones'], ['revelado', 'revelado'], ['calendario', 'calendario'], ['ofensivas', 'ofensivas'], ['movilidad', 'movilidad'], ['medios', 'medios'], ['ideologia', 'ideologia'], ['tutorial', 'tutorial'], ['ayuda', 'ayuda']]) CFG[k] = await load(`data/${f}.json`);
   CFG.eventos.eventos.push(...(CFG.vida?.eventos ?? []));        // los eventos de vida los sortea el personaje, no el azar general
   CFG.glosario = await load('data/glosario.json');
   tooltips = initTooltips(CFG.glosario ?? {});
   aplicarModo();
+  initDetalle();
+  aplicarAnimaciones();
   setSpeed(0);
   showPicker();
   wireClock();
@@ -218,7 +225,7 @@ async function startGame(provId, provName, saved = null, partido = null) {
   const old = $('#map'), fresh = old.cloneNode(false);
   old.replaceWith(fresh);
   map = new GameMap(fresh, game.city, { onHover: hoverMapa, onSelect(id) { selected = id; if (id) tab = 'zona'; map.select(id); refreshAll(); } });
-  selected = null; tab = 'zona'; vista = 'mapa'; uiState.informe = []; uiState.ficha = null;
+  reiniciarMov(); eventoMostrado = null; infoMostrado = ''; ultimaPantalla = ''; selected = null; tab = 'zona'; vista = 'mapa'; uiState.informe = []; uiState.ficha = null;
   $('#vistas').hidden = !game.ve('ui.vistas');
   document.body.classList.add('playing');
   refreshAll();
@@ -318,6 +325,14 @@ function wirePanel() {
     const mb = e.target.closest('[data-mov-comprar]');
     if (mb && !mb.disabled) { const err = game.comprarMovilidad(mb.dataset.movComprar); if (err) toast(err); refreshAll(); return; }
     if (e.target.closest('[data-mov-cancelar]')) { const err = game.cancelarViaje(); if (err) toast(err); refreshAll(); return; }
+    const sg = e.target.closest('[data-sug]');
+    if (sg) {
+      const k = sg.dataset.sug;
+      if (k === 'mision') { selected = sg.dataset.zona; tab = 'zona'; game.start(sg.dataset.mision, sg.dataset.zona, 'blanco', 'personal', { modalidad: game.modalidad(game.mission(sg.dataset.mision))?.id }); }
+      else if (k === 'invitacion') { const err = game.aceptarInvitacion(sg.dataset.tipo); if (err) toast(err); }
+      else if (k === 'descansar') { const err = game.descansar(); if (err) toast(err); }
+      refreshAll(); return;
+    }
     const iv = e.target.closest('[data-inv]');
     if (iv) { const err = iv.dataset.inv === 'aceptar' ? game.aceptarInvitacion(iv.dataset.tipo) : game.rechazarInvitacion(iv.dataset.tipo); if (err) toast(err); refreshAll(); return; }
     const md = e.target.closest('[data-modalidad]');
@@ -390,6 +405,12 @@ function refreshAll() {
   $('#date').textContent = Clock.format(clock.day);
   pintarHora();
   map.paint(id => game.zonas[id].control);
+  const conCapas = game.ve('map.capas'), pref = conCapas && capa === 'pref';
+  document.body.classList.toggle('capa-pref', pref);
+  if (pref) map.paintPartido(id => liderZona(game, id));
+  const bc = $('#btn-capa'); bc.hidden = !conCapas; bc.textContent = pref ? 'Preferencia' : 'Control';
+  $('#leyenda').classList.toggle('es-pref', pref);
+  $('#leyenda-pref').innerHTML = pref ? leyendaPreferencia(game).map(p => `<span><i style="background:${p.color}"></i>${esc(p.nombre)}</span>`).join('') : '';
   map.setBusy(new Set(game.jobs.map(j => j.zone)));
   map.setProgress(progresoMapa(game, clock.day, clock.acc));   // también en cada cambio, no solo por fotograma
   map.setRivalMarks(game.ve('map.rivales') ? marcasRivales(game) : []);
@@ -404,7 +425,15 @@ function refreshAll() {
   document.body.classList.toggle('vista-ancha', ancha);
   vw.hidden = !ancha;
   if (ancha) { vw.innerHTML = `<div class="vista-in vista-guia">${cartel}</div>` + renderVista(game, vista, clock.day); vw.scrollTop = vtop; }
-  $('#informe-root').innerHTML = renderInforme(uiState.informe);
+  const infHtml = renderInforme(uiState.informe), infRoot = $('#informe-root');
+  if (infHtml !== infoMostrado) {                                         // solo si cambió: así no se reanima en cada refresco
+    const vieja = infRoot.firstElementChild;
+    if (!infHtml && vieja) { infoMostrado = infHtml; salir(vieja, 'cierra', 230); }
+    else { infoMostrado = infHtml; infRoot.innerHTML = infHtml; }
+  }
+  const pantalla = `${vista}|${tab}|${selected}`;                          // al cambiar de vista, pestaña o barrio, el contenido entra con suavidad
+  if (pantalla !== ultimaPantalla) { ultimaPantalla = pantalla; panel.querySelector('.tab-body')?.classList.add('entra'); (ancha ? vw.querySelector('.vista-in:last-child') : null)?.classList.add('entra'); panel.querySelectorAll('.mission').forEach((m, i) => { if (i < 6) { m.classList.add('entra'); m.style.setProperty('--d', i * 35 + 'ms'); } }); }
+  animarNumeros(document);
   tooltips?.revisar();
   panel.scrollTop = top;                                   // no perder el lugar al refrescar
   $('#log').innerHTML = renderLog(game);
@@ -414,9 +443,15 @@ function refreshAll() {
 }
 
 // Muestra (o quita) el modal del evento pendiente; el juego queda en pausa hasta decidir
+let eventoMostrado = null, infoMostrado = '', ultimaPantalla = '';
 function showEvent() {
-  $('#modal-root').innerHTML = renderEvento(game);
-  $('#modal-root').querySelectorAll('[data-event-choice]').forEach(b => b.onclick = () => {
+  const root = $('#modal-root'), clave = game.pending ? `${game.pending.id}@${game.day}` : null;
+  if (clave === eventoMostrado) return;                                  // el mismo evento ya está en pantalla: no se redibuja (no se reanima)
+  eventoMostrado = clave;
+  const viejo = root.querySelector('.modal');
+  if (!clave) { salir(viejo, 'cierra', 200); return; }                   // se cerró: sale suave
+  root.innerHTML = renderEvento(game);
+  root.querySelectorAll('[data-event-choice]').forEach(b => b.onclick = () => {
     if (game.choose(+b.dataset.eventChoice)) refreshAll();
   });
 }
@@ -510,6 +545,10 @@ function wireUI() {
   const bpr = $('#btn-progresivo'), pintaProg = () => { if (!game) { bpr.textContent = 'Modo progresivo: sí'; return; } bpr.textContent = `Modo progresivo: ${game.guia?.progresivo ? 'sí' : 'no (se ve todo)'}`; bpr.setAttribute('aria-checked', String(!!game.guia?.progresivo)); };
   bpr.onclick = () => { if (!game) return; game.setProgresivo(!game.guia.progresivo); pintaProg(); refreshAll(); };
   $('#menu-partida').addEventListener('toggle', pintaProg);
+  $('#btn-capa').onclick = () => { capa = capa === 'pref' ? 'control' : 'pref'; try { localStorage.setItem(CAPA_KEY, capa); } catch { /* sin almacenamiento */ } refreshAll(); };
+  const ba = $('#btn-anim'), pintaAnim = () => { ba.textContent = `Animaciones: ${animacionesOn() ? 'sí' : 'no'}`; ba.setAttribute('aria-checked', String(animacionesOn())); };
+  ba.onclick = () => { setAnimaciones(!animacionesOn()); pintaAnim(); };
+  pintaAnim();
   const bn = $('#btn-noche'), pintaNoche = () => { bn.textContent = `Simular día y noche: ${simularNoche ? 'sí' : 'no'}`; bn.setAttribute('aria-checked', String(simularNoche)); };
   pintaNoche();
   bn.onclick = () => { simularNoche = !simularNoche; try { localStorage.setItem(NOCHE_KEY, simularNoche ? '1' : '0'); } catch {} pintaNoche(); if (game) pintarHora(); };

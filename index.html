@@ -20,8 +20,8 @@
       <span class="hora" id="hora" aria-hidden="true"><svg viewBox="0 0 44 24" width="44" height="24"><path d="M3 22 A19 19 0 0 1 41 22" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="2 3"/><circle id="astro" r="3.4" cx="3" cy="22"/></svg><b id="hora-txt">06:00</b><small id="franja">mañana</small></span>
     </div>
     <div class="modo" role="group" aria-label="Nivel de detalle">
-      <button data-modo-btn="rapido" aria-pressed="true" data-tip-texto="Lo esencial, sin ruido. Atajo: M">Rápido</button>
-      <button data-modo-btn="detallado" aria-pressed="false" data-tip-texto="Todos los números y explicaciones. Atajo: M">Detallado</button>
+      <button data-modo-btn="rapido" aria-pressed="true" data-tip-texto="Pantalla simple: lo esencial, con una sugerencia de qué hacer. Atajo: M">Casual</button>
+      <button data-modo-btn="detallado" aria-pressed="false" data-tip-texto="Todos los números, tablas y explicaciones de la simulación. Atajo: M">Experto</button>
     </div>
     <div class="stats" id="stats" aria-label="Estado del partido"></div>
     <div class="hud-tools">
@@ -31,6 +31,7 @@
         <div class="menu">
           <button id="btn-progresivo" role="menuitemcheckbox" aria-checked="true" title="El juego empieza simple y se va abriendo. Apagalo para ver todo desde el principio.">Modo progresivo: sí</button>
           <button id="btn-pausa" role="menuitemcheckbox" aria-checked="true" title="Pausar el juego y mostrar el resultado cuando termina una acción">Pausar con avisos: sí</button>
+          <button id="btn-anim" role="menuitemcheckbox" aria-checked="true" title="Apaga las transiciones suaves si preferís todo instantáneo">Animaciones: sí</button>
           <button id="btn-noche" role="menuitemcheckbox" aria-checked="true" title="Con 'no', el mapa nunca se oscurece (las horas siguen pasando)">Simular día y noche: sí</button>
           <button id="btn-export" title="Descargar la partida como archivo JSON">Exportar partida</button>
           <button id="btn-import" title="Cargar una partida desde un archivo JSON">Importar partida</button>
@@ -44,7 +45,7 @@
     <div class="mapa-wrap">
       <svg id="map" aria-label="Mapa de Argentina"></svg>
       <div class="luz" id="luz" aria-hidden="true"></div>
-      <div class="leyenda" id="leyenda" aria-hidden="true"><span>Control</span><i class="grad"></i><span>0 → 100%</span><span class="rm"><i></i> rival actuando</span></div>
+      <div class="leyenda" id="leyenda" aria-hidden="true"><button type="button" id="btn-capa" class="capa-btn" hidden data-tip-texto="Cambiá entre tu control y el partido que lidera cada barrio">Control</button><span class="lg-ctrl">Control</span><i class="grad lg-ctrl"></i><span id="leyenda-pref" class="lg-pref"></span><span class="lg-ctrl">0 → 100%</span><span class="rm"><i></i> rival actuando</span></div>
       <div class="maphover" id="maphover" role="status" hidden></div>
     </div>
     <div id="resizer" class="resizer" role="separator" aria-orientation="vertical" aria-label="Ajustar el ancho del panel" tabindex="0" title="Arrastrá para cambiar el ancho (doble clic: restablecer)"></div>

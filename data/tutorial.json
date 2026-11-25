@@ -1,0 +1,75 @@
+{
+  "nota": "Objetivos guiados para los primeros minutos. Se muestra el primero sin cumplir. cond usa las mismas condiciones que revelado.json. texto: una frase corta; boton: lo que dice el botón de la sugerencia; accion: 'mision' (lanzar la misión sugerida), 'ir' (abrir una pantalla) o ninguna.",
+  "pasos": [
+    {
+      "id": "primera",
+      "texto": "Lanzá tu primera misión en un barrio.",
+      "boton": "Lanzar misión",
+      "accion": "mision",
+      "cond": [
+        {
+          "tipo": "misiones",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "id": "presencia",
+      "texto": "Repetí misiones en el mismo barrio para ganar presencia.",
+      "boton": "Seguir en el barrio",
+      "accion": "mision",
+      "cond": [
+        {
+          "tipo": "control",
+          "n": 0.05
+        }
+      ]
+    },
+    {
+      "id": "gente",
+      "texto": "Sumá afiliados: la gente que te acompaña.",
+      "boton": "Hacer una misión",
+      "accion": "mision",
+      "cond": [
+        {
+          "tipo": "afiliados",
+          "n": 20
+        }
+      ]
+    },
+    {
+      "id": "conocido",
+      "texto": "Hacete conocer: elegí «Esquina masiva» o «Abierta en la plaza» al lanzar una misión (tocá «…»).",
+      "cond": [
+        {
+          "tipo": "fama",
+          "n": 4
+        }
+      ]
+    },
+    {
+      "id": "medios",
+      "texto": "Aceptá una invitación a la radio o a un debate.",
+      "cond": [
+        {
+          "tipo": "hecho",
+          "clave": "medios",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "id": "viaje",
+      "texto": "Probá una misión en otro barrio: vas a viajar.",
+      "boton": "Hacer una misión",
+      "accion": "mision",
+      "cond": [
+        {
+          "tipo": "hecho",
+          "clave": "viajes",
+          "n": 1
+        }
+      ]
+    }
+  ]
+}

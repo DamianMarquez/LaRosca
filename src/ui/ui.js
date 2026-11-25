@@ -3,6 +3,10 @@ import { rivales as rivalesDe, amenaza, presencia, efectosActivos, choques, agen
 import { progreso as progresoDirectiva, etiqueta as etiquetaRelacion } from '../core/linea.js';
 import * as plantel from '../core/plantel.js';
 import { chequeo } from '../core/medios.js';
+import { semaforoHtml } from './semaforo.js';
+import { entrada } from './mov.js';
+import { sugerir } from '../core/sugerencia.js';
+import { resumenDetalle } from './detalle.js';
 import * as ideo from '../core/ideologia.js';
 import { nombreVacante, cargoDef, titular, probCaptar } from '../core/plantel.js';
 import { relacion as relacionRival, pactoCon, tipoDef, etiquetaRelacion as etiquetaRel } from '../core/pactos.js';
@@ -41,10 +45,10 @@ export function renderStats(g) {
   const v = id => ve(g, id);
   const rangoVisible = g.modo === 'fundador' ? v('hud.influencia') : v('hud.rango');
   return `${rangoVisible ? `<div class="grp">${chip('rango', 'rango', `<b>${esc(g.rankName)}</b>${next && g.modo !== 'fundador' ? `<small class="detalle">${Math.floor(p.xp)}/${next} XP</small>` : ''}`)}</div>` : ''}
-    <div class="grp">${chip('dinero', 'dinero', `<b>${money(p.money)}</b>${v('hud.flujo') ? `<small class="${flujo < 0 ? 'neg' : 'pos'}">${flujo >= 0 ? '+' : '−'}${money(Math.abs(flujo))}/mes</small>` : ''}`, p.money < 0 ? 'rojo' : '')}
+    <div class="grp">${chip('dinero', 'dinero', `<b class="num" data-num="dinero" data-val="${Math.round(p.money)}" data-fmt="money">${money(p.money)}</b>${v('hud.flujo') ? `<small class="${flujo < 0 ? 'neg' : 'pos detalle'}">${flujo >= 0 ? '+' : '−'}${money(Math.abs(flujo))}/mes</small>` : ''}`, p.money < 0 ? 'rojo' : '')}
       ${p.black > 0 && v('hud.negro') ? chip('negro', 'negro', `<b>${money(p.black)}</b>`) : ''}
-      ${g.exposure >= 1 && v('hud.negro') ? chip('exposicion', 'alerta', `<b>${Math.round(g.exposure)}%</b>`, g.exposure >= 60 ? 'hi' : g.exposure >= 30 ? 'mid' : '') : ''}</div>
-    <div class="grp">${v('hud.afiliados') ? chip('afiliados', 'afiliados', `<b>${g.afiliados.toLocaleString('es-AR')}</b>`) : ''}
+      ${g.exposure >= 1 && v('hud.negro') ? chip('exposicion', 'alerta', `${semaforoHtml('exposicion', g.exposure, Math.round(g.exposure) + '%')}`, g.exposure >= 60 ? 'hi' : g.exposure >= 30 ? 'mid' : '') : ''}</div>
+    <div class="grp">${v('hud.afiliados') ? chip('afiliados', 'afiliados', `<b class="num" data-num="afiliados" data-val="${g.afiliados}">${g.afiliados.toLocaleString('es-AR')}</b>`) : ''}
       ${v('hud.seguidores') ? chip('seguidores', 'seguidores', `<b>${g.followers.toLocaleString('es-AR')}</b>`, 'detalle') : ''}
       ${v('hud.voto') ? chip('voto', 'voto', `<b>${voto.toFixed(voto < 1 ? 2 : 1)}%</b>`) : ''}</div>
     ${v('hud.elecciones') ? renderChipElecciones(g) : ''}`;
@@ -178,7 +182,7 @@ export function renderAcciones(g, day) {
       <div class="job-sub">${esc(g.zonas[j.zone].nombre)} · termina en <span data-job-eta="${i}">${restante(Math.max(0, j.end - day))}</span></div>
       <div class="bar big"><i data-job-bar="${i}" style="width:${(f * 100).toFixed(1)}%"></i><span data-job-pct="${i}">${Math.round(f * 100)}%</span></div></div>`;
   }).join('');
-  const invs = (g.jugador.invitaciones ?? []).map(i => { const t = g.cfg.medios?.tipos.find(x => x.id === i.tipo); return t ? `<div class="job invitacion"><div class="job-head"><b>📺 ${esc(t.nombre)}</b><span class="badge">Invitación · ${Math.max(0, Math.ceil(i.vence - day))} d</span></div><div class="btns"><button data-inv="aceptar" data-tipo="${esc(i.tipo)}">Aceptar</button><button data-inv="rechazar" data-tipo="${esc(i.tipo)}">Rechazar</button></div></div>` : ''; }).join('');
+  const invs = (g.jugador.invitaciones ?? []).map(i => { const t = g.cfg.medios?.tipos.find(x => x.id === i.tipo); return t ? `<div class="job invitacion${entrada('inv:' + i.tipo + i.vence)}"><div class="job-head"><b>📺 ${esc(t.nombre)}</b><span class="badge">Invitación · ${Math.max(0, Math.ceil(i.vence - day))} d</span></div><div class="btns"><button data-inv="aceptar" data-tipo="${esc(i.tipo)}">Aceptar</button><button data-inv="rechazar" data-tipo="${esc(i.tipo)}">Rechazar</button></div></div>` : ''; }).join('');
   const viaje = renderViajeActivo(g, day);
   const desc = g.jugador.descanso, free = g.freeSlots > 0;
   const descTxt = desc ? `<div class="job"><div class="job-head"><b>Descansando</b><span class="badge">${ico('persona')}Vos</span></div><div class="job-sub">Recuperás fuerzas · terminás en ${Math.max(0, desc.hasta - day)} d</div></div>` : '';
@@ -195,7 +199,7 @@ export function renderPanel(g, zoneId, day, tab = 'zona') {
   const visibles = TABS.filter(([id]) => ve(g, { rivales: 'tab.rivales', datos: 'tab.datos' }[id] ?? 'mision.base'));
   const tabs = visibles.length < 2 ? '' : `<nav class="tabs" role="tablist">${visibles.map(([id, label]) => `<button role="tab" data-tab="${id}" class="${id === tab ? 'on' : ''}" aria-selected="${id === tab}">${label}${nuevoTab(g, id) ? ' <span class="nuevo">Nuevo</span>' : ''}${pendiente(id) ? ' <span class="ping" role="img" aria-label="hay algo pendiente">●</span>' : ''}</button>`).join('')}</nav>`;
   const body = tab === 'datos' && ve(g, 'tab.datos') ? renderDatos(g) : tab === 'rivales' && ve(g, 'tab.rivales') ? renderTabRivales(g, zoneId) : renderZona(g, zoneId);
-  return `<div class="city">${esc(g.partido.nombre)} · ${esc(g.city.ciudad)}, ${esc(g.prov.nombre)}</div>${renderAcciones(g, day)}${renderAhora(cs)}${tabs}<div class="tab-body">${body}</div>`;
+  return `<div class="city">${esc(g.partido.nombre)} · ${esc(g.city.ciudad)}, ${esc(g.prov.nombre)}</div>${renderAcciones(g, day)}${renderSugerencia(g)}${renderAhora(cs)}${tabs}<div class="tab-body">${body}</div>`;
 }
 
 // ---------- Solapas generales: Mapa · Partido · Yo ----------
@@ -326,9 +330,18 @@ const fmtCambio = c => {
 export function renderInforme(lista) {
   if (!lista?.length) return '';
   const items = lista.map(i => `<div class="inf ${i.ok === null ? 'neutro' : i.ok ? 'ok' : 'mal'}"><div class="inf-h"><b>${i.ok === null ? '▸' : i.ok ? '✔' : '✖'} ${esc(i.nombre)}${i.modo === 'delegada' ? ' (equipo)' : ''}</b>${i.zonaNombre ? `<small class="muted">${esc(i.zonaNombre)}</small>` : ''}</div>
-    <p>${esc(i.texto)}</p>${i.cambios?.length ? `<div class="cambios">${i.cambios.map(fmtCambio).join('')}</div>` : ''}${i.zona ? `<button data-informe-zona="${esc(i.zona)}">Ver zona</button>` : ''}${i.donde ? `<button class="primary" data-informe-ir="${esc(JSON.stringify(i.donde))}">Mostrame</button>` : ''}</div>`).join('');
+    <p class="${i.tipo === 'mision' && i.cambios?.length ? 'detalle' : ''}">${esc(i.texto)}</p>${i.cambios?.length ? `<div class="cambios">${i.cambios.map((c, k) => k < 3 ? fmtCambio(c) : `<span class="detalle">${fmtCambio(c)}</span>`).join('')}</div>` : ''}${i.zona ? `<button data-informe-zona="${esc(i.zona)}">Ver zona</button>` : ''}${i.donde ? `<button class="primary" data-informe-ir="${esc(JSON.stringify(i.donde))}">Mostrame</button>` : ''}</div>`).join('');
   return `<aside class="informe" role="status" aria-live="polite"><h3>${lista.every(i => i.tipo === 'desbloqueo') ? (lista.length > 1 ? `Se abrieron ${lista.length} cosas nuevas` : 'Se abrió algo nuevo') : lista.some(i => i.tipo === 'desbloqueo') ? 'Novedades' : lista.every(i => i.tipo === 'eleccion') ? (lista.length > 1 ? `${lista.length} novedades electorales` : 'Novedad electoral') : lista.length > 1 ? `Terminaron ${lista.length} acciones` : 'Terminó una acción'}</h3>${items}
-    <div class="btns"><button class="primary" data-informe-continuar>Continuar</button></div><small class="muted">Juego en pausa · Espacio o Enter cierran el aviso; después reanudás vos</small></aside>`;
+    <div class="btns"><button class="primary" data-informe-continuar>Continuar</button></div><small class="muted detalle">Juego en pausa · Espacio o Enter cierran el aviso; después reanudás vos</small></aside>`;
+}
+
+// «Lo mejor ahora»: una sola acción sugerida (Casual). En Experto se ve la franja «Ahora» completa.
+function renderSugerencia(g) {
+  const s = sugerir(g); if (!s) return '';
+  const t = s.tutorial, a = s.accion;
+  const attrs = !a ? '' : a.tipo === 'mision' ? `data-sug="mision" data-mision="${esc(a.mision)}" data-zona="${esc(a.zona)}"` : a.tipo === 'ir' ? `data-ir="${esc(a.tab)}"${a.sub ? ` data-sub="${esc(a.sub)}"` : ''}` : a.tipo === 'invitacion' ? `data-sug="invitacion" data-tipo="${esc(a.tipoInv)}"` : `data-sug="${esc(a.tipo)}"`;
+  const prog = t ? `<small class="muted sug-obj">Objetivo ${t.hecho + 1} de ${t.total}${s.id.startsWith('tut_') ? '' : ': ' + esc(t.texto)}${t.progreso ? ` · ${Number(t.progreso.actual).toLocaleString('es-AR')}/${Number(t.progreso.meta).toLocaleString('es-AR')}` : ''}</small>` : '';
+  return `<section class="sugerencia solo-rapido${entrada('sug:' + s.id)}" aria-label="Lo mejor ahora"><h3>Lo mejor ahora</h3><p>${esc(s.texto)}</p>${prog}${a && s.boton ? `<button class="primary" ${attrs}>${esc(s.boton)}</button>` : ''}</section>`;
 }
 
 // Franja "Ahora": lo más importante del momento. Rápido muestra solo la primera; Detallado, todas.
@@ -339,7 +352,7 @@ function renderAhora(cs) {
     const attrs = c.tab ? `data-ir="${c.tab}"${c.sub ? ` data-sub="${c.sub}"` : ''}` : 'disabled';
     return `<button class="ahora ${c.nivel} ${i ? 'detalle' : ''}" ${attrs}>${icono}<span>${esc(c.texto)}</span></button>`;
   }).join('');
-  return `<section class="ahora-box" aria-label="Qué hacer ahora"><h3>Ahora</h3>${items}${cs.length > 1 ? `<small class="muted solo-rapido">+${cs.length - 1} más en modo Detallado</small>` : ''}</section>`;
+  return `<section class="ahora-box detalle" aria-label="Qué hacer ahora"><h3>Ahora</h3>${items}${cs.length > 1 ? `<small class="muted solo-rapido">+${cs.length - 1} más en modo Detallado</small>` : ''}</section>`;
 }
 
 // Datos: finanzas y provincia en una sola pestaña, con selector interno
@@ -379,7 +392,7 @@ function modalidadesHtml(g, m, z) {
   const sel = g.modalidad(m).id;
   return `<div class="modalidades" role="group" aria-label="Cómo hacerlo"><small class="muted">Cómo hacerlo</small>${m.modalidades.map(x => {
     const c = g.chance(m, z, 'blanco', 'personal', null, x.id).c, al = g.alcance(m, z, x.id).personas;
-    return `<button type="button" class="chip ${x.id === sel ? 'on' : ''}" data-modalidad="${esc(m.id)}" data-mod="${esc(x.id)}" aria-pressed="${x.id === sel}" title="${esc(x.texto)}"><b>${esc(x.nombre)}</b><small>${c}% · ~${al.toLocaleString('es-AR')} pers.${x.fama ? ' · +fama' : ''}${x.expo ? ' · +expo' : ''}</small></button>`;
+    return `<button type="button" class="chip ${x.id === sel ? 'on' : ''}" data-modalidad="${esc(m.id)}" data-mod="${esc(x.id)}" aria-pressed="${x.id === sel}" title="${esc(x.texto)}"><b>${esc(x.nombre)}</b><small>${semaforoHtml('exito', c)} <span class="detalle">${c}% · ~${al.toLocaleString('es-AR')} pers.</span>${x.fama ? ' · +fama' : ''}${x.expo ? ' · +expo' : ''}</small></button>`;
   }).join('')}</div>`;
 }
 
@@ -396,7 +409,7 @@ function misionCard(g, m, z, zoneId, rec) {
   return `<div class="mission compact ${lock ? 'locked' : ''} ${m.ilegal ? 'ilegal' : ''} ${abierta ? 'abierta' : ''}" data-m="${esc(m.id)}">
       <div class="m-row">
         <div class="m-name"><b>${esc(m.nombre)}</b>${rec ? ' <span class="rec" tabindex="0" data-tip-titulo="Recomendada" data-tip-texto="La mejor opción disponible ahora, según su resultado esperado por día de trabajo.">★ Recomendada</span>' : ''}${m.ilegal ? ' <span class="tag">ilegal</span>' : ''}</div>
-        <div class="m-quick"><span tabindex="0" data-tip="exito">${ico('objetivo')}${ch.c}%</span><span>${ico('reloj')}${g.dias(m)} d</span><span>${ico('dinero')}${m.costo ? money(m.costo) : 'gratis'}</span></div>
+        <div class="m-quick"><span tabindex="0" data-tip="exito">${ico('objetivo')}${semaforoHtml('exito', ch.c, ch.c + '%')}</span><span>${ico('reloj')}${g.dias(m)} d</span><span>${ico('dinero')}${m.costo ? money(m.costo) : 'gratis'}</span></div>
         <button class="go" data-start="${m.id}" ${lock ? 'disabled' : ''}>Lanzar</button>
         <button class="mas-btn" data-mas="${esc(m.id)}" aria-expanded="${abierta}" aria-label="Más opciones de ${esc(m.nombre)}">${ico('mas')}</button>
       </div>
@@ -478,7 +491,7 @@ function renderRivalesBody(g, z) {
   }).join('');
   const nivelTxt = { ninguna: 'Todavía no te toman como amenaza: con poco control en el barrio, los rivales no reaccionan.', baja: 'Riesgo de reacción rival: <b>bajo</b>.', media: 'Riesgo de reacción rival: <b class="mid">medio</b>.', alta: 'Riesgo de reacción rival: <b class="hi">alto</b>.' }[am.nivel];
   const att = Math.round(g.atencion());
-  const attTxt = att >= 15 ? `<p class="muted small-p">Atención de los rivales: <b>${att}</b>/100 — ser conocido y ayudar a la comunidad te hace más visible, y también más blanco.</p>` : '';
+  const attTxt = att >= 15 ? `<p class="muted small-p detalle">Atención de los rivales: <b>${att}</b>/100 — ser conocido y ayudar a la comunidad te hace más visible, y también más blanco.</p>` : '';
   return `<p class="muted small-p">${attTxt}${nivelTxt} <small>(estimación)</small></p>${enZona}${activos}${rows}`;
 }
 
@@ -564,11 +577,11 @@ function renderFinanzas(g) {
   return `<h2>Finanzas</h2>
     <div class="kv"><span>Dinero blanco</span><b class="${g.player.money < 0 ? 'neg' : ''}">${money(g.player.money)}</b><span>Dinero negro</span><b>${money(g.player.black)}</b><span>Afiliados</span><b>${g.afiliados.toLocaleString('es-AR')}</b><span>Próximo cierre</span><b>en ${diasCierre} d</b></div>
     ${g.player.money < 0 ? '<p class="error">Estás en números rojos: no podés gastar plata hasta recuperarte. Recaudá (colecta, aporte de comerciantes).</p>' : ''}
-    <h3>Cada mes entra</h3><div class="kv">${lineas(P.ingresos)}<span><b>Total</b></span><b class="pos">${money(P.totalIngresos)}</b></div>
-    <h3>Cada mes sale</h3><div class="kv">${lineas(P.gastos)}<span><b>Total</b></span><b class="neg">${money(P.totalGastos)}</b></div>
-    <p class="${P.neto < 0 ? 'error' : 'muted'} small-p">Resultado proyectado: <b>${P.neto >= 0 ? '+' : '−'}${money(Math.abs(P.neto))}</b> por mes. ${P.neto < 0 ? 'Con este ritmo perdés plata: hay que recaudar más o crecer.' : ''}</p>
+    <p class="${P.neto < 0 ? 'error' : 'muted'} small-p"><span class="sem ${P.neto < 0 ? 'mal' : 'bien'}"><i></i>${P.neto < 0 ? 'Perdés plata' : 'Vas bien'}</span> · <b>${P.neto >= 0 ? '+' : '−'}${money(Math.abs(P.neto))}</b> por mes${P.neto < 0 ? '. Hay que recaudar más o crecer.' : '.'}</p>
+    ${resumenDetalle('fin-mes', `Entra ${money(P.totalIngresos)} · Sale ${money(P.totalGastos)} por mes`, `<h3>Cada mes entra</h3><div class="kv">${lineas(P.ingresos)}<span><b>Total</b></span><b class="pos">${money(P.totalIngresos)}</b></div>
+      <h3>Cada mes sale</h3><div class="kv">${lineas(P.gastos)}<span><b>Total</b></span><b class="neg">${money(P.totalGastos)}</b></div>`)}
     <h3>Deudas de favor</h3>${favores}
-    <h3>Últimos cierres</h3>${hist}`;
+    ${resumenDetalle('fin-cierres', h.length ? `Último cierre: ${h[h.length - 1].neto >= 0 ? '+' : '−'}${money(Math.abs(h[h.length - 1].neto))}` : 'Todavía no hubo un cierre de mes', `<h3>Últimos cierres</h3>${hist}`)}`;
 }
 
 // Checklist del próximo ascenso
@@ -627,7 +640,7 @@ const pips = (n, max = 5) => Array.from({ length: max }, (_, i) => `<i class="pi
 function renderYo(g) {
   const J = g.jugador, V = g.cfg.vida, H = g.cfg.habilidades, E = V.efectosFamilia;
   const estado = personaje.estadoDesgaste(g), d = Math.round(J.desgaste);
-  const desgasteHtml = `<div class="desgaste ${estado}"><div class="d-top"><span tabindex="0" data-tip="desgaste"><b>Desgaste</b></span><span>${d}/100 · ${estado}</span></div>
+  const desgasteHtml = `<div class="desgaste ${estado}"><div class="d-top"><span tabindex="0" data-tip="desgaste"><b>Desgaste</b></span><span>${semaforoHtml('desgaste', d, d + '/100')}</span></div>
       <div class="bar"><i style="width:${d}%"></i></div>
       <button class="full" data-descansar ${g.freeSlots <= 0 || g.pending || J.descanso ? 'disabled' : ''}>${J.descanso ? 'Descansando…' : `Descansar ${V.desgaste.descansoDias} días`}</button>
       <small class="muted detalle">Sube cada día que estás ocupado, más con hijos; baja cuando estás libre y mucho más descansando. ${V.desgaste.alto}+ resta éxito y ${V.desgaste.critico}+ resta mucho.</small></div>`;
@@ -648,13 +661,13 @@ function renderYo(g) {
     <h3>Cómo estás</h3>${desgasteHtml}
     <h3>Habilidades${J.puntos > 0 ? ` <span class="tag warn">${J.puntos} punto${J.puntos > 1 ? 's' : ''}</span>` : ''}</h3>
     <p class="muted small-p detalle">Se entrenan haciendo misiones afines y mejoran con los puntos que ganás al ascender.</p>${ramas}
-    <h3>Trabajo</h3>
+    ${resumenDetalle('yo-vida', `${esc(personaje.trabajoNombre(t.estado))} · ${esc(personaje.familiaNombre(g))}`, `    <h3>Trabajo</h3>
     <div class="trabajo"><div class="kv"><span>Situación</span><b>${esc(personaje.trabajoNombre(t.estado))}</b><span>Aporte mensual</span><b>${money(personaje.aporteTrabajo(g))}</b></div>
       <div class="btns">${btnT('completo', 'Jornada completa', 'Más ingreso, pero tus acciones tardan más.')}${btnT('reducido', 'Media jornada', 'La mitad del ingreso, a cambio de más tiempo para el partido.')}${btnT('sin', 'Dejar el trabajo', 'Sin ingreso propio, pero con todo el tiempo. No se puede revertir por tu cuenta.')}</div>
       ${t.estado === 'sin' ? '<small class="muted">Sin trabajo: espera una oportunidad. Con el tiempo pueden aparecer ofertas.</small>' : ''}</div>
     <h3>Familia</h3><div class="detalle-vacio"><p class="small-p">${esc(personaje.familiaNombre(g))}</p>
       <div class="kv detalle"><span>Gasto familiar</span><b>${money(gastoFam)}/mes</b><span>Tu tiempo disponible</span><b>${tiempo >= 1 ? '−' : '+'}${Math.round(Math.abs(1 - tiempo) * 100)}% rapidez</b><span>Cuánto te duele un escándalo</span><b>×${personaje.vulnerabilidad(g).toFixed(2)}</b></div>
-      <small class="muted solo-rapido">Gasto ${money(gastoFam)}/mes · Más familia: más apoyo y gasto, y los escándalos duelen más.</small></div>`;
+      <small class="muted solo-rapido">Gasto ${money(gastoFam)}/mes · Más familia: más apoyo y gasto, y los escándalos duelen más.</small></div>`)}`;
 }
 
 function renderPartido(g) {
@@ -693,7 +706,7 @@ function renderElectoral(g) {
   const lider = pf.lider ? byId[pf.lider].nombre : '—';
   return `<h3>Panorama electoral · ${esc(pf.año)}</h3>
     <div class="vote-bar">${bar}</div><div class="vote-legend">${legend}</div>
-    <p class="muted small">Participación ${pct(pf.participacion)} · primera fuerza: ${esc(lider)}${pf.escrutinio === 'provisorio' ? ' · escrutinio provisorio' : ''}</p>`;
+    ${resumenDetalle('prov-electoral', `Primera fuerza: ${esc(lider)}`, `<p class="muted small">Participación ${pct(pf.participacion)}${pf.escrutinio === 'provisorio' ? ' · escrutinio provisorio' : ''}</p>`)}`;
 }
 
 const FILTROS = [['todo', 'Todo'], ['rival', 'Rivales'], ['plata', 'Plata'], ['partido', 'Partido']];
@@ -704,7 +717,7 @@ const esPartido = e => e.kind === 'linea' || e.kind === 'promo' || /plantel|vaca
 export function renderLog(g) {
   const { logFiltro: f, logAbierto: abierto } = uiState;
   const lista = g.log.filter(e => f === 'todo' || (f === 'rival' && e.kind === 'rival') || (f === 'plata' && esPlata(e)) || (f === 'partido' && esPartido(e)));
-  const items = lista.slice(0, abierto ? 14 : 3).map(e => `<div class="ev ${e.kind}"><i class="k-dot"></i><span>${esc(e.text)}</span></div>`).join('') || '<div class="ev"><span class="muted">Sin novedades en este filtro.</span></div>';
+  const items = lista.slice(0, abierto ? 14 : 3).map(e => `<div class="ev ${e.kind}${entrada('log:' + e.text)}"><i class="k-dot"></i><span>${esc(e.text)}</span></div>`).join('') || '<div class="ev"><span class="muted">Sin novedades en este filtro.</span></div>';
   const chips = FILTROS.map(([id, l]) => `<button class="chip-f ${f === id ? 'on' : ''}" data-log-filtro="${id}" aria-pressed="${f === id}">${l}</button>`).join('');
   return `<div class="log-bar"><span class="chips-f">${chips}</span><button class="chip-f" data-log-toggle aria-expanded="${abierto}">${abierto ? 'Ver menos' : 'Ver más'}</button></div><div class="log-items ${abierto ? 'abierto' : ''}">${items}</div>`;
 }

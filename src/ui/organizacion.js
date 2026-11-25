@@ -47,7 +47,7 @@ function afiliaciones(g) {
   const kv = (a, b, d = '') => `<span class="${d}">${a}</span><b class="${d}">${b}</b>`;
   const meta = q?.items.find(i => i.id === 'afiliados');
   return `<div class="resumen-grid"><section class="card"><h3>Padrón de afiliados</h3>
-    <div class="kv">${kv('Afiliados', g.afiliados.toLocaleString('es-AR'))}${kv('Padrón electoral de la ciudad', padron.toLocaleString('es-AR'))}${kv('Afiliados cada mil electores', pc.toFixed(1).replace('.', ','))}${kv('Barrios con presencia', barrios)}${kv('Seguidores', g.followers.toLocaleString('es-AR'), 'detalle')}</div>
+    <div class="kv">${kv('Afiliados', g.afiliados.toLocaleString('es-AR'))}${kv('Padrón electoral de la ciudad', padron.toLocaleString('es-AR'), 'detalle')}${kv('Afiliados cada mil electores', pc.toFixed(1).replace('.', ','), 'detalle')}${kv('Barrios con presencia', barrios)}${kv('Seguidores', g.followers.toLocaleString('es-AR'), 'detalle')}</div>
     ${meta ? `<p class="small-p">Para el próximo reconocimiento hacen falta <b>${meta.meta.toLocaleString('es-AR')}</b> afiliados (tenés ${meta.actual.toLocaleString('es-AR')}).</p><div class="bar"><i style="width:${Math.min(100, (meta.actual / meta.meta) * 100)}%"></i></div>` : ''}
     <p class="small-p muted detalle">Los afiliados salen de tu control territorial y de tu notoriedad. Ficharlos a fondo exige comités y militantes.</p></section></div>`;
 }
